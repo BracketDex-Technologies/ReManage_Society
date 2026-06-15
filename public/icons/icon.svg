@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SmartSocietyHub">
+  <rect width="512" height="512" rx="112" fill="#F97316"/>
+  <path fill="#fff" d="M128 352V224l128-80 128 80v128H128zm64-32h128v-72l-64-40-64 40v72z"/>
+  <rect x="232" y="288" width="48" height="64" rx="8" fill="#FDE68A"/>
+</svg>

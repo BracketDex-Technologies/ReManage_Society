@@ -1,0 +1,1921 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Society {
+  id             String   @id @default(cuid())
+  name           String
+  joinCode       String?  @unique
+  address        String
+  city           String
+  pincode        String
+  totalFlats     Int      @default(0)
+  maintenanceAmt Float    @default(0)
+  dueDayOfMonth  Int      @default(10)
+  lateFee        Float    @default(0)
+  upiId          String?
+  bankDetails    String?
+  planTier       String   @default("starter")
+  openingBalance Float    @default(0)
+  logoUrl        String?
+  slaConfig      String?  // JSON: {"plumbing":24,"electrical":12,"general":48}
+  subscriptionEnd DateTime?  // null = unlimited (trial/free), set = recharge-based
+  rechargeHistory String?    // JSON array of recharge events
+  emergencyPhone  String?    // Society emergency contact number
+  legalAdviserName  String?  // Society legal adviser display name
+  legalAdviserPhone String?  // Click-to-call legal adviser number
+  duesEnforcementEnabled Boolean @default(true)
+  duesEnforcementDays    Int     @default(60)
+  moveInShiftingCharge   Float   @default(2000)
+  moveOutShiftingCharge  Float   @default(1500)
+  meterRatesJson         String? // JSON utility rate tiers per meter type
+  createdAt      DateTime @default(now())
+
+  flats              Flat[]
+  units              Unit[]
+  persons            Person[]
+  unitOccupancies    UnitOccupancy[]
+  invoices           Invoice[]
+  invoiceRecipients  InvoiceRecipient[]
+  billingRules       BillingRule[]
+  penaltyRules       PenaltyRule[]
+  payments           Payment[]
+  receipts           Receipt[]
+  financialTransactions FinancialTransaction[]
+  bankReconciliationSessions BankReconciliationSession[]
+  bankStatementLines BankStatementLine[]
+  meterReadingImportSessions MeterReadingImportSession[]
+  meterReadings      MeterReading[]
+  ledgerAccounts     LedgerAccount[]
+  ledgerEntries      LedgerEntry[]
+  journalVouchers    JournalVoucher[]
+  securityEvents     SecurityEvent[]
+  backgroundJobs     BackgroundJob[]
+  users              User[]
+  bills              MaintenanceBill[]
+  billPaymentLinks   BillPaymentLink[]
+  expenses           Expense[]
+  complaints         Complaint[]
+  notices            Notice[]
+  visitors           Visitor[]
+  parkingSlots       ParkingSlot[]
+  parkingZones       ParkingZone[]
+  vehicles           Vehicle[]
+  parkingAssignments ParkingAssignment[]
+  parkingTransactions ParkingTransactionHistory[]
+  amenityCatalog     Amenity[]
+  amenityPolicies    AmenityPolicy[]
+  amenitySchedules   AmenitySchedule[]
+  amenityUsageLogs   AmenityUsageLog[]
+  amenityPenalties   AmenityPenalty[]
+  facilities         Facility[]
+  facilityBookings   FacilityBooking[]
+  meetingMinutes     MeetingMinutes[]
+  emergencyContacts  EmergencyContact[]
+  polls              Poll[]
+  documents          Document[]
+  activityLogs       ActivityLog[]
+  notifications      Notification[]
+  vendors            Vendor[]
+  parkingShares      ParkingSharing[]
+  parkingRequests    ParkingRequest[]
+  guards             GuardUser[]
+  domesticStaff      DomesticStaff[]
+  staffAttendance    StaffAttendance[]
+  packages           Package[]
+  tenants            Tenant[]
+  rentInvoices       RentInvoice[]
+  moveEvents         MoveEvent[]
+  blacklist          Blacklist[]
+  gateIncidents      GateIncident[]
+  forumThreads       ForumThread[]
+  societyEvents      SocietyEvent[]
+  guardPatrols       GuardPatrol[]
+  marketplace        MarketplaceListing[]
+  marketplaceCategories MarketplaceCategory[]
+  marketplaceImages     MarketplaceImage[]
+  marketplaceInterests  MarketplaceInterest[]
+  marketplaceTransactions MarketplaceTransaction[]
+  marketplaceModeration MarketplaceModeration[]
+  fundAccounts       FundAccount[]
+  budgets            Budget[]
+  assets             SocietyAsset[]
+  noticeReads        NoticeRead[]
+  facilityWaitlist   FacilityWaitlist[]
+  staffSalaries      StaffSalary[]
+  residentStaffPayments ResidentStaffPayment[]
+  nocRequests        SocietyNocRequest[]
+}
+
+model Flat {
+  id              String   @id @default(cuid())
+  societyId       String
+  flatNumber      String
+  wing            String?
+  floor           Int?
+  ownerName       String?
+  tenantName      String?
+  contact         String?
+  email           String?
+  vehicleNumber   String?
+  flatType        String?  // 1bhk | 2bhk | 3bhk | 4bhk | shop | office
+  carpetArea      Float?   // in sqft
+  currentOccupant String   @default("owner") // owner | tenant | vacant
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  society         Society           @relation(fields: [societyId], references: [id])
+  bills           MaintenanceBill[]
+  reminders       ReminderLog[]
+  parkingSlots    ParkingSlot[]
+  visitors        Visitor[]
+  users           User[]
+  parkingShares   ParkingSharing[]
+  parkingRequests ParkingRequest[]
+  staffLinks      StaffFlatLink[]
+  residentStaffPayments ResidentStaffPayment[]
+  packages        Package[]
+  tenants         Tenant[]
+  rentInvoices    RentInvoice[]
+  moveEvents      MoveEvent[]
+  units           Unit[]
+  nocRequests     SocietyNocRequest[]
+  meterReadings   MeterReading[]
+
+  @@unique([societyId, flatNumber])
+}
+
+// ── Domain-Driven Unit Inventory & Occupancy ───────
+// New architecture: a Unit/Flat is an asset, not a person.
+// Existing Flat remains for backwards compatibility while modules migrate.
+
+model Unit {
+  id                 String   @id @default(cuid())
+  societyId          String
+  legacyFlatId       String?  @unique
+  wing               String?
+  flatNumber         String
+  floor              Int?
+  unitType           String   @default("2BHK") // 1RK | 1BHK | 2BHK | 3BHK | SHOP | OFFICE | PENTHOUSE | VILLA
+  usageType          String   @default("RESIDENTIAL") // RESIDENTIAL | COMMERCIAL | MIXED_USE
+  carpetArea         Float?
+  superBuiltupArea   Float?
+  parkingSlots       Int      @default(0)
+  intercomNumber     String?
+  occupancyStatus    String   @default("VACANT") // OWNER_OCCUPIED | TENANT_OCCUPIED | VACANT | LOCKED | UNDER_RENOVATION
+  ownershipStatus    String   @default("FREEHOLD") // FREEHOLD | JOINT_OWNERSHIP | DEVELOPER_OWNED | UNDER_DISPUTE
+  billingStatus      String   @default("ACTIVE") // ACTIVE | HOLD | EXEMPT | CLOSED
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  society            Society  @relation(fields: [societyId], references: [id])
+  legacyFlat         Flat?    @relation(fields: [legacyFlatId], references: [id])
+  occupancies        UnitOccupancy[]
+  invoices           Invoice[]
+
+  @@unique([societyId, flatNumber])
+  @@index([societyId, occupancyStatus])
+  @@index([societyId, billingStatus])
+}
+
+model Person {
+  id               String   @id @default(cuid())
+  societyId        String
+  name             String
+  phone            String?
+  alternatePhone   String?
+  emergencyContact String?
+  profilePhoto     String?
+  dob              DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  society          Society  @relation(fields: [societyId], references: [id])
+  users            User[]
+  occupancies      UnitOccupancy[]
+  invoiceRecipients InvoiceRecipient[]
+  payments         Payment[]
+  vehicles         Vehicle[]
+  amenityBookings  FacilityBooking[]
+  marketplaceListings MarketplaceListing[]
+  marketplaceInterests MarketplaceInterest[]
+
+  @@index([societyId, phone])
+  @@index([societyId, name])
+}
+
+model UnitOccupancy {
+  id                    String    @id @default(cuid())
+  societyId             String
+  unitId                String
+  personId              String
+  relationshipType      String    // OWNER | TENANT | CO_OWNER | FAMILY_MEMBER | CAREGIVER | COMMERCIAL_OPERATOR
+  occupancyStatus       String    @default("ACTIVE") // ACTIVE | MOVED_OUT | PENDING | REJECTED
+  billingResponsibility String    @default("OWNER") // OWNER | TENANT | SPLIT | CUSTOM
+  moveInDate            DateTime?
+  moveOutDate           DateTime?
+  agreementEndDate      DateTime?
+  vehicleCount          Int       @default(0)
+  isPrimaryOccupant     Boolean   @default(false)
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  society               Society   @relation(fields: [societyId], references: [id])
+  unit                  Unit      @relation(fields: [unitId], references: [id])
+  person                Person    @relation(fields: [personId], references: [id])
+  invoiceRecipients     InvoiceRecipient[]
+  parkingAssignments    ParkingAssignment[]
+  parkingShareListings  ParkingSharing[] @relation("ParkingShareOwnerOccupancy")
+  parkingRequests       ParkingRequest[]
+  amenityBookings       FacilityBooking[]
+  marketplaceListings   MarketplaceListing[]
+
+  @@index([societyId, unitId, isActive])
+  @@index([societyId, personId])
+}
+
+model MaintenanceBill {
+  id            String    @id @default(cuid())
+  flatId        String
+  societyId     String
+  amount        Float
+  billType      String    @default("maintenance") // maintenance | annual | sinking | repair | parking | other
+  billingCycle  String    @default("monthly") // monthly | yearly | one_time
+  description   String?
+  lateFee       Float     @default(0)
+  gstAmount     Float     @default(0) // GST (18% on maintenance > ₹7500)
+  totalAmount   Float?    // amount + lateFee + gstAmount
+  period        String // "2026-03" format
+  dueDate       DateTime
+  status        String    @default("pending") // pending | paid | partial
+  paidAt        DateTime?
+  paidVia       String? // cash | upi | neft | cheque
+  paidAmount    Float?
+  receiptNote   String?
+  receiptNumber String?
+  invoiceId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  flat    Flat    @relation(fields: [flatId], references: [id])
+  society Society @relation(fields: [societyId], references: [id])
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+  paymentLinks BillPaymentLink[]
+  meterReadings MeterReading[]
+
+  @@index([flatId, period, billType, billingCycle])
+}
+
+model BillPaymentLink {
+  id          String    @id @default(cuid())
+  societyId   String
+  billId      String
+  token       String    @unique
+  expiresAt   DateTime
+  lastSentAt  DateTime?
+  sentVia     String?   // whatsapp | copy | bulk
+  sentToPhone String?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+
+  society Society         @relation(fields: [societyId], references: [id])
+  bill    MaintenanceBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([billId])
+  @@index([societyId, billId])
+}
+
+// ── Invoice & Ledger-Driven Finance Foundation ─────
+
+model BillingRule {
+  id          String   @id @default(cuid())
+  societyId   String
+  name        String
+  category    String   @default("maintenance")
+  frequency   String   @default("MONTHLY") // MONTHLY | QUARTERLY | YEARLY | ONE_TIME
+  amountType  String   @default("FIXED") // FIXED | AREA_BASED | UNIT_TYPE | CUSTOM
+  amount      Float    @default(0)
+  isActive    Boolean  @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  config      String?  // JSON rules for area/unit/split billing
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  invoices    Invoice[]
+}
+
+model PenaltyRule {
+  id          String   @id @default(cuid())
+  societyId   String
+  name        String
+  type        String   @default("FIXED") // FIXED | PERCENTAGE | DAILY
+  amount      Float    @default(0)
+  graceDays   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society     Society  @relation(fields: [societyId], references: [id])
+}
+
+model Invoice {
+  id            String    @id @default(cuid())
+  societyId     String
+  unitId        String?
+  billingRuleId String?
+  invoiceNumber String    @unique
+  period        String
+  issueDate     DateTime  @default(now())
+  dueDate       DateTime
+  status        String    @default("DRAFT") // DRAFT | ISSUED | PARTIAL | PAID | CANCELLED | VOID
+  subtotal      Float     @default(0)
+  taxAmount     Float     @default(0)
+  penaltyAmount Float     @default(0)
+  discountAmount Float    @default(0)
+  totalAmount   Float     @default(0)
+  paidAmount    Float     @default(0)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  society       Society   @relation(fields: [societyId], references: [id])
+  unit          Unit?     @relation(fields: [unitId], references: [id])
+  billingRule   BillingRule? @relation(fields: [billingRuleId], references: [id])
+  lineItems     InvoiceLineItem[]
+  recipients    InvoiceRecipient[]
+  payments      Payment[]
+  legacyBills   MaintenanceBill[]
+  ledgerEntries LedgerEntry[]
+
+  @@index([societyId, period])
+  @@index([societyId, status])
+  @@index([unitId])
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  category    String
+  quantity    Float    @default(1)
+  unitAmount  Float
+  taxAmount   Float    @default(0)
+  totalAmount Float
+  metadata    String?
+
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model InvoiceRecipient {
+  id                    String   @id @default(cuid())
+  societyId             String
+  invoiceId             String
+  personId              String?
+  unitOccupancyId        String?
+  responsibilityType     String   @default("OWNER") // OWNER | TENANT | SPLIT | CUSTOM
+  sharePercent           Float?
+  amount                 Float?
+  isPrimary              Boolean  @default(false)
+  createdAt              DateTime @default(now())
+
+  society               Society  @relation(fields: [societyId], references: [id])
+  invoice               Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  person                Person?  @relation(fields: [personId], references: [id])
+  unitOccupancy          UnitOccupancy? @relation(fields: [unitOccupancyId], references: [id])
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  societyId      String
+  invoiceId      String?
+  personId       String?
+  amount         Float
+  method         String   // CASH | UPI | NEFT | CHEQUE | GATEWAY
+  reference      String?
+  status         String   @default("SUCCESS") // PENDING | SUCCESS | FAILED | REFUNDED
+  paidAt         DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  society        Society  @relation(fields: [societyId], references: [id])
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
+  person         Person?  @relation(fields: [personId], references: [id])
+  receipts       Receipt[]
+  financialTransaction FinancialTransaction?
+}
+
+model Receipt {
+  id          String   @id @default(cuid())
+  societyId   String
+  paymentId   String
+  receiptNumber String @unique
+  issuedAt    DateTime @default(now())
+  pdfUrl      String?
+  notes       String?
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  payment     Payment  @relation(fields: [paymentId], references: [id])
+}
+
+model FinancialTransaction {
+  id            String   @id @default(cuid())
+  societyId     String
+  paymentId     String?  @unique
+  sourceType    String   // INVOICE | PAYMENT | EXPENSE | PAYROLL | FUND | PENALTY | REFUND
+  sourceId      String?
+  description   String
+  transactionDate DateTime @default(now())
+  createdBy     String?
+  createdAt     DateTime @default(now())
+
+  society       Society  @relation(fields: [societyId], references: [id])
+  payment       Payment? @relation(fields: [paymentId], references: [id])
+  ledgerEntries LedgerEntry[]
+  bankStatementLine BankStatementLine? @relation("FinancialTransactionBankLine")
+  reconciledAt  DateTime?
+  reconciledBy  String?
+
+  @@index([societyId, transactionDate])
+  @@index([societyId, reconciledAt])
+}
+
+model BankReconciliationSession {
+  id           String    @id @default(cuid())
+  societyId    String
+  fileName     String?
+  periodStart  DateTime?
+  periodEnd    DateTime?
+  status       String    @default("draft") // draft | confirmed
+  totalLines   Int       @default(0)
+  matchedLines Int       @default(0)
+  createdBy    String?
+  confirmedAt  DateTime?
+  confirmedBy  String?
+  createdAt    DateTime  @default(now())
+
+  society Society             @relation(fields: [societyId], references: [id])
+  lines   BankStatementLine[]
+
+  @@index([societyId, createdAt])
+}
+
+model BankStatementLine {
+  id                   String    @id @default(cuid())
+  societyId            String
+  sessionId            String
+  rowIndex             Int
+  transactionDate      DateTime
+  amount               Float
+  reference            String?
+  description          String?
+  matchStatus          String    @default("unmatched") // unmatched | suggested | confirmed | ignored
+  matchScore           Float?
+  matchedSourceType    String?
+  matchedSourceId      String?
+  financialTransactionId String? @unique
+  confirmedAt          DateTime?
+  confirmedBy          String?
+  createdAt            DateTime  @default(now())
+
+  society              Society                   @relation(fields: [societyId], references: [id])
+  session              BankReconciliationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  financialTransaction FinancialTransaction?     @relation("FinancialTransactionBankLine", fields: [financialTransactionId], references: [id])
+
+  @@unique([sessionId, rowIndex])
+  @@index([societyId, matchStatus])
+}
+
+model LedgerAccount {
+  id          String   @id @default(cuid())
+  societyId   String
+  code        String
+  name        String
+  type        String   // ASSET | LIABILITY | INCOME | EXPENSE | EQUITY
+  parentId    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  parent      LedgerAccount? @relation("LedgerAccountTree", fields: [parentId], references: [id])
+  children    LedgerAccount[] @relation("LedgerAccountTree")
+  entries     LedgerEntry[]
+  journalLines JournalVoucherLine[]
+
+  @@unique([societyId, code])
+}
+
+model LedgerEntry {
+  id             String   @id @default(cuid())
+  societyId      String
+  transactionId  String
+  accountId      String
+  invoiceId      String?
+  debit          Float    @default(0)
+  credit         Float    @default(0)
+  memo           String?
+  postedAt       DateTime @default(now())
+
+  society        Society  @relation(fields: [societyId], references: [id])
+  transaction    FinancialTransaction @relation(fields: [transactionId], references: [id])
+  account        LedgerAccount @relation(fields: [accountId], references: [id])
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([societyId, postedAt])
+  @@index([transactionId])
+}
+
+model JournalVoucher {
+  id             String   @id @default(cuid())
+  societyId      String
+  voucherNumber  String
+  voucherDate    DateTime @default(now())
+  narration      String
+  status         String   @default("POSTED") // DRAFT | POSTED | VOID
+  createdBy      String?
+  postedAt       DateTime?
+  voidedAt       DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  society        Society  @relation(fields: [societyId], references: [id])
+  lines          JournalVoucherLine[]
+
+  @@unique([societyId, voucherNumber])
+  @@index([societyId, voucherDate])
+  @@index([societyId, status])
+}
+
+model JournalVoucherLine {
+  id          String @id @default(cuid())
+  voucherId   String
+  accountId   String
+  debit       Float  @default(0)
+  credit      Float  @default(0)
+  memo        String?
+
+  voucher     JournalVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  account     LedgerAccount  @relation(fields: [accountId], references: [id])
+
+  @@index([voucherId])
+  @@index([accountId])
+}
+
+model SecurityEvent {
+  id          String   @id @default(cuid())
+  societyId   String?
+  userId      String?
+  eventType   String   // login_failed | access_denied | rate_limited | suspicious_activity | session_revoked
+  severity    String   @default("info") // info | warning | critical
+  ipAddress   String?
+  userAgent   String?
+  path        String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  society     Society? @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+model BackgroundJob {
+  id          String   @id @default(cuid())
+  societyId   String?
+  jobType     String
+  status      String   @default("pending") // pending | running | completed | failed | cancelled
+  scheduledAt DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  payload     String?
+  result      String?
+  error       String?
+  attempts    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society     Society? @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, jobType, status])
+  @@index([scheduledAt, status])
+}
+
+model ReminderLog {
+  id          String   @id @default(cuid())
+  flatId      String
+  billId      String?
+  channel     String // whatsapp | sms
+  sentAt      DateTime @default(now())
+  status      String // sent | failed | delivered
+  messageBody String
+  flat        Flat     @relation(fields: [flatId], references: [id])
+}
+
+model User {
+  id                   String   @id @default(cuid())
+  name                 String
+  email                String   @unique
+  password             String
+  phone                String?
+  role                 String   @default("member") // chairman | secretary | treasurer | member | tenant | guard | watchman | vendor_staff | facility_manager
+  societyId            String?
+  flatId               String?
+  personId             String?
+  showPhoneInDirectory Boolean  @default(true)
+  showEmailInDirectory Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  society              Society? @relation(fields: [societyId], references: [id])
+  flat                 Flat?    @relation(fields: [flatId], references: [id])
+  person               Person?  @relation(fields: [personId], references: [id])
+  sessions             UserSession[]
+  forumThreads         ForumThread[]
+  forumReplies         ForumReply[]
+  organizedEvents      SocietyEvent[]
+  eventRsvps           EventRsvp[]
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  societyId   String
+  title       String
+  amount      Float
+  category    String // maintenance | repair | salary | utilities | other
+  paidTo      String?
+  paidOn      DateTime
+  notes       String?
+  vendorId    String?
+  tdsAmount   Float    @default(0) // TDS deducted on vendor payment
+  tdsPercent  Float    @default(0) // TDS percentage applied
+  netPayable  Float?   // amount - tdsAmount
+  fundId      String?  // Link to fund account
+  billProofFileName String?
+  billProofFileType String?
+  billProofDataUrl  String?
+  billProofUploadedAt DateTime?
+  billProofVerifiedAt DateTime?
+  billProofVerifiedBy String?
+  approvalStatus   String   @default("approved") // pending_approval | approved | rejected
+  submittedBy      String?
+  submittedByUserId String?
+  submittedAt      DateTime?
+  approvedBy       String?
+  approvedAt       DateTime?
+  rejectedBy       String?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  journalVoucherId String?  @unique
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id])
+  fund        FundAccount? @relation(fields: [fundId], references: [id])
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, approvalStatus])
+}
+
+model Complaint {
+  id                  String    @id @default(cuid())
+  societyId           String
+  flatNumber          String
+  raisedBy            String
+  title               String
+  description         String
+  category            String    @default("general") // plumbing | electrical | cleanliness | security | parking | general
+  status              String    @default("open") // open | in_progress | resolved | closed
+  priority            String    @default("medium") // low | medium | high | urgent
+  resolution          String?
+  resolvedAt          DateTime?
+  // SLA & assignment fields
+  assignedTo          String?   // userId or vendorId
+  assignedAt          DateTime?
+  slaHours            Int?      // hours to resolve
+  escalationLevel     Int       @default(0) // 0=none, 1=secretary, 2=chairman
+  escalatedAt         DateTime?
+  mediaUrls           String?   // JSON array of photo/video URLs
+  resolutionMediaUrls String?   // JSON array of resolution proof photos
+  satisfactionRating  Int?      // 1-5 rating from resident
+  satisfactionComment String?
+  sourceType          String?   // vendor_amc_expiry | vendor_insurance_expiry
+  sourceId            String?   // vendorId for dedupe
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  society             Society   @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, sourceType, sourceId])
+}
+
+model Notice {
+  id        String   @id @default(cuid())
+  societyId String
+  title     String
+  body      String
+  category  String   @default("general") // general | event | maintenance | emergency | meeting
+  postedBy  String
+  isPinned  Boolean  @default(false)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  society   Society  @relation(fields: [societyId], references: [id])
+  reads     NoticeRead[]
+}
+
+// ===== NEW MODELS =====
+
+model Visitor {
+  id                 String    @id @default(cuid())
+  societyId          String
+  flatId             String?
+  flatNumber         String
+
+  visitorName        String
+  phone              String?
+  purpose            String
+  vehicleNo          String?
+
+  arrivedAt          DateTime  @default(now())
+  entryTime          DateTime?
+  exitTime           DateTime?
+
+  durationMinutes    Int?
+
+  approvedBy         String?
+  notes              String?
+
+  status             String    @default("inside")
+  // pending_approval | approved | inside | exited | rejected | expected | cancelled
+
+  isPreApproved      Boolean   @default(false)
+  expectedAt         DateTime?
+
+  passcode           String?
+  verificationMethod String?
+
+  guardId            String?
+  photoUrl           String?
+
+  residentResponse   String?
+  respondedAt        DateTime?
+
+  createdAt          DateTime  @default(now())
+
+  society            Society    @relation(fields: [societyId], references: [id])
+  flat               Flat?      @relation(fields: [flatId], references: [id])
+  guard              GuardUser? @relation(fields: [guardId], references: [id])
+}
+
+model ParkingSlot {
+  id         String   @id @default(cuid())
+  societyId  String
+  zoneId     String?
+  slotNumber String
+  slotType   String   @default("CAR") // CAR | BIKE | EV | VISITOR | STAFF
+  level      String?
+  wing       String?
+  status     String   @default("ACTIVE") // ACTIVE | BLOCKED | MAINTENANCE | RETIRED
+  flatId     String?
+  isAssigned Boolean  @default(false)
+  vehicleNo  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  society    Society  @relation(fields: [societyId], references: [id])
+  zone       ParkingZone? @relation(fields: [zoneId], references: [id])
+  flat       Flat?    @relation(fields: [flatId], references: [id])
+  assignments ParkingAssignment[]
+  shareListings ParkingSharing[]
+  transactions ParkingTransactionHistory[]
+
+  @@unique([societyId, slotNumber])
+  @@index([societyId, slotType])
+  @@index([zoneId])
+}
+
+model ParkingZone {
+  id          String   @id @default(cuid())
+  societyId   String
+  name        String
+  level       String?
+  wing        String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  slots       ParkingSlot[]
+
+  @@unique([societyId, name])
+  @@index([societyId, isActive])
+}
+
+model Vehicle {
+  id                 String   @id @default(cuid())
+  societyId          String
+  personId           String
+  registrationNumber String
+  vehicleType        String   @default("CAR") // CAR | BIKE | EV | OTHER
+  brand              String?
+  model              String?
+  color              String?
+  stickerId          String?
+  isElectric         Boolean  @default(false)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  society            Society  @relation(fields: [societyId], references: [id])
+  person             Person   @relation(fields: [personId], references: [id])
+  assignments        ParkingAssignment[]
+  parkingRequests    ParkingRequest[]
+
+  @@unique([societyId, registrationNumber])
+  @@index([societyId, personId])
+}
+
+model ParkingAssignment {
+  id              String    @id @default(cuid())
+  societyId       String
+  slotId          String
+  vehicleId       String?
+  unitOccupancyId String?
+  assignmentType  String    @default("OWNER") // OWNER | TENANT | TEMPORARY | STAFF | VISITOR
+  startDate       DateTime  @default(now())
+  endDate         DateTime?
+  status          String    @default("ACTIVE") // ACTIVE | EXPIRED | ARCHIVED | REVIEW_REQUIRED | CANCELLED
+  notes           String?
+  assignedBy      String?
+  archivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  society         Society   @relation(fields: [societyId], references: [id])
+  slot            ParkingSlot @relation(fields: [slotId], references: [id])
+  vehicle         Vehicle?  @relation(fields: [vehicleId], references: [id])
+  unitOccupancy   UnitOccupancy? @relation(fields: [unitOccupancyId], references: [id])
+  shareListings   ParkingSharing[]
+  transactions    ParkingTransactionHistory[]
+
+  @@index([societyId, status])
+  @@index([slotId, status])
+  @@index([unitOccupancyId, status])
+}
+
+model ParkingTransactionHistory {
+  id           String   @id @default(cuid())
+  societyId    String
+  slotId       String?
+  assignmentId String?
+  action       String   // ASSIGNED | ARCHIVED | REVIEW_REQUIRED | SHARED | REQUESTED | ACCEPTED | REJECTED | CANCELLED
+  actorUserId  String?
+  notes        String?
+  metadata     String?
+  createdAt    DateTime @default(now())
+
+  society      Society  @relation(fields: [societyId], references: [id])
+  slot         ParkingSlot? @relation(fields: [slotId], references: [id])
+  assignment   ParkingAssignment? @relation(fields: [assignmentId], references: [id])
+
+  @@index([societyId, createdAt])
+  @@index([slotId, createdAt])
+}
+
+model Facility {
+  id          String   @id @default(cuid())
+  societyId   String
+  amenityId   String?
+  name        String
+  description String?
+  capacity    Int?
+  ratePerHour Float    @default(0)
+  isActive    Boolean  @default(true)
+  rules       String?
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+  amenity     Amenity? @relation(fields: [amenityId], references: [id])
+  bookings    FacilityBooking[]
+  waitlist    FacilityWaitlist[]
+}
+
+model Amenity {
+  id               String   @id @default(cuid())
+  societyId        String
+  legacyFacilityId String?  @unique
+  name             String
+  category         String   @default("GENERAL") // HALL | GYM | POOL | SPORTS | PARKING | GENERAL
+  description      String?
+  capacity         Int?
+  ratePerHour      Float    @default(0)
+  status           String   @default("ACTIVE") // ACTIVE | MAINTENANCE | DISABLED
+  rules            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  society          Society  @relation(fields: [societyId], references: [id])
+  legacyFacilities Facility[]
+  bookings         FacilityBooking[]
+  policies         AmenityPolicy[]
+  schedules        AmenitySchedule[]
+  usageLogs        AmenityUsageLog[]
+  penalties        AmenityPenalty[]
+
+  @@index([societyId, status])
+}
+
+model AmenityPolicy {
+  id              String   @id @default(cuid())
+  societyId       String
+  amenityId       String
+  bookingWindowDays Int    @default(30)
+  maxHoursPerBooking Float @default(2)
+  cooldownHours   Int      @default(0)
+  guestLimit      Int?
+  cancellationCutoffHours Int @default(0)
+  requiresApproval Boolean @default(false)
+  rules           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  society         Society  @relation(fields: [societyId], references: [id])
+  amenity         Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@index([societyId, amenityId, isActive])
+}
+
+model AmenitySchedule {
+  id          String   @id @default(cuid())
+  societyId   String
+  amenityId   String
+  dayOfWeek   Int?     // 0 Sunday - 6 Saturday, null for dated blackout
+  date        DateTime?
+  startTime   String
+  endTime     String
+  scheduleType String  @default("OPEN") // OPEN | BLACKOUT | MAINTENANCE
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  amenity     Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@index([amenityId, scheduleType, isActive])
+}
+
+model FacilityBooking {
+  id          String   @id @default(cuid())
+  societyId   String
+  facilityId  String
+  amenityId   String?
+  personId    String?
+  unitOccupancyId String?
+  bookedBy    String
+  flatNumber  String
+  date        DateTime
+  startTime   String   // "09:00"
+  endTime     String   // "11:00"
+  purpose     String?
+  status      String   @default("confirmed") // confirmed | cancelled
+  amount      Float    @default(0)
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+  facility    Facility @relation(fields: [facilityId], references: [id])
+  amenity     Amenity? @relation(fields: [amenityId], references: [id])
+  person      Person?  @relation(fields: [personId], references: [id])
+  unitOccupancy UnitOccupancy? @relation(fields: [unitOccupancyId], references: [id])
+  usageLogs   AmenityUsageLog[]
+  penalties   AmenityPenalty[]
+
+  @@index([societyId, personId])
+  @@index([unitOccupancyId])
+}
+
+model AmenityUsageLog {
+  id          String   @id @default(cuid())
+  societyId   String
+  amenityId   String
+  bookingId   String?
+  action      String   // CHECK_IN | CHECK_OUT | NO_SHOW | DAMAGE | EXTENDED
+  actorUserId String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  amenity     Amenity  @relation(fields: [amenityId], references: [id])
+  booking     FacilityBooking? @relation(fields: [bookingId], references: [id])
+
+  @@index([societyId, createdAt])
+  @@index([amenityId, createdAt])
+}
+
+model AmenityPenalty {
+  id          String   @id @default(cuid())
+  societyId   String
+  amenityId   String
+  bookingId   String?
+  amount      Float
+  reason      String
+  status      String   @default("PENDING") // PENDING | WAIVED | PAID
+  createdAt   DateTime @default(now())
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  amenity     Amenity  @relation(fields: [amenityId], references: [id])
+  booking     FacilityBooking? @relation(fields: [bookingId], references: [id])
+
+  @@index([societyId, status])
+}
+
+model MeetingMinutes {
+  id          String   @id @default(cuid())
+  societyId   String
+  title       String
+  date        DateTime
+  meetingType String   @default("general") // agm | sgm | committee | general
+  attendees   String?
+  agenda      String
+  minutes     String
+  decisions   String?
+  photoUrls   String?   // JSON array of meeting register/minutes photo URLs
+  recordedBy  String
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+}
+
+model EmergencyContact {
+  id          String   @id @default(cuid())
+  societyId   String
+  name        String
+  phone       String
+  category    String   // plumber | electrician | ambulance | fire | police | hospital | pest_control | other
+  address     String?
+  isAvailable Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+}
+
+model Poll {
+  id          String   @id @default(cuid())
+  societyId   String
+  title       String
+  description String?
+  options     String   // JSON array of options
+  votes       String   @default("{}") // JSON object {optionIndex: count}
+  voters      String   @default("[]") // JSON array of flatNumbers that voted
+  createdBy   String
+  status      String   @default("active") // active | closed
+  closesAt    DateTime?
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  societyId   String
+  title       String
+  category    String   @default("general") // bylaws | rules | noc | minutes | financial | general
+  fileName    String
+  fileUrl     String
+  fileSize    Int?
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+}
+
+// ===== PHASE 1: AUDIT LOG & NOTIFICATIONS =====
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  societyId   String
+  userId      String?
+  userName    String
+  action      String   // created | updated | deleted | paid | generated | sent | resolved
+  module      String   // bill | expense | complaint | notice | visitor | flat | poll | meeting | facility | parking | document | settings
+  targetId    String?
+  targetLabel String?  // human readable e.g. "Flat A-101", "Bill March 2026"
+  details     String?  // JSON string with old/new values or extra context
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, createdAt])
+  @@index([module])
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  societyId   String
+  userId      String?   // null = broadcast to all
+  type        String    // bill_due | bill_paid | complaint_update | notice_new | poll_new | visitor_entry | late_fee | reminder
+  title       String
+  message     String
+  link        String?   // e.g. "/complaints" or "/maintenance"
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  society     Society   @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, userId, isRead])
+  @@index([createdAt])
+}
+
+model Vendor {
+  id             String    @id @default(cuid())
+  societyId      String
+  name           String
+  category       String    // electrical | plumbing | lift | pest | security | cleaning | other
+  contactPerson  String?
+  phone          String?
+  email          String?
+  gstNumber      String?
+  address        String?
+  hasAMC               Boolean   @default(false)
+  amcStartDate         DateTime?
+  amcEndDate           DateTime?
+  amcAmount            Float?
+  insuranceExpiryDate  DateTime?
+  rating         Int       @default(0) // 1-5
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  society        Society   @relation(fields: [societyId], references: [id])
+  expenses       Expense[]
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  ipAddress String?
+  city      String?
+  country   String?
+  browser   String?
+  os        String?
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
+model ParkingSharing {
+  id          String   @id @default(cuid())
+  societyId   String
+  flatId      String   // The flat providing the parking
+  slotId      String?  // Optional link to a specific slot
+  assignmentId String?
+  ownerOccupancyId String?
+  date        DateTime
+  endDate     DateTime?
+  startTime   String   // "HH:mm"
+  endTime     String   // "HH:mm"
+  description String?
+  contactPhone String?
+  isPaid      Boolean  @default(false)
+  price       Float?   @default(0)
+  availabilityMode String @default("ONE_TIME") // ONE_TIME | RECURRING
+  approvalMode String @default("OWNER_APPROVAL") // AUTO | OWNER_APPROVAL | COMMITTEE_APPROVAL
+  recurringRule String?
+  status      String   @default("available") // available | booked | expired | cancelled
+  archivedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society  Society          @relation(fields: [societyId], references: [id])
+  flat     Flat             @relation(fields: [flatId], references: [id])
+  slot     ParkingSlot?     @relation(fields: [slotId], references: [id])
+  assignment ParkingAssignment? @relation(fields: [assignmentId], references: [id])
+  ownerOccupancy UnitOccupancy? @relation("ParkingShareOwnerOccupancy", fields: [ownerOccupancyId], references: [id])
+  requests ParkingRequest[]
+
+  @@index([societyId, status, date])
+  @@index([slotId, date])
+  @@index([ownerOccupancyId])
+}
+
+model ParkingRequest {
+  id              String   @id @default(cuid())
+  societyId       String
+  requesterFlatId String
+  sharingId       String?  // Optional link if they are responding to a specific listing
+  requesterOccupancyId String?
+  vehicleId       String?
+  date            DateTime
+  endDate         DateTime?
+  startTime       String
+  endTime         String
+  purpose         String?
+  contactPhone    String?
+  urgency         String   @default("normal") // low | normal | urgent
+  status          String   @default("pending") // pending | accepted | rejected | cancelled
+  isPaid          Boolean  @default(false)
+  price           Float?   @default(0)
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  society       Society         @relation(fields: [societyId], references: [id])
+  requesterFlat Flat           @relation(fields: [requesterFlatId], references: [id])
+  sharing       ParkingSharing? @relation(fields: [sharingId], references: [id])
+  requesterOccupancy UnitOccupancy? @relation(fields: [requesterOccupancyId], references: [id])
+  vehicle       Vehicle?        @relation(fields: [vehicleId], references: [id])
+
+  @@index([societyId, status, date])
+  @@index([requesterOccupancyId])
+}
+
+// ===== PHASE 2: COMPETITIVE FEATURES =====
+
+model GuardUser {
+  id             String   @id @default(cuid())
+  societyId      String
+  name           String
+  phone          String
+  pin            String   // 4-digit PIN for quick login
+  gateAssignment String?  // "Main Gate", "Gate B"
+  shiftStart     String?  // "06:00"
+  shiftEnd       String?  // "18:00"
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  society        Society  @relation(fields: [societyId], references: [id])
+  visitors       Visitor[]
+  incidents      GateIncident[]
+  patrols        GuardPatrol[]
+
+  @@index([societyId, isActive])
+  @@index([phone])
+}
+
+model DomesticStaff {
+  id          String   @id @default(cuid())
+  societyId   String
+  name        String
+  phone       String
+  category    String   // maid | cook | driver | nanny | gardener | watchman | other
+  photoUrl    String?
+  idProofType String?  // aadhaar | pan | voter_id
+  idProofUrl  String?
+  entryCode   String?  // Unique code for gate entry
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+  flatLinks   StaffFlatLink[]
+  attendance  StaffAttendance[]
+  residentPayments ResidentStaffPayment[]
+
+  @@index([societyId, isActive])
+  @@index([societyId, phone])
+}
+
+model StaffFlatLink {
+  id        String   @id @default(cuid())
+  staffId   String
+  flatId    String
+  schedule  String?  // JSON: {"days":["mon","wed","fri"],"time":"08:00-10:00"}
+  agreedMonthlyPay Float?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  staff     DomesticStaff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  flat      Flat          @relation(fields: [flatId], references: [id])
+
+  @@unique([staffId, flatId])
+}
+
+model StaffAttendance {
+  id        String    @id @default(cuid())
+  staffId   String
+  societyId String
+  flatId    String?
+  checkIn   DateTime  @default(now())
+  checkOut  DateTime?
+  markedBy  String?   // guardId or "system"
+  method    String    @default("manual") // manual | code | biometric
+  createdAt DateTime  @default(now())
+  staff     DomesticStaff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  society   Society       @relation(fields: [societyId], references: [id])
+
+  @@index([staffId, checkIn])
+  @@index([societyId, checkIn])
+}
+
+model Package {
+  id          String    @id @default(cuid())
+  societyId   String
+  flatId      String
+  courierName String?   // Amazon, Flipkart, Swiggy, etc.
+  description String?   // "Large box", "Envelope"
+  photoUrl    String?
+  loggedBy    String    // guard name or userId
+  status      String    @default("received") // received | notified | collected | returned | lost
+  receivedAt  DateTime  @default(now())
+  notifiedAt  DateTime?
+  collectedAt DateTime?
+  collectedBy String?   // Resident name or flat member
+  pickupOtp   String?   // OTP for pickup verification
+  createdAt   DateTime  @default(now())
+  society     Society   @relation(fields: [societyId], references: [id])
+  flat        Flat      @relation(fields: [flatId], references: [id])
+
+  @@index([societyId, status])
+  @@index([flatId, createdAt])
+}
+
+model Tenant {
+  id            String    @id @default(cuid())
+  flatId        String
+  societyId     String
+  name          String
+  phone         String
+  email         String?
+  idProofType   String?   // aadhaar | passport | driving_license
+  idProofUrl    String?
+  leaseStart    DateTime
+  leaseEnd      DateTime?
+  monthlyRent   Float?
+  registeredBy  String    // owner userId
+  verifiedBy    String?   // admin userId
+  userId        String?   // tenant's user account id
+  status        String    @default("pending") // pending | active | expired | terminated
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  flat          Flat      @relation(fields: [flatId], references: [id])
+  society       Society   @relation(fields: [societyId], references: [id])
+  rentInvoices  RentInvoice[]
+
+  @@index([societyId, status])
+  @@index([flatId, status])
+}
+
+model RentInvoice {
+  id             String    @id @default(cuid())
+  societyId      String
+  flatId         String
+  tenantId       String
+  ownerUserId    String?
+  tenantUserId   String?
+  period         String    // "2026-05" format
+  amount         Float
+  dueDate        DateTime
+  status         String    @default("pending") // pending | paid | cancelled
+  paidAt         DateTime?
+  paidVia        String?
+  paidAmount     Float?
+  receiptNote    String?
+  receiptNumber  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  society        Society   @relation(fields: [societyId], references: [id])
+  flat           Flat      @relation(fields: [flatId], references: [id])
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, period])
+  @@index([societyId, flatId, status])
+  @@index([ownerUserId, status])
+  @@index([tenantUserId, status])
+}
+
+model MoveEvent {
+  id            String    @id @default(cuid())
+  flatId        String
+  societyId     String
+  type          String    // move_in | move_out
+  residentName  String
+  residentType  String    // owner | tenant
+  checklist     String    @default("[]") // JSON array of {item, status, completedBy, completedAt}
+  status        String    @default("initiated") // initiated | in_progress | completed | cancelled
+  initiatedBy   String    // userId
+  approvedBy    String?   // userId
+  completedAt   DateTime?
+  nocGenerated  Boolean   @default(false)
+  nocUrl        String?
+  notes         String?
+  workflowStatus String  @default("checklist") // checklist | draft | pending_approval | approved | rejected
+  policeVerificationFileName String?
+  policeVerificationFileType String?
+  policeVerificationDataUrl  String?
+  leaseAgreementFileName String?
+  leaseAgreementFileType String?
+  leaseAgreementDataUrl  String?
+  shiftingChargeAmount   Float   @default(0)
+  shiftingChargePaid     Boolean @default(false)
+  shiftingChargePaidAt   DateTime?
+  shiftingPaymentRef     String?
+  gatePassCode           String?  @unique
+  gatePassIssuedAt       DateTime?
+  gatePassPdfDataUrl     String?
+  submittedAt            DateTime?
+  rejectedReason         String?
+  scheduledMoveDate      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  flat          Flat      @relation(fields: [flatId], references: [id])
+  society       Society   @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, type])
+  @@index([societyId, workflowStatus])
+  @@index([flatId, createdAt])
+}
+
+model SocietyNocRequest {
+  id               String    @id @default(cuid())
+  societyId        String
+  flatId           String
+  requestedBy      String
+  requesterName    String
+  purpose          String    // sale | rental | passport | general
+  status           String    @default("issued") // issued | revoked
+  certificateNo    String    @unique
+  totalDuesAmount  Float     @default(0)
+  blockedReason    String?
+  pdfDataUrl       String?
+  verificationHash String
+  issuedAt         DateTime
+  validUntil       DateTime
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  society          Society   @relation(fields: [societyId], references: [id])
+  flat             Flat      @relation(fields: [flatId], references: [id])
+
+  @@index([societyId, createdAt])
+  @@index([flatId, purpose, validUntil])
+  @@index([requestedBy, createdAt])
+}
+
+model Blacklist {
+  id        String   @id @default(cuid())
+  societyId String
+  name      String
+  phone     String?
+  reason    String
+  photoUrl  String?
+  addedBy   String   // userId
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  society   Society  @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, isActive])
+  @@index([societyId, phone])
+}
+
+model GateIncident {
+  id          String   @id @default(cuid())
+  societyId   String
+  guardId     String?  // nullable for SOS from residents
+  type        String   // theft | trespassing | fight | suspicious | accident | emergency | other
+  description String
+  severity    String   @default("medium") // low | medium | high | critical
+  photoUrls   String?  // JSON array
+  actionTaken String?
+  reportedBy  String?  // userId who reported (for SOS)
+  status      String   @default("reported") // reported | investigating | resolved | open
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+  guard       GuardUser? @relation(fields: [guardId], references: [id])
+
+  @@index([societyId, createdAt])
+  @@index([severity])
+}
+
+// ── Forum / Discussion ──────────────────────────────
+
+model ForumThread {
+  id             String   @id @default(cuid())
+  societyId      String
+  authorId       String
+  title          String
+  content        String
+  category       String   @default("general") // general | maintenance | security | events | buy-sell | lost-found
+  isPinned       Boolean  @default(false)
+  isLocked       Boolean  @default(false)
+  views          Int      @default(0)
+  lastActivityAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  society  Society      @relation(fields: [societyId], references: [id])
+  author   User         @relation(fields: [authorId], references: [id])
+  replies  ForumReply[]
+
+  @@index([societyId, category])
+  @@index([societyId, lastActivityAt])
+}
+
+model ForumReply {
+  id        String   @id @default(cuid())
+  threadId  String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User        @relation(fields: [authorId], references: [id])
+
+  @@index([threadId, createdAt])
+}
+
+// ── Events & Calendar ───────────────────────────────
+
+model SocietyEvent {
+  id           String    @id @default(cuid())
+  societyId    String
+  organizerId  String
+  title        String
+  description  String?
+  startDate    DateTime
+  endDate      DateTime?
+  venue        String?
+  category     String    @default("general") // general | festival | meeting | sports | cultural | maintenance
+  maxAttendees Int?
+  status       String    @default("upcoming") // upcoming | ongoing | completed | cancelled
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  society   Society     @relation(fields: [societyId], references: [id])
+  organizer User        @relation(fields: [organizerId], references: [id])
+  rsvps     EventRsvp[]
+
+  @@index([societyId, startDate])
+}
+
+model EventRsvp {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  response  String   @default("attending") // attending | maybe | declined
+  createdAt DateTime @default(now())
+
+  event SocietyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User         @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+}
+
+// ── Guard Patrol Tracking ───────────────────────────
+
+model GuardPatrol {
+  id          String   @id @default(cuid())
+  societyId   String
+  guardId     String
+  checkpoint  String   // e.g. "Gate A", "Building B - Floor 3", "Parking"
+  scannedAt   DateTime @default(now())
+  notes       String?
+  photoUrl    String?
+
+  society Society   @relation(fields: [societyId], references: [id])
+  guard   GuardUser @relation(fields: [guardId], references: [id])
+
+  @@index([societyId, scannedAt])
+  @@index([guardId, scannedAt])
+}
+
+// Web Push Notifications (no Firebase needed)
+model PushSubscription {
+  id          String   @id @default(cuid())
+  societyId   String
+  userId      String
+  endpoint    String   @unique // browser push endpoint
+  p256dh      String   // encryption key
+  auth        String   // auth secret
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([societyId, userId])
+}
+
+// ── Society Marketplace (Buy/Sell/Exchange) ─────────
+
+model MarketplaceListing {
+  id          String    @id @default(cuid())
+  societyId   String
+  userId      String
+  personId    String?
+  unitOccupancyId String?
+  title       String
+  description String?
+  price       Float?    // null = free / exchange
+  category    String    @default("general") // furniture | electronics | appliances | clothing | books | vehicles | services | general
+  condition   String    @default("good") // new | like_new | good | fair | poor
+  imageUrls   String?   // JSON array of image URLs
+  status      String    @default("active") // active | sold | reserved | expired
+  moderationStatus String @default("approved") // pending | approved | rejected | reported
+  privacyStatus String @default("society") // society | verified_residents | hidden_contact
+  contactPhone String?
+  flatNumber  String?
+  soldAt      DateTime?
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  society     Society   @relation(fields: [societyId], references: [id])
+  person      Person?   @relation(fields: [personId], references: [id])
+  unitOccupancy UnitOccupancy? @relation(fields: [unitOccupancyId], references: [id])
+  images      MarketplaceImage[]
+  interests   MarketplaceInterest[]
+  transactions MarketplaceTransaction[]
+  moderationEvents MarketplaceModeration[]
+
+  @@index([societyId, status])
+  @@index([societyId, category])
+  @@index([personId])
+  @@index([unitOccupancyId])
+}
+
+model MarketplaceCategory {
+  id          String   @id @default(cuid())
+  societyId   String
+  name        String
+  slug        String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  society     Society  @relation(fields: [societyId], references: [id])
+
+  @@unique([societyId, slug])
+}
+
+model MarketplaceImage {
+  id          String   @id @default(cuid())
+  societyId   String
+  listingId   String
+  url         String
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  listing     MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, sortOrder])
+}
+
+model MarketplaceInterest {
+  id          String   @id @default(cuid())
+  societyId   String
+  listingId   String
+  personId    String?
+  message     String?
+  status      String   @default("interested") // interested | withdrawn | accepted | rejected
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  listing     MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  person      Person?  @relation(fields: [personId], references: [id])
+
+  @@index([societyId, status])
+  @@index([listingId])
+}
+
+model MarketplaceTransaction {
+  id          String   @id @default(cuid())
+  societyId   String
+  listingId   String
+  buyerPersonId String?
+  sellerPersonId String?
+  amount      Float?
+  status      String   @default("pending") // pending | completed | cancelled | disputed
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  listing     MarketplaceListing @relation(fields: [listingId], references: [id])
+
+  @@index([societyId, status])
+}
+
+model MarketplaceModeration {
+  id          String   @id @default(cuid())
+  societyId   String
+  listingId   String
+  action      String   // reported | approved | rejected | archived
+  reason      String?
+  actorUserId String?
+  createdAt   DateTime @default(now())
+
+  society     Society  @relation(fields: [societyId], references: [id])
+  listing     MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([societyId, action])
+  @@index([listingId, createdAt])
+}
+
+// ── Fund Accounts (Sinking Fund, Corpus, Reserve) ───
+
+model FundAccount {
+  id          String   @id @default(cuid())
+  societyId   String
+  name        String   // "Maintenance Fund", "Sinking Fund", "Corpus Fund"
+  type        String   @default("maintenance") // maintenance | sinking | corpus | reserve | parking | other
+  balance     Float    @default(0)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  society     Society  @relation(fields: [societyId], references: [id])
+  expenses    Expense[]
+  transactions FundTransaction[]
+
+  @@unique([societyId, name])
+}
+
+model FundTransaction {
+  id          String   @id @default(cuid())
+  fundId      String
+  type        String   // credit | debit
+  amount      Float
+  description String
+  reference   String?  // bill ID, expense ID, etc.
+  balanceAfter Float
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  fund        FundAccount @relation(fields: [fundId], references: [id])
+
+  @@index([fundId, createdAt])
+}
+
+// ── Budget Planning ─────────────────────────────────
+
+model Budget {
+  id          String   @id @default(cuid())
+  societyId   String
+  fiscalYear  String   // "2026-27"
+  category    String   // maintenance | repair | salary | utilities | events | sinking | other
+  planned     Float    @default(0) // budgeted amount
+  actual      Float    @default(0) // actual spent (updated as expenses are added)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  society     Society  @relation(fields: [societyId], references: [id])
+
+  @@unique([societyId, fiscalYear, category])
+}
+
+// ── Society Asset Management ────────────────────────
+
+model SocietyAsset {
+  id                String    @id @default(cuid())
+  societyId         String
+  name              String
+  category          String    // generator | elevator | pump | gym_equipment | cctv | furniture | other
+  location          String?   // "Basement", "Lobby", "Gym"
+  purchaseDate      DateTime?
+  purchaseAmount    Float?
+  currentValue      Float?    // depreciated value
+  warrantyEnd       DateTime?
+  vendor            String?   // vendor/supplier name
+  serialNumber      String?
+  condition         String    @default("good") // excellent | good | fair | poor | out_of_order
+  lastMaintenanceAt DateTime?
+  nextMaintenanceAt DateTime?
+  maintenanceCycle  Int?      // days between maintenance
+  notes             String?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  society           Society   @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, category])
+  @@index([societyId, nextMaintenanceAt])
+}
+
+// ── Notice Read Receipts ────────────────────────────
+
+model NoticeRead {
+  id        String   @id @default(cuid())
+  noticeId  String
+  societyId String
+  userId    String
+  userName  String
+  flatNumber String?
+  readAt    DateTime @default(now())
+  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  society   Society  @relation(fields: [societyId], references: [id])
+
+  @@unique([noticeId, userId])
+  @@index([noticeId])
+}
+
+// ── Facility Waiting List ───────────────────────────
+
+model FacilityWaitlist {
+  id          String    @id @default(cuid())
+  societyId   String
+  facilityId  String
+  userId      String
+  flatNumber  String
+  date        DateTime
+  startTime   String    // "09:00"
+  endTime     String    // "11:00"
+  status      String    @default("waiting") // waiting | notified | booked | expired
+  notifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  society     Society   @relation(fields: [societyId], references: [id])
+  facility    Facility  @relation(fields: [facilityId], references: [id])
+
+  @@index([facilityId, date, status])
+}
+
+// ── Staff Salary / Payroll ──────────────────────────
+
+model StaffSalary {
+  id          String   @id @default(cuid())
+  societyId   String
+  staffName   String
+  staffRole   String   // security | housekeeping | gardener | electrician | plumber | other
+  month       String   // "2026-04"
+  basicPay    Float
+  overtime    Float    @default(0)
+  deductions  Float    @default(0)
+  bonus       Float    @default(0)
+  netPay      Float    // basicPay + overtime + bonus - deductions
+  paidOn      DateTime?
+  paidVia     String?  // cash | upi | neft
+  status      String   @default("pending") // pending | paid
+  notes       String?
+  createdAt   DateTime @default(now())
+  society     Society  @relation(fields: [societyId], references: [id])
+
+  @@unique([societyId, staffName, month])
+  @@index([societyId, month])
+}
+
+model ResidentStaffPayment {
+  id          String   @id @default(cuid())
+  societyId   String
+  flatId      String
+  staffId     String
+  payerUserId String?
+  month       String   // "2026-05"
+  amount      Float
+  status      String   @default("pending") // pending | paid | cancelled
+  paidOn      DateTime?
+  paidVia     String?  // cash | upi | bank | other
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society     Society       @relation(fields: [societyId], references: [id])
+  flat        Flat          @relation(fields: [flatId], references: [id])
+  staff       DomesticStaff @relation(fields: [staffId], references: [id])
+
+  @@unique([flatId, staffId, month])
+  @@index([societyId, month, status])
+  @@index([payerUserId, status])
+}
+
+model MeterReadingImportSession {
+  id          String    @id @default(cuid())
+  societyId   String
+  period      String
+  meterType   String    // water | electricity_grid | electricity_dg | gas
+  fileName    String?
+  status      String    @default("preview") // preview | applied | failed
+  totalRows   Int       @default(0)
+  appliedRows Int       @default(0)
+  skippedRows Int       @default(0)
+  totalCharge Float     @default(0)
+  importedBy  String?
+  appliedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  society     Society        @relation(fields: [societyId], references: [id])
+  readings    MeterReading[]
+
+  @@index([societyId, period, meterType])
+}
+
+model MeterReading {
+  id              String    @id @default(cuid())
+  societyId       String
+  flatId          String?
+  importSessionId String?
+  period          String
+  meterType       String
+  rowIndex        Int
+  flatNumber      String
+  previousReading Float
+  currentReading  Float
+  unitsConsumed   Float
+  ratePerUnit     Float?
+  chargeAmount    Float
+  billId          String?
+  status          String    @default("pending") // pending | applied | skipped | error
+  errorMessage    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  society         Society                   @relation(fields: [societyId], references: [id])
+  flat            Flat?                     @relation(fields: [flatId], references: [id])
+  importSession   MeterReadingImportSession? @relation(fields: [importSessionId], references: [id])
+  bill            MaintenanceBill?          @relation(fields: [billId], references: [id])
+
+  @@unique([societyId, flatId, period, meterType])
+  @@index([societyId, period])
+}

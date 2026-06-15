@@ -1,0 +1,37 @@
+FROM node:24-alpine AS base
+WORKDIR /app
+RUN addgroup -S app && adduser -S app -G app
+
+FROM base AS deps
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+RUN npm ci
+
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ARG DATABASE_URL=postgresql://ci:ci@localhost:5432/ci?sslmode=disable
+ARG DIRECT_URL=postgresql://ci:ci@localhost:5432/ci?sslmode=disable
+ARG SESSION_SECRET=ci-session-secret-minimum-32-characters
+ARG AUTH_SECRET=ci-auth-secret-minimum-32-characters
+ENV DATABASE_URL=$DATABASE_URL \
+    DIRECT_URL=$DIRECT_URL \
+    SESSION_SECRET=$SESSION_SECRET \
+    AUTH_SECRET=$AUTH_SECRET \
+    NEXT_TELEMETRY_DISABLED=1
+RUN npx prisma generate
+RUN npm run build
+
+FROM base AS runner
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=app:app /app/.next/standalone ./
+COPY --from=builder --chown=app:app /app/.next/static ./.next/static
+USER app
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:3000/login || exit 1
+CMD ["node", "server.js"]

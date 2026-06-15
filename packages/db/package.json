@@ -1,0 +1,16 @@
+{
+  "name": "@society/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "validate": "npm --prefix ../.. run db:validate",
+    "generate": "npm --prefix ../.. run db:generate",
+    "migrate:deploy": "npm --prefix ../.. run db:migrate:deploy",
+    "seed": "npm --prefix ../.. run db:seed",
+    "reset": "npm --prefix ../.. run db:reset"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "reviewDate": "2026-09-01",
+  "owner": "platform-engineering",
+  "notes": "Frozen baseline from Phase 1 npm install report (June 2026). Gate fails only when counts increase above baseline.",
+  "vulnerabilities": {
+    "critical": 0,
+    "high": 13,
+    "moderate": 6
+  }
+}

@@ -1,0 +1,63 @@
+name: society-connect-rc
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: society-connect-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      API_CORS_ORIGIN: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL:-${DATABASE_URL}}
+      KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
+      KEYCLOAK_JWKS_URL: ${KEYCLOAK_JWKS_URL}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      API_BFF_BRIDGE_ENABLED: ${API_BFF_BRIDGE_ENABLED:-false}
+      API_BFF_BRIDGE_SECRET: ${API_BFF_BRIDGE_SECRET:-}
+      VALKEY_URL: ${VALKEY_URL:-redis://valkey:6379}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: society-connect-worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      WORKER_PORT: 4010
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
+      VALKEY_URL: ${VALKEY_URL:-redis://valkey:6379}
+    ports:
+      - "${WORKER_PORT:-4010}:4010"
+    depends_on:
+      valkey:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: society-connect-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL:-${DATABASE_URL}}
+      SESSION_SECRET: ${SESSION_SECRET}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+      API_BASE_URL: ${API_BASE_URL:-http://api:4000}
+      NEST_SHIM_ENABLED: ${NEST_SHIM_ENABLED:-false}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api

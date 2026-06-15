@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "allowImportingTsExtensions": true,
+    "declaration": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "jsx": "preserve",
+    "lib": ["esnext"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "rootDir": "../..",
+    "target": "ES2022",
+    "types": ["node"],
+    "plugins": []
+  },
+  "include": ["src/**/*.ts"]
+}
+

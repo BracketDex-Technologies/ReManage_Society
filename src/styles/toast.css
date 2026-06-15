@@ -1,0 +1,29 @@
+/* src/styles/toast.css – custom toast theming */
+.Toastify__toast {
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Success toast */
+.Toastify__toast--success {
+  background: var(--color-success);
+}
+
+/* Error toast */
+.Toastify__toast--error {
+  background: var(--color-danger);
+}
+
+/* Loading / progress toast */
+.Toastify__toast--default {
+  background: var(--color-surface);
+}
+
+/* Ensure the toast respects the app’s font */
+.Toastify__toast-body {
+  font-family: var(--font-sans);
+}

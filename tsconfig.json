@@ -1,0 +1,49 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@society/community-core": ["./packages/community-core/src/index.ts"],
+      "@society/config": ["./packages/config/src/index.ts"],
+      "@society/db": ["./packages/db/src/index.ts"],
+      "@society/finance-core": ["./packages/finance-core/src/index.ts"],
+      "@society/operations-core": ["./packages/operations-core/src/index.ts"],
+      "@society/security": ["./packages/security/src/index.ts"],
+      "@society/security/rate-limit-server": ["./packages/security/src/rate-limit-server.ts"],
+      "@society/sdk": ["./packages/sdk/src/index.ts"],
+      "@society/society-core": ["./packages/society-core/src/index.ts"],
+      "@society/test": ["./packages/test/src/index.ts"],
+      "@society/ux-core": ["./packages/ux-core/src/index.ts"]
+    },
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules", "scratch", "**/*.test.ts", "**/*.test.tsx", "tests"]
+}

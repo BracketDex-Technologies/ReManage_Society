@@ -1,0 +1,3 @@
+export const LIVE_FAST_INTERVAL_MS = 5_000;
+export const LIVE_STANDARD_INTERVAL_MS = 10_000;
+export const LIVE_SLOW_INTERVAL_MS = 30_000;

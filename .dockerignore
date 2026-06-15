@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.github
+backups
+scratch
+coverage
+test-results
+playwright-report
+*.md
+!docs/deployment/**
+.env
+.env.*
+!.env.example

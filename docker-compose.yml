@@ -1,0 +1,83 @@
+name: society-connect-local
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: society-connect-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-society_connect}
+      POSTGRES_USER: ${POSTGRES_USER:-society}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-society}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - society_postgres_data:/var/lib/postgresql
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: society-connect-valkey
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_PORT:-6379}:6379"
+    volumes:
+      - society_valkey_data:/data
+    command: ["valkey-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: society-connect-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - society_minio_data:/data
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    container_name: society-connect-keycloak
+    restart: unless-stopped
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-society}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-society}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+    command: ["start-dev", "--import-realm"]
+
+volumes:
+  society_postgres_data:
+  society_valkey_data:
+  society_minio_data:

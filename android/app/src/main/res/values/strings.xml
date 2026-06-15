@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ReManage Society</string>
+    <string name="title_activity_main">ReManage Society</string>
+    <string name="package_name">com.society.management</string>
+    <string name="custom_url_scheme">com.society.management</string>
+</resources>
