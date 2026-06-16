@@ -136,16 +136,45 @@ async function legacyPOST(request: NextRequest) {
 }
 
 // GET: List all member credentials (admin only)
-async function legacyGET() {
+async function legacyGET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session?.societyId || !["chairman", "secretary"].includes(session!.role)) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [users, society] = await Promise.all([
+    const { searchParams } = new URL(request.url);
+    const search = (searchParams.get("search") || "").trim();
+    const roleFilter = searchParams.get("role") || "all";
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+
+    const roleGroups: Record<string, string[]> = {
+      all: [],
+      admins: ["chairman", "secretary", "treasurer"],
+      members: ["member"],
+      tenants: ["tenant"],
+      guards: ["guard"],
+    };
+
+    const where: Record<string, unknown> = { societyId: session!.societyId };
+    const roles = roleGroups[roleFilter];
+    if (roles?.length) {
+      where.role = { in: roles };
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search } },
+        { flat: { flatNumber: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    const [users, total, society, roleCounts] = await Promise.all([
       prisma.user.findMany({
-        where: { societyId: session!.societyId },
+        where,
         select: {
           id: true,
           name: true,
@@ -156,25 +185,44 @@ async function legacyGET() {
           flat: { select: { flatNumber: true, wing: true } },
           createdAt: true,
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+        skip: (page - 1) * limit,
+        take: limit,
       }),
+      prisma.user.count({ where }),
       prisma.society.findUnique({
         where: { id: session!.societyId },
         select: { joinCode: true },
       }),
+      Promise.all([
+        prisma.user.count({ where: { societyId: session!.societyId } }),
+        prisma.user.count({ where: { societyId: session!.societyId, role: { in: roleGroups.admins } } }),
+        prisma.user.count({ where: { societyId: session!.societyId, role: "member" } }),
+        prisma.user.count({ where: { societyId: session!.societyId, role: "tenant" } }),
+        prisma.user.count({ where: { societyId: session!.societyId, role: "guard" } }),
+      ]),
     ]);
 
-    // Group by role
-    const grouped = {
-      admins: users.filter((u) => ["chairman", "secretary", "treasurer"].includes(u.role)),
-      members: users.filter((u) => u.role === "member"),
-      tenants: users.filter((u) => u.role === "tenant"),
-      guards: users.filter((u) => u.role === "guard"),
-      total: users.length,
+    return Response.json({
+      users,
+      total,
+      pages: Math.ceil(total / limit) || 1,
+      page,
+      limit,
       joinCode: society?.joinCode || null,
-    };
-
-    return Response.json(grouped);
+      summary: {
+        total: roleCounts[0],
+        admins: roleCounts[1],
+        members: roleCounts[2],
+        tenants: roleCounts[3],
+        guards: roleCounts[4],
+      },
+      // Legacy grouped shape for backwards compatibility
+      admins: roleFilter === "admins" ? users : [],
+      members: roleFilter === "members" ? users : [],
+      tenants: roleFilter === "tenants" ? users : [],
+      guards: roleFilter === "guards" ? users : [],
+    });
   } catch {
     return Response.json({ error: "Failed to fetch credentials" }, { status: 500 });
   }

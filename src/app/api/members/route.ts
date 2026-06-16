@@ -24,9 +24,11 @@ async function legacyGET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || "";
   const wing = searchParams.get("wing") || "";
+  const status = searchParams.get("status") || "";
+  const occupancy = searchParams.get("occupancy") || "";
   const flatsOnly = searchParams.get("flatsOnly") === "true";
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "20");
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
 
   await ensureUnitsForSociety(session.societyId);
 
@@ -48,7 +50,21 @@ async function legacyGET(request: NextRequest) {
     where.wing = wing;
   }
 
-  const [units, total] = await Promise.all([
+  if (status === "active") {
+    where.isActive = true;
+  } else if (status === "inactive") {
+    where.isActive = false;
+  }
+
+  if (occupancy === "owner") {
+    where.occupancyStatus = { in: ["OWNER_OCCUPIED"] };
+  } else if (occupancy === "tenant") {
+    where.occupancyStatus = "TENANT_OCCUPIED";
+  } else if (occupancy === "vacant") {
+    where.occupancyStatus = "VACANT";
+  }
+
+  const [units, total, wings, statusCounts] = await Promise.all([
     prisma.unit.findMany({
       where,
       include: {
@@ -63,6 +79,17 @@ async function legacyGET(request: NextRequest) {
       take: limit,
     }),
     prisma.unit.count({ where }),
+    prisma.unit.findMany({
+      where: { societyId: session.societyId },
+      select: { wing: true },
+      distinct: ["wing"],
+    }),
+    Promise.all([
+      prisma.unit.count({ where: { societyId: session.societyId } }),
+      prisma.unit.count({ where: { societyId: session.societyId, isActive: true } }),
+      prisma.unit.count({ where: { societyId: session.societyId, occupancyStatus: "VACANT" } }),
+      prisma.unit.count({ where: { societyId: session.societyId, occupancyStatus: "TENANT_OCCUPIED" } }),
+    ]),
   ]);
 
   const members = units.map((unit) => {
@@ -110,19 +137,23 @@ async function legacyGET(request: NextRequest) {
     });
   }
 
-  // Get distinct wings
-  const wings = await prisma.flat.findMany({
-    where: { societyId: session.societyId },
-    select: { wing: true },
-    distinct: ["wing"],
-  });
+  // Get distinct wings (already fetched above)
+  const wingList = wings.map((w) => w.wing).filter(Boolean) as string[];
 
   return jsonWithHeaders(
     {
       members,
       total,
       pages: Math.ceil(total / limit),
-      wings: wings.map((w) => w.wing).filter(Boolean),
+      page,
+      limit,
+      wings: wingList,
+      stats: {
+        total: statusCounts[0],
+        active: statusCounts[1],
+        vacant: statusCounts[2],
+        tenantOccupied: statusCounts[3],
+      },
     },
     {
       status: 200,

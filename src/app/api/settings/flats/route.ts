@@ -1,19 +1,8 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureUnitsForSociety } from "@/domain/unit-migration";
+import { generateFlatCandidates, parseCsv } from "@/lib/flat-numbering";
 import { NextRequest } from "next/server";
-
-function parseCsv(value: string) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function buildFlatNumber(wing: string, floor: number, unit: number, flatsPerFloor: number) {
-  const unitWidth = Math.max(2, String(flatsPerFloor).length);
-  return `${wing}-${floor}${String(unit).padStart(unitWidth, "0")}`;
-}
 
 export async function GET() {
   const session = await getSession();
@@ -97,6 +86,45 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+
+    if (body.mode === "single") {
+      const flatNumber = String(body.flatNumber || "").trim();
+      if (!flatNumber) {
+        return Response.json({ error: "Flat number is required" }, { status: 400 });
+      }
+
+      const existing = await prisma.flat.findFirst({
+        where: { societyId: session.societyId, flatNumber },
+        select: { id: true },
+      });
+      if (existing) {
+        return Response.json({ error: "This flat number already exists" }, { status: 400 });
+      }
+
+      const wing = body.wing ? String(body.wing).trim().toUpperCase() : null;
+      const floor = body.floor !== undefined && body.floor !== "" ? Number(body.floor) : null;
+
+      await prisma.flat.create({
+        data: {
+          societyId: session.societyId,
+          flatNumber,
+          wing,
+          floor: Number.isFinite(floor) ? floor : null,
+        },
+      });
+      await ensureUnitsForSociety(session.societyId);
+
+      const activeCount = await prisma.flat.count({
+        where: { societyId: session.societyId, isActive: true },
+      });
+      await prisma.society.update({
+        where: { id: session.societyId },
+        data: { totalFlats: activeCount },
+      });
+
+      return Response.json({ created: 1, skipped: 0, totalRequested: 1 });
+    }
+
     const wings = parseCsv(String(body.wings || ""));
     const floors = parseCsv(String(body.floors || "")).map(Number).filter(Number.isFinite);
     const flatsPerFloor = Number(body.flatsPerFloor || 0);
@@ -108,19 +136,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const candidates = new Map<string, { flatNumber: string; wing: string; floor: number }>();
-    for (const wing of wings) {
-      for (const floor of floors) {
-        for (let unit = 1; unit <= flatsPerFloor; unit++) {
-          const flatNumber = buildFlatNumber(wing.toUpperCase(), floor, unit, flatsPerFloor);
-          candidates.set(`${wing}:${flatNumber}`, {
-            flatNumber,
-            wing: wing.toUpperCase(),
-            floor,
-          });
-        }
-      }
-    }
+    const candidateList = generateFlatCandidates(wings, floors, flatsPerFloor);
+    const candidates = new Map(
+      candidateList.map((flat) => [`${flat.wing}:${flat.flatNumber}`, flat])
+    );
 
     const flatNumbers = Array.from(candidates.values()).map((flat) => flat.flatNumber);
     const existing = await prisma.flat.findMany({

@@ -3,29 +3,9 @@
 import { useI18n } from "@/lib/i18n";
 import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, Save, Shield, Building2, Home, Copy, Plus, RefreshCw, UserCheck, Mail, Phone, X } from "lucide-react";
+import { Settings as SettingsIcon, Save, Shield, Building2, Home, Copy, Plus, RefreshCw, UserCheck, Phone } from "lucide-react";
+import FlatSetupSection, { type FlatSetupItem } from "@/components/settings/FlatSetupSection";
 import { isOptionalTenDigitPhone, isTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
-
-interface FlatLinkedUser {
-  id: string;
-  role: string;
-  name: string;
-  email: string;
-  phone: string | null;
-}
-
-interface FlatSetupItem {
-  id: string;
-  flatNumber: string;
-  wing: string | null;
-  floor: number | null;
-  ownerName: string | null;
-  contact: string | null;
-  isActive: boolean;
-  hasAccount: boolean;
-  tenantName?: string | null;
-  users: FlatLinkedUser[];
-}
 
 interface GuardItem {
   id: string;
@@ -43,19 +23,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [flatsLoading, setFlatsLoading] = useState(false);
-  const [flatsSaving, setFlatsSaving] = useState(false);
   const [tab, setTab] = useState<"profile" | "flats" | "guards" | "roles">("profile");
   const [joinCode, setJoinCode] = useState("");
   const [flats, setFlats] = useState<FlatSetupItem[]>([]);
-  const [selectedFlat, setSelectedFlat] = useState<FlatSetupItem | null>(null);
   const [guards, setGuards] = useState<GuardItem[]>([]);
   const [guardsLoading, setGuardsLoading] = useState(false);
   const [guardSaving, setGuardSaving] = useState(false);
-  const [flatSetup, setFlatSetup] = useState({
-    wings: "A",
-    floors: "1,2,3,4",
-    flatsPerFloor: "4",
-  });
   const [guardForm, setGuardForm] = useState({
     name: "",
     phone: "",
@@ -156,28 +129,6 @@ export default function SettingsPage() {
     toastT.success("Join code copied");
   };
 
-  const createFlats = async () => {
-    setFlatsSaving(true);
-    try {
-      const res = await fetch("/api/settings/flats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(flatSetup),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toastT.success(`Created ${data.created} flats${data.skipped ? `, skipped ${data.skipped}` : ""}`);
-        fetchFlats();
-      } else {
-        toastT.error(data.error || "Failed to create flats");
-      }
-    } catch {
-      toastT.error("Something went wrong");
-    } finally {
-      setFlatsSaving(false);
-    }
-  };
-
   const createGuard = async () => {
     if (!isTenDigitPhone(guardForm.phone)) {
       toastT.error("Enter a valid 10-digit guard phone number");
@@ -222,21 +173,6 @@ export default function SettingsPage() {
     } catch {
       toastT.error("Something went wrong");
     }
-  };
-
-  const previewFlats = () => {
-    const wings = flatSetup.wings.split(",").map((w) => w.trim().toUpperCase()).filter(Boolean);
-    const floors = flatSetup.floors.split(",").map((f) => Number(f.trim())).filter(Number.isFinite);
-    const count = Number(flatSetup.flatsPerFloor || 0);
-    const preview: string[] = [];
-    for (const wing of wings.slice(0, 2)) {
-      for (const floor of floors.slice(0, 2)) {
-        for (let unit = 1; unit <= Math.min(count, 4); unit++) {
-          preview.push(`${wing}-${floor}${String(unit).padStart(2, "0")}`);
-        }
-      }
-    }
-    return preview;
   };
 
   if (loading) {
@@ -372,108 +308,7 @@ export default function SettingsPage() {
           </div>
         </div>
       ) : tab === "flats" ? (
-        <div className="space-y-6">
-          <div className="card">
-            <div className="flex items-center justify-between gap-4 mb-5">
-              <div>
-                <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Home className="w-4 h-4 text-primary" />
-                  Flat Inventory
-                </h3>
-                <p className="text-xs text-text-secondary mt-1">
-                  Create flats first, then share the join code with residents.
-                </p>
-              </div>
-              <button onClick={fetchFlats} className="btn btn-secondary btn-sm">
-                <RefreshCw className={`w-4 h-4 ${flatsLoading ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="label">Wings / Blocks</label>
-                <input className="input" placeholder="A,B,C or A1,A2" value={flatSetup.wings} onChange={(e) => setFlatSetup({ ...flatSetup, wings: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Floors</label>
-                <input className="input" placeholder="1,2,3,4" value={flatSetup.floors} onChange={(e) => setFlatSetup({ ...flatSetup, floors: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Flats Per Floor</label>
-                <input type="number" min="1" className="input" value={flatSetup.flatsPerFloor} onChange={(e) => setFlatSetup({ ...flatSetup, flatsPerFloor: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 rounded-lg bg-surface border border-border">
-              <p className="text-xs font-semibold text-text-secondary mb-2">Preview</p>
-              <div className="flex flex-wrap gap-2">
-                {previewFlats().map((flat) => (
-                  <span key={flat} className="px-2 py-1 rounded-md bg-white border border-border text-xs font-bold text-text-primary">
-                    {flat}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <button onClick={createFlats} disabled={flatsSaving} className="btn btn-primary mt-4">
-              {flatsSaving ? <div className="spinner !w-4 !h-4 !border-white/30 !border-t-white" /> : <Plus className="w-4 h-4" />}
-              Create Missing Flats
-            </button>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm">Current Flats</h3>
-              <span className="text-xs text-text-secondary">{flats.length} flats</span>
-            </div>
-            {flats.length === 0 ? (
-              <div className="text-center py-10 border border-dashed border-border rounded-xl">
-                <Home className="w-8 h-8 mx-auto text-text-tertiary opacity-40 mb-3" />
-                <p className="text-sm font-medium text-text-primary">No flats created yet</p>
-                <p className="text-xs text-text-secondary mt-1">Use the generator above to create the flat master.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-                {flats.map((flat) => (
-                  <button
-                    key={flat.id}
-                    type="button"
-                    onClick={() => flat.hasAccount && setSelectedFlat(flat)}
-                    className={`rounded-lg border p-3 bg-white text-left transition-colors ${
-                      flat.hasAccount
-                        ? "border-primary/20 hover:border-primary hover:bg-primary/5 cursor-pointer"
-                        : "border-border cursor-default"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-text-primary">{flat.flatNumber}</p>
-                        {flat.hasAccount ? (
-                          <>
-                            <p className="text-[11px] font-semibold text-text-primary mt-1 truncate">
-                              {flat.ownerName || flat.users[0]?.name || "Linked resident"}
-                            </p>
-                            <p className="text-[10px] text-text-secondary mt-0.5 truncate">
-                              {flat.contact || flat.users[0]?.phone || flat.users[0]?.email || "Contact not added"}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-[10px] text-text-secondary mt-1">Available to join</p>
-                        )}
-                      </div>
-                      <span className={`text-[9px] font-bold px-2 py-1 rounded-full shrink-0 ${
-                        flat.hasAccount ? "bg-success-bg text-success" : "bg-surface text-text-secondary"
-                      }`}>
-                        {flat.hasAccount ? "Linked" : "Open"}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <FlatSetupSection flats={flats} flatsLoading={flatsLoading} onRefresh={fetchFlats} />
       ) : tab === "guards" ? (
         <div className="space-y-6">
           <div className="card">
@@ -617,57 +452,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {selectedFlat && (
-        <div className="modal-overlay" onClick={() => setSelectedFlat(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Flat Details</p>
-                <h3 className="text-xl font-black text-text-primary mt-1">{selectedFlat.flatNumber}</h3>
-                <p className="text-xs text-text-secondary mt-1">
-                  Wing {selectedFlat.wing || "-"} {selectedFlat.floor ? `· Floor ${selectedFlat.floor}` : ""}
-                </p>
-              </div>
-              <button onClick={() => setSelectedFlat(null)} className="p-2 rounded-lg hover:bg-surface text-text-secondary">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {selectedFlat.users.length > 0 ? (
-                selectedFlat.users.map((resident) => (
-                  <div key={resident.id} className="rounded-xl border border-border p-4 bg-surface/40">
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <div>
-                        <p className="text-sm font-bold text-text-primary">{resident.name}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-primary">{resident.role}</p>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-success-bg text-success">
-                        Account linked
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs text-text-secondary">
-                        <Mail className="w-4 h-4 text-text-tertiary" />
-                        <span className="font-medium text-text-primary break-all">{resident.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-text-secondary">
-                        <Phone className="w-4 h-4 text-text-tertiary" />
-                        <span className="font-medium text-text-primary">{resident.phone || "Phone not added"}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-border p-6 text-center">
-                  <Home className="w-8 h-8 mx-auto text-text-tertiary opacity-40 mb-2" />
-                  <p className="text-sm font-medium text-text-primary">No account linked yet</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
