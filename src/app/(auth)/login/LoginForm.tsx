@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import toast from "react-hot-toast";
-import { Building2, Eye, EyeOff, Shield } from "lucide-react";
+import { Eye, EyeOff, Shield } from "lucide-react";
 
 interface LoginFormProps {
   keycloakEnabled: boolean;
@@ -42,12 +43,17 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
     <div className="min-h-screen flex items-center justify-center bg-surface px-4" data-no-translate>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4">
-            <Building2 className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-text-primary">SmartSocietyHub</h1>
+          <Image
+            src="/logo.png"
+            alt="ReManage"
+            width={56}
+            height={56}
+            className="mx-auto mb-4 h-14 w-14 rounded-2xl"
+            priority
+          />
+          <h1 className="text-2xl font-bold text-text-primary">ReManage</h1>
           <p className="text-sm text-text-secondary mt-1">
-            Smart society living, billing, security & community
+            Society management — billing, security & community
           </p>
         </div>
 

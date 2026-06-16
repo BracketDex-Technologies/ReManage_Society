@@ -72,7 +72,9 @@ async function legacyPOST(request: NextRequest) {
       return Response.json({ error: "Time slot already booked" }, { status: 400 });
     }
 
-    const facility = await prisma.facility.findUnique({ where: { id: facilityId } });
+    const facility = await prisma.facility.findFirst({
+      where: { id: facilityId, societyId: session.societyId },
+    });
     if (!facility) {
       return Response.json({ error: "Amenity not found" }, { status: 404 });
     }

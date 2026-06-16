@@ -1,5 +1,5 @@
 /**
- * Temporary test chairman accounts — remove before production.
+ * Demo/staging chairman accounts for UAT — keep for test logins.
  * Run: npm run db:seed:test-chairmen
  */
 import "dotenv/config";
@@ -89,7 +89,7 @@ async function main() {
     console.log(`Created test chairman: ${user.email} (society: ${society.name}, join code: ${society.joinCode})`);
   }
 
-  console.log("\nTemporary test logins (remove before production):");
+  console.log("\nDemo chairman logins:");
   for (const account of TEST_CHAIRMEN) {
     console.log(`  Email: ${account.email}  Password: ${TEST_PASSWORD}`);
   }

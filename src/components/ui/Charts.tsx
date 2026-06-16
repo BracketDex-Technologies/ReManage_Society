@@ -15,6 +15,8 @@ const COLORS = {
   surface: "#f9fafb",
 };
 
+const CHART_FONT_FAMILY = '"Helvetica Neue", Arial, sans-serif';
+
 interface BarChartProps {
   data: Array<{ label: string; value1: number; value2?: number; value3?: number }>;
   labels: [string, string?, string?];
@@ -62,7 +64,7 @@ export function BarChart({
     const gridLines = 5;
     ctx.strokeStyle = COLORS.border;
     ctx.lineWidth = 0.5;
-    ctx.font = "11px Satoshi, sans-serif";
+    ctx.font = `11px ${CHART_FONT_FAMILY}`;
     ctx.fillStyle = COLORS.text;
     ctx.textAlign = "right";
 
@@ -108,7 +110,7 @@ export function BarChart({
       // X labels
       ctx.fillStyle = COLORS.text;
       ctx.textAlign = "center";
-      ctx.font = "11px Satoshi, sans-serif";
+      ctx.font = `11px ${CHART_FONT_FAMILY}`;
       ctx.fillText(d.label, padding.left + groupW * i + groupW / 2, h - 15);
     });
 
@@ -121,7 +123,7 @@ export function BarChart({
       ctx.fillRect(legendX, legendY - 8, 10, 10);
       ctx.fillStyle = COLORS.text;
       ctx.textAlign = "left";
-      ctx.font = "10px Satoshi, sans-serif";
+      ctx.font = `10px ${CHART_FONT_FAMILY}`;
       ctx.fillText(label, legendX + 14, legendY);
       legendX += ctx.measureText(label).width + 30;
     });
@@ -195,14 +197,14 @@ export function DonutChart({
     // Center text
     if (centerValue) {
       ctx.fillStyle = "#111827";
-      ctx.font = "bold 18px Satoshi, sans-serif";
+      ctx.font = `bold 18px ${CHART_FONT_FAMILY}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(centerValue, cx, cy - 6);
     }
     if (centerLabel) {
       ctx.fillStyle = COLORS.text;
-      ctx.font = "11px Satoshi, sans-serif";
+      ctx.font = `11px ${CHART_FONT_FAMILY}`;
       ctx.textAlign = "center";
       ctx.fillText(centerLabel, cx, cy + 14);
     }
@@ -283,7 +285,7 @@ export function LineChart({
       ctx.stroke();
       ctx.fillStyle = COLORS.text;
       ctx.textAlign = "right";
-      ctx.font = "11px Satoshi, sans-serif";
+      ctx.font = `11px ${CHART_FONT_FAMILY}`;
       ctx.fillText(formatValue(val), padding.left - 8, y + 4);
     }
 
@@ -334,7 +336,7 @@ export function LineChart({
     data.forEach((d, i) => {
       ctx.fillStyle = COLORS.text;
       ctx.textAlign = "center";
-      ctx.font = "11px Satoshi, sans-serif";
+      ctx.font = `11px ${CHART_FONT_FAMILY}`;
       ctx.fillText(d.label, points[i].x, h - 12);
     });
   }, [data, color, height, formatValue, showArea]);
@@ -395,14 +397,14 @@ export function GaugeChart({ value, size = 140, label }: GaugeChartProps) {
 
     // Value text
     ctx.fillStyle = "#111827";
-    ctx.font = `bold ${size * 0.16}px Satoshi, sans-serif`;
+    ctx.font = `bold ${size * 0.16}px ${CHART_FONT_FAMILY}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(`${value}%`, cx, cy - 5);
 
     if (label) {
       ctx.fillStyle = COLORS.text;
-      ctx.font = `${size * 0.08}px Satoshi, sans-serif`;
+      ctx.font = `${size * 0.08}px ${CHART_FONT_FAMILY}`;
       ctx.fillText(label, cx, cy + size * 0.12);
     }
   }, [value, size, label]);

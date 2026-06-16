@@ -76,4 +76,7 @@ async function legacyPOST(request: NextRequest) {
   }
 }
 
-export const POST = shimOrFallback({ legacyRoute: "/api/complaints", nestPath: "/api/v1/community/helpdesk", method: "POST" }, legacyPOST);
+export const POST = shimOrFallback(
+  { legacyRoute: "/api/complaints", nestPath: "/api/v1/community/helpdesk", method: "POST", requireAuth: false },
+  legacyPOST,
+);

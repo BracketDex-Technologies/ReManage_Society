@@ -1,7 +1,7 @@
 {
-  "name": "SmartSocietyHub",
-  "short_name": "SmartHub",
-  "description": "SmartSocietyHub - complete society management platform for billing, security, maintenance and community",
+  "name": "ReManage",
+  "short_name": "ReManage",
+  "description": "ReManage — complete society management platform for billing, security, maintenance and community",
   "id": "/dashboard",
   "start_url": "/dashboard",
   "scope": "/",
@@ -12,17 +12,23 @@
   ],
   "orientation": "portrait",
   "background_color": "#0F1419",
-  "theme_color": "#3B82F6",
+  "theme_color": "#FF5722",
   "icons": [
     {
-      "src": "/icons/icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon.svg",
-      "type": "image/svg+xml",
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
     }
@@ -34,9 +40,9 @@
       "url": "/my-bills",
       "icons": [
         {
-          "src": "/icons/icon.svg",
+          "src": "/logo.png",
           "sizes": "512x512",
-          "type": "image/svg+xml"
+          "type": "image/png"
         }
       ]
     },
@@ -46,9 +52,9 @@
       "url": "/visitors",
       "icons": [
         {
-          "src": "/icons/icon.svg",
+          "src": "/logo.png",
           "sizes": "512x512",
-          "type": "image/svg+xml"
+          "type": "image/png"
         }
       ]
     },
@@ -58,9 +64,9 @@
       "url": "/emergency",
       "icons": [
         {
-          "src": "/icons/icon.svg",
+          "src": "/logo.png",
           "sizes": "512x512",
-          "type": "image/svg+xml"
+          "type": "image/png"
         }
       ]
     }

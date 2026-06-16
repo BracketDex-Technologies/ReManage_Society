@@ -19,13 +19,14 @@ const publicPaths = [
   "/api/auth/login",      // JSON + HTML form login
   "/api/auth/register",
   "/api/auth/join",
+  "/api/auth/callback",   // Keycloak OIDC callback
   "/api/societies/join-code",
   "/gate",                // Guard PWA (standalone)
   "/api/guard",           // Guard API endpoints
   "/api/guard/join",      // Guard self-request with society join code
   "/expired",             // Subscription expired page
   "/complaint/submit",    // Public complaint submission
-  "/api/complaint/public",
+  "/api/complaints/public",
   "/pay",                 // Public one-click bill payment (no login)
   "/api/pay",             // Public payment link API
   "/api/noc/verify",      // Public NOC certificate verification

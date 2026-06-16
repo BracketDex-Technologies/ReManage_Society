@@ -10,18 +10,18 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#3B82F6",
+  themeColor: "#FF5722",
 };
 
 export const metadata: Metadata = {
-  title: "SmartSocietyHub — Society Management Platform",
+  title: "ReManage — Society Management Platform",
   description:
-    "SmartSocietyHub is a complete society management ERP - billing, security, maintenance, community. Zero-cost UPI payments. By Buzyhub.in",
+    "ReManage is a complete society management platform — billing, security, maintenance, and community. By Buzyhub.in",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SmartSocietyHub",
+    title: "ReManage",
   },
 };
 
@@ -34,9 +34,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icons/icon.svg" />
+        <link rel="apple-touch-icon" href="/logo.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta id="theme-color-meta" name="theme-color" content="#3B82F6" />
+        <meta id="theme-color-meta" name="theme-color" content="#FF5722" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -52,7 +52,7 @@ export default function RootLayout({
                   document.documentElement.classList.toggle('dark', dark);
                   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
                   var meta = document.querySelector('meta[name="theme-color"]');
-                  if (meta) meta.setAttribute('content', dark ? '#0B1220' : '#3B82F6');
+                  if (meta) meta.setAttribute('content', dark ? '#0B1220' : '#FF5722');
                 } catch (_) {}
               })();
             `,

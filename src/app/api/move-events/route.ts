@@ -50,6 +50,14 @@ async function legacyPOST(request: NextRequest) {
       return Response.json({ error: "All fields required" }, { status: 400 });
     }
 
+    const flat = await prisma.flat.findFirst({
+      where: { id: flatId, societyId: session.societyId },
+      select: { id: true },
+    });
+    if (!flat) {
+      return Response.json({ error: "Flat not found" }, { status: 404 });
+    }
+
     // Default checklist based on type
     const moveInChecklist = [
       { item: "Society NOC obtained", status: "pending" },

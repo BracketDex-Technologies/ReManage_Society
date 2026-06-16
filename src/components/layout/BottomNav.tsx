@@ -71,7 +71,7 @@ export default function BottomNav({
 
   const navLinkClass = (href: string) =>
     `flex flex-col items-center justify-center w-16 gap-1 ${
-      isActive(href) ? "text-[#F97316]" : "text-gray-400 hover:text-gray-600"
+      isActive(href) ? "text-[#FF5400]" : "text-[#999999] hover:text-[#333333] dark:hover:text-[#F5F5F5]"
     }`;
 
   const iconStroke = (href: string) => (isActive(href) ? 2.5 : 2);
@@ -84,7 +84,7 @@ export default function BottomNav({
     ];
 
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-[420px] border-t border-gray-100 bg-white pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-[420px] border-t border-[#E6E6E6] bg-white pb-safe dark:border-[#404040] dark:bg-[#222222] lg:hidden">
         <div className="relative flex h-16 items-center justify-around px-2">
           {guardTabs.map((tab) => (
             <Link key={tab.href} href={tab.href} className={navLinkClass(tab.href)}>
@@ -101,7 +101,7 @@ export default function BottomNav({
     const tabs = personaNav.bottomNav.slice(0, 5);
 
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-[420px] border-t border-gray-100 bg-white pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-[420px] border-t border-[#E6E6E6] bg-white pb-safe dark:border-[#404040] dark:bg-[#222222] lg:hidden">
         <div className="relative flex h-16 items-center justify-around px-2">
           {tabs.map((tab) => {
             const Icon = getNavIcon(tab.iconKey);
@@ -123,18 +123,18 @@ export default function BottomNav({
         <div className="fixed inset-0 z-50 bg-black/30 lg:hidden" aria-hidden="true" />
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-[420px] border-t border-gray-100 bg-white pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-[420px] border-t border-[#E6E6E6] bg-white pb-safe dark:border-[#404040] dark:bg-[#222222] lg:hidden">
         {showActions && (
           <div
             ref={sheetRef}
-            className="absolute bottom-[4.5rem] left-1/2 z-50 w-[min(18rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl"
+            className="absolute bottom-[4.5rem] left-1/2 z-50 w-[min(18rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-[#E6E6E6] bg-white p-2 dark:border-[#404040] dark:bg-[#222222]"
           >
             <div className="mb-1 flex items-center justify-between px-2 py-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500">{t("Quick Add")}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#808080]">{t("Quick Add")}</p>
               <button
                 type="button"
                 onClick={() => setShowActions(false)}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-lg p-1 text-[#999999] hover:bg-[#F7F7F7] hover:text-[#333333] dark:hover:bg-[#2A2A2A] dark:hover:text-[#F5F5F5]"
                 aria-label="Close quick actions"
               >
                 <X className="h-4 w-4" />
@@ -148,9 +148,9 @@ export default function BottomNav({
                 key={action.href}
                 href={action.href}
                 onClick={() => setShowActions(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-[#FFF7ED]"
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#333333] transition-colors hover:bg-[#FFEEE5] dark:text-[#F5F5F5] dark:hover:bg-[#2A2A2A]"
               >
-                <action.icon className="h-4 w-4 text-[#F97316]" />
+                <action.icon className="h-4 w-4 text-[#FF5400]" />
                 {t(action.label)}
               </Link>
             ))}
@@ -172,7 +172,7 @@ export default function BottomNav({
             <button
               type="button"
               onClick={() => setShowActions((open) => !open)}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F97316] text-white shadow-[0_4px_10px_rgba(249,115,22,0.3)] transition-transform hover:scale-105 hover:bg-[#ea580c] active:scale-95"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FF5400] text-white transition-colors hover:bg-[#CC4400] active:scale-95"
               aria-label="Quick actions"
               aria-expanded={showActions}
             >

@@ -150,6 +150,15 @@ async function legacyPOST(request: NextRequest) {
   }
 }
 
-export const GET = shimOrFallback({ legacyRoute: "/api/guard", nestPath: "/api/v1/operations", method: "GET" }, legacyGET);
-export const PATCH = shimOrFallback({ legacyRoute: "/api/guard", nestPath: "/api/v1/operations", method: "PATCH" }, legacyPATCH);
-export const POST = shimOrFallback({ legacyRoute: "/api/guard", nestPath: "/api/v1/operations", method: "POST" }, legacyPOST);
+export const GET = shimOrFallback(
+  { legacyRoute: "/api/guard", nestPath: "/api/v1/operations", method: "GET", requireAuth: false },
+  legacyGET,
+);
+export const PATCH = shimOrFallback(
+  { legacyRoute: "/api/guard", nestPath: "/api/v1/operations", method: "PATCH", requireAuth: false },
+  legacyPATCH,
+);
+export const POST = shimOrFallback(
+  { legacyRoute: "/api/guard", nestPath: "/api/v1/operations", method: "POST", requireAuth: false },
+  legacyPOST,
+);

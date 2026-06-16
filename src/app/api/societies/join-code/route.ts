@@ -100,4 +100,7 @@ async function legacyGET(request: NextRequest) {
   });
 }
 
-export const GET = shimOrFallback({ legacyRoute: "/api/societies", nestPath: "/api/v1/society-core", method: "GET" }, legacyGET);
+export const GET = shimOrFallback(
+  { legacyRoute: "/api/societies", nestPath: "/api/v1/society-core", method: "GET", requireAuth: false },
+  legacyGET,
+);

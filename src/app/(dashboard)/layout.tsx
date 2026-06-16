@@ -29,7 +29,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FFFBEB] dark:bg-[#141414] lg:bg-surface">
+    <div className="flex h-screen overflow-hidden bg-[#FEFDDF] dark:bg-[#171717] lg:bg-surface">
       <Sidebar
         societyName={user.societyName}
         societyAddress={user.societyAddress}

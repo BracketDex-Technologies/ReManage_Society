@@ -22,6 +22,8 @@ export interface ShimRouteOptions {
   responseKey?: string;
   /** Roles allowed; if omitted, any authenticated user with a societyId */
   allowedRoles?: string[];
+  /** When false, skip session check and call legacy handler (public routes). Default true. */
+  requireAuth?: boolean;
   /** The HTTP status to return on success (defaults to 200) */
   successStatus?: number;
 }
@@ -45,17 +47,21 @@ export function shimOrFallback<T extends (...args: any[]) => any>(
 ): T {
   return (async (...args: any[]) => {
     const request = args[0] as Request;
-    const session = await getSession();
-    if (!session?.societyId) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const requireAuth = options.requireAuth !== false;
+    const session = requireAuth ? await getSession() : null;
+
+    if (requireAuth) {
+      if (!session?.societyId) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      if (options.allowedRoles && !options.allowedRoles.includes(session.role)) {
+        return Response.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
-    if (options.allowedRoles && !options.allowedRoles.includes(session.role)) {
-      return Response.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Try NestJS proxy first
-    if (isNestShimEnabled()) {
+    // Try NestJS proxy first (requires authenticated session)
+    if (isNestShimEnabled() && session?.societyId) {
       try {
         const body = options.buildBody
           ? await options.buildBody(session, request)

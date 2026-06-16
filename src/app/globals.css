@@ -1,26 +1,111 @@
-@import url("https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap");
 @import "tailwindcss";
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica-neue/HelveticaNeue-Thin.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica-neue/HelveticaNeue-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica-neue/HelveticaNeue-Roman.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica-neue/HelveticaNeue-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica-neue/HelveticaNeue-Bold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica-neue/HelveticaNeue-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica-neue/HelveticaNeue-Bold.otf") format("opentype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue";
+  src: url("/fonts/helvetica-neue/HelveticaNeue-Bold.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-primary: #F97316;
-  --color-primary-light: #FB923C;
-  --color-primary-dark: #EA580C;
+  --color-primary: #FF5400;
+  --color-primary-light: #FF7733;
+  --color-primary-dark: #CC4400;
+  --color-blaze-orange-50: #ffeee5;
+  --color-blaze-orange-100: #ffddcc;
+  --color-blaze-orange-200: #ffbb99;
+  --color-blaze-orange-300: #ff9966;
+  --color-blaze-orange-400: #ff7733;
+  --color-blaze-orange-500: #ff5500;
+  --color-blaze-orange-600: #cc4400;
+  --color-blaze-orange-700: #993300;
+  --color-blaze-orange-800: #662200;
+  --color-blaze-orange-900: #331100;
+  --color-blaze-orange-950: #240c00;
+  --color-amber-gold-50: #fff9e5;
+  --color-amber-gold-100: #fff2cc;
+  --color-amber-gold-200: #ffe699;
+  --color-amber-gold-300: #ffd966;
+  --color-amber-gold-400: #ffcc33;
+  --color-amber-gold-500: #ffbf00;
+  --color-amber-gold-600: #cc9900;
+  --color-amber-gold-700: #997300;
+  --color-amber-gold-800: #664d00;
+  --color-amber-gold-900: #332600;
+  --color-amber-gold-950: #241b00;
   --color-success: #10B981;
   --color-success-bg: rgba(110, 139, 95, 0.14);
   --color-success-text: #3F5F36;
   --color-danger: #EF4444;
   --color-danger-bg: rgba(239, 68, 68, 0.1);
   --color-danger-text: #B91C1C;
-  --color-warning: #FBBF24;
-  --color-warning-bg: rgba(251, 191, 36, 0.16);
-  --color-warning-text: #92400E;
-  --color-surface: #FFFBEB;
-  --color-border: #FED7AA;
-  --color-text-primary: #1C1917;
-  --color-text-secondary: rgba(46, 50, 50, 0.64);
-  --font-sans: "Satoshi", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-warning: #FFBE00;
+  --color-warning-bg: rgba(255, 190, 0, 0.18);
+  --color-warning-text: #664D00;
+  --color-surface: #FEFDDF;
+  --color-border: #E6E6E6;
+  --color-text-primary: #333333;
+  --color-text-secondary: rgba(51, 51, 51, 0.64);
+  --font-sans: "Helvetica Neue", Arial, system-ui, sans-serif;
 }
 
 @layer base {
@@ -30,22 +115,22 @@
 
   .dark {
     color-scheme: dark;
-    --color-primary: #FB923C;
-    --color-primary-light: #FB923C;
-    --color-primary-dark: #EA580C;
+    --color-primary: #FF7733;
+    --color-primary-light: #FF9966;
+    --color-primary-dark: #CC4400;
     --color-success: #34D399;
     --color-success-bg: rgba(52, 211, 153, 0.14);
     --color-success-text: #A7F3D0;
     --color-danger: #F87171;
     --color-danger-bg: rgba(239, 68, 68, 0.18);
     --color-danger-text: #FECACA;
-    --color-warning: #FDE047;
-    --color-warning-bg: rgba(253, 224, 71, 0.14);
-    --color-warning-text: #FEF3C7;
-    --color-surface: #141414;
-    --color-border: #303030;
-    --color-text-primary: #FAF7F5;
-    --color-text-secondary: #D6D3D1;
+    --color-warning: #FFCC33;
+    --color-warning-bg: rgba(255, 204, 51, 0.14);
+    --color-warning-text: #FFF2CC;
+    --color-surface: #171717;
+    --color-border: #404040;
+    --color-text-primary: #F5F5F5;
+    --color-text-secondary: #CCCCCC;
   }
 
   * {
@@ -100,7 +185,6 @@
 
   .btn-primary:hover:not(:disabled) {
     background: var(--color-primary-dark);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   }
 
   .btn-secondary {
@@ -110,7 +194,7 @@
   }
 
   .dark .btn-secondary {
-    background: #1E1E1E;
+    background: #222222;
     color: var(--color-text-primary);
     border-color: var(--color-border);
   }
@@ -154,7 +238,7 @@
   .dark .stat-card,
   .dark .table-wrapper,
   .dark .modal-content {
-    background: #1E1E1E;
+    background: #222222;
     border-color: var(--color-border);
     color: var(--color-text-primary);
   }
@@ -164,8 +248,7 @@
   }
 
   .card-hover:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
+    border-color: var(--color-primary);
   }
 
   .stat-card {
@@ -177,7 +260,7 @@
   }
 
   .stat-card:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-primary);
   }
 
   .badge {
@@ -231,7 +314,7 @@
 
   .dark .input,
   .dark .select {
-    background: #1E1E1E;
+    background: #222222;
     border-color: var(--color-border);
     color: var(--color-text-primary);
   }
@@ -242,29 +325,29 @@
 
   /* Compatibility layer for older screens that still use hardcoded Tailwind light utilities. */
   .dark .bg-white {
-    background-color: #1E1E1E !important;
+    background-color: #222222 !important;
   }
 
   .dark .bg-white\/95 {
-    background-color: rgb(53 55 57 / 0.95) !important;
+    background-color: rgb(34 34 34 / 0.95) !important;
   }
 
   .dark .bg-white\/90 {
-    background-color: rgb(53 55 57 / 0.9) !important;
+    background-color: rgb(34 34 34 / 0.9) !important;
   }
 
   .dark .bg-white\/85 {
-    background-color: rgb(53 55 57 / 0.85) !important;
+    background-color: rgb(34 34 34 / 0.85) !important;
   }
 
   .dark .bg-slate-50,
   .dark .bg-gray-50 {
-    background-color: rgb(53 55 57 / 0.82) !important;
+    background-color: rgb(34 34 34 / 0.82) !important;
   }
 
   .dark .border-slate-200,
   .dark .border-gray-200 {
-    border-color: #334155 !important;
+    border-color: #404040 !important;
   }
 
   .dark .text-slate-950,
@@ -287,7 +370,7 @@
 
   .input:focus {
     border-color: var(--color-primary-light);
-    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.14);
+    box-shadow: 0 0 0 3px rgba(255, 84, 0, 0.14);
   }
 
   .input::placeholder {
@@ -326,7 +409,7 @@
 
   .select:focus {
     border-color: var(--color-primary-light);
-    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.14);
+    box-shadow: 0 0 0 3px rgba(255, 84, 0, 0.14);
   }
 
   .table-wrapper {
@@ -356,7 +439,7 @@
 
   .dark .table tr:hover td,
   .dark .table th {
-    background: #1E1E1E;
+    background: #222222;
   }
 
   .table td {
@@ -472,7 +555,7 @@
 
   .progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+    background: var(--color-primary);
     border-radius: 9999px;
     transition: width 0.5s ease;
   }
@@ -519,7 +602,7 @@
   }
 
   .sidebar-link.active {
-    background: rgba(30, 64, 175, 0.08);
+    background: rgba(255, 84, 0, 0.1);
     color: var(--color-primary);
     font-weight: 600;
   }
@@ -538,6 +621,84 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.dashboard-flat-theme {
+  --dashboard-bg: #FEFDDF;
+  --dashboard-card: #FFFFFF;
+  --dashboard-card-muted: #F7F7F7;
+  --dashboard-card-strong: #E6E6E6;
+  --dashboard-border: #E6E6E6;
+  --dashboard-text: #333333;
+  --dashboard-muted: rgba(51, 51, 51, 0.62);
+  --dashboard-primary: #FF5400;
+  --dashboard-primary-soft: #ffeee5;
+  --dashboard-secondary: #FFBE00;
+  --dashboard-secondary-soft: #fff9e5;
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.dark .dashboard-flat-theme {
+  --dashboard-bg: #171717;
+  --dashboard-card: #222222;
+  --dashboard-card-muted: #2A2A2A;
+  --dashboard-card-strong: #333333;
+  --dashboard-border: #404040;
+  --dashboard-text: #F5F5F5;
+  --dashboard-muted: #CCCCCC;
+  --dashboard-primary: #FF7733;
+  --dashboard-primary-soft: rgba(255, 84, 0, 0.18);
+  --dashboard-secondary: #FFCC33;
+  --dashboard-secondary-soft: rgba(255, 190, 0, 0.16);
+}
+
+.dashboard-flat-theme [class*="bg-gradient"],
+.dashboard-flat-theme [class*="linear-gradient"] {
+  background-image: none !important;
+}
+
+.dashboard-flat-theme [class*="blur-"] {
+  display: none !important;
+}
+
+.dashboard-flat-theme [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.dashboard-flat-theme .dashboard-panel {
+  background: var(--dashboard-card) !important;
+  border-color: var(--dashboard-border) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.dashboard-flat-theme .dashboard-subpanel {
+  background: var(--dashboard-card-muted) !important;
+  border-color: var(--dashboard-border) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.dashboard-flat-theme .dashboard-accent-primary {
+  background: var(--dashboard-primary) !important;
+  color: #FFFFFF !important;
+}
+
+.dashboard-flat-theme .dashboard-accent-secondary {
+  background: var(--dashboard-secondary) !important;
+  color: #333333 !important;
+}
+
+.dashboard-flat-theme .dashboard-text {
+  color: var(--dashboard-text) !important;
+}
+
+.dashboard-flat-theme .dashboard-muted {
+  color: var(--dashboard-muted) !important;
+}
+
+.dashboard-flat-theme .dashboard-primary-text {
+  color: var(--dashboard-primary) !important;
 }
 
 @keyframes fadeIn {
@@ -675,11 +836,11 @@ img {
 
 @media (max-width: 640px) {
   body {
-    background: #FFFBEB;
+    background: #FEFDDF;
   }
 
   .dark body {
-    background: #141414;
+    background: #171717;
   }
 
   input,
@@ -692,7 +853,6 @@ img {
   .stat-card {
     border-radius: 1.5rem;
     padding: 1rem;
-    box-shadow: 0 10px 30px -22px rgba(15, 23, 42, 0.45);
   }
 
   .page-header {
@@ -702,11 +862,10 @@ img {
     background: white;
     border: 1px solid var(--color-border);
     padding: 1rem;
-    box-shadow: 0 10px 30px -24px rgba(15, 23, 42, 0.45);
   }
 
   .dark .page-header {
-    background: #1E1E1E;
+    background: #222222;
   }
 
   .page-title {

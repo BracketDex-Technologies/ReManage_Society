@@ -4,11 +4,19 @@ import type { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export async function GET(request: NextRequest) {
   const database = getDatabaseTarget();
-  const email = request.nextUrl.searchParams.get("email")?.trim().toLowerCase();
 
   try {
+    await prisma.$queryRaw`SELECT 1`;
+
+    if (isProduction) {
+      return Response.json({ ok: true });
+    }
+
+    const email = request.nextUrl.searchParams.get("email")?.trim().toLowerCase();
     const userCount = await prisma.user.count();
     const emailExists = email
       ? Boolean(
@@ -29,7 +37,7 @@ export async function GET(request: NextRequest) {
     return Response.json(
       {
         ok: false,
-        database,
+        ...(isProduction ? {} : { database }),
         error: error instanceof Error ? error.message : "Database connection failed",
       },
       { status: 500 },

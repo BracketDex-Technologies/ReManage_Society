@@ -129,8 +129,8 @@ const categories: Category[] = [
     subtitle: "Daily Services",
     description: "Gate, staff, parcels, and daily movement.",
     icon: Shield,
-    color: "from-violet-600 via-indigo-600 to-blue-700",
-    shadow: "shadow-violet-500/20",
+    color: "bg-[#FF5400]",
+    shadow: "",
     modules: [
       { label: "Security Gate", href: "/visitors", icon: Shield, roles: [...admin, "guard", "watchman"], note: "Visitors and gate records" },
       { label: "My Visitors", href: "/my-visitors", icon: UserCheck, roles: resident, note: "Guests and approvals" },
@@ -144,8 +144,8 @@ const categories: Category[] = [
     subtitle: "Payments & Funds",
     description: "Bills, expenses, funds, payroll, and reports.",
     icon: IndianRupee,
-    color: "from-emerald-700 via-teal-700 to-cyan-700",
-    shadow: "shadow-emerald-500/20",
+    color: "bg-[#FFBE00] text-[#333333]",
+    shadow: "",
     modules: [
       { label: "Billing & Ledger", href: "/maintenance", icon: Receipt, roles: admin, note: "Raise and collect dues" },
       { label: "My Bills", href: "/my-bills", icon: CreditCard, roles: resident, note: "Dues, rent, staff payments" },
@@ -162,8 +162,8 @@ const categories: Category[] = [
     subtitle: "Legal Help",
     description: "Free legal guidance, adviser contact, and society compliance notes.",
     icon: Scale,
-    color: "from-slate-800 via-zinc-800 to-stone-700",
-    shadow: "shadow-slate-500/20",
+    color: "bg-[#333333]",
+    shadow: "",
     modules: [
       { label: "Legal Adviser Contact", href: "/settings", icon: Scale, roles: admin, note: "Advisor phone and profile" },
       { label: "Legal Documents", href: "/documents", icon: FolderOpen, roles: admin, note: "Bylaws and legal records" },
@@ -176,8 +176,8 @@ const categories: Category[] = [
     subtitle: "People & Shared Life",
     description: "Announcements, helpdesk, amenities, parking, and safety.",
     icon: Megaphone,
-    color: "from-blue-700 via-indigo-600 to-violet-700",
-    shadow: "shadow-blue-500/20",
+    color: "bg-[#FF5400]",
+    shadow: "",
     modules: [
       { label: "Announcements", href: "/notices", icon: Megaphone, roles: everyone, note: "Society updates" },
       { label: "Helpdesk", href: "/complaints", icon: AlertTriangle, roles: everyone, note: "Complaints and requests" },
@@ -196,8 +196,8 @@ const categories: Category[] = [
     subtitle: "Decisions & Records",
     description: "Meetings, voting, and documents.",
     icon: Vote,
-    color: "from-fuchsia-700 via-purple-700 to-indigo-700",
-    shadow: "shadow-fuchsia-500/20",
+    color: "bg-[#FFBE00] text-[#333333]",
+    shadow: "",
     modules: [
       { label: "Meetings", href: "/meetings", icon: FileText, roles: everyone, note: "Agenda and minutes" },
       { label: "Polls & Voting", href: "/polls", icon: Vote, roles: everyone, note: "Resident decisions" },
@@ -210,8 +210,8 @@ const categories: Category[] = [
     subtitle: "Setup & Control",
     description: "Residents, tenants, vendors, assets, audit, and settings.",
     icon: Settings,
-    color: "from-rose-700 via-red-700 to-orange-700",
-    shadow: "shadow-rose-500/20",
+    color: "bg-[#333333]",
+    shadow: "",
     modules: [
       { label: "Residents", href: "/members", icon: Users, roles: admin, note: "Owners and members" },
       { label: "Tenants", href: "/tenants", icon: UserPlus, roles: admin, note: "Tenant lifecycle" },
@@ -249,7 +249,7 @@ function CategoryCard({ category, expanded, count, onClick }: { category: Catego
       onClick={onClick}
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}
-      className={`relative flex h-[176px] w-full overflow-hidden rounded-2xl bg-gradient-to-br ${category.color} p-4 text-left text-white transition-all duration-300 ${
+      className={`relative flex h-[176px] w-full overflow-hidden rounded-2xl ${category.color} p-4 text-left text-white transition-all duration-300 ${
         expanded
           ? `shadow-lg ${category.shadow} ring-2 ring-white/70`
           : "shadow-sm opacity-95 hover:opacity-100"
@@ -285,7 +285,7 @@ function ModuleCard({ module }: { module: ModuleItem }) {
   const { t } = useI18n();
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-      <Link href={module.href} className="group flex min-h-[104px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_4px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] dark:border-[#303030] dark:bg-[#1E1E1E] dark:shadow-black/20 dark:hover:border-primary/40">
+      <Link href={module.href} className="group flex min-h-[104px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_4px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] dark:border-[#404040] dark:bg-[#222222] dark:shadow-black/20 dark:hover:border-primary/40">
         <div className="flex items-start justify-between gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/7 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
             <Icon className="h-4 w-4" />
@@ -293,7 +293,7 @@ function ModuleCard({ module }: { module: ModuleItem }) {
           <ArrowRight className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
         </div>
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-black text-slate-950 dark:text-[#FAF7F5]">{t(module.label)}</h3>
+          <h3 className="truncate text-sm font-black text-slate-950 dark:text-[#F5F5F5]">{t(module.label)}</h3>
           <p className="mt-1 line-clamp-1 text-xs font-medium text-slate-500">{t(module.note)}</p>
         </div>
       </Link>
@@ -345,14 +345,14 @@ function CategoryWorkspace({ category, isAdmin }: { category: Category; isAdmin:
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className="overflow-hidden rounded-b-2xl"
     >
-      <div className="relative rounded-[1.75rem] border border-white/80 bg-white/95 p-5 shadow-md shadow-slate-900/5 backdrop-blur dark:border-[#303030] dark:bg-[#1E1E1E]/95 dark:shadow-black/20 sm:p-6">
-        <div className={`absolute left-8 top-0 h-1.5 w-24 rounded-b-full bg-gradient-to-r ${category.color}`} />
-        <div className="absolute -top-3 left-10 h-3 w-10 rounded-t-xl bg-white/95 dark:bg-[#1E1E1E]/95" />
+      <div className="relative rounded-[1.75rem] border border-white/80 bg-white/95 p-5 shadow-md shadow-slate-900/5 backdrop-blur dark:border-[#404040] dark:bg-[#222222]/95 dark:shadow-black/20 sm:p-6">
+        <div className={`absolute left-8 top-0 h-1.5 w-24 rounded-b-full ${category.color}`} />
+        <div className="absolute -top-3 left-10 h-3 w-10 rounded-t-xl bg-white/95 dark:bg-[#222222]/95" />
 
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-primary">{t("Workspace")}</p>
-            <h2 className="mt-1 text-xl font-black text-slate-950 dark:text-[#FAF7F5]">{t(category.title)}</h2>
+            <h2 className="mt-1 text-xl font-black text-slate-950 dark:text-[#F5F5F5]">{t(category.title)}</h2>
             <p className="mt-1 text-xs font-medium text-slate-500">{t(category.description)}</p>
           </div>
           <span className="hidden rounded-full bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:bg-slate-800 dark:text-slate-300 sm:inline">
@@ -374,7 +374,7 @@ function CategoryWorkspace({ category, isAdmin }: { category: Category; isAdmin:
                   <Link
                     key={action.href}
                     href={action.href}
-                    className="flex min-h-[72px] flex-col justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-950 shadow-[0_1px_4px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary hover:shadow-[0_8px_20px_rgba(15,23,42,0.07)] dark:border-[#303030] dark:bg-[#1E1E1E] dark:text-[#FAF7F5] dark:shadow-black/20 dark:hover:border-primary/40"
+                    className="flex min-h-[72px] flex-col justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-950 shadow-[0_1px_4px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary hover:shadow-[0_8px_20px_rgba(15,23,42,0.07)] dark:border-[#404040] dark:bg-[#222222] dark:text-[#F5F5F5] dark:shadow-black/20 dark:hover:border-primary/40"
                   >
                     <Icon className="h-4 w-4 text-primary" />
                     <span>{t(action.label)}</span>
@@ -385,10 +385,10 @@ function CategoryWorkspace({ category, isAdmin }: { category: Category; isAdmin:
           </div>
         )}
 
-        <div className="mt-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-[#303030] dark:bg-[#303030]/40">
+        <div className="mt-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-[#404040] dark:bg-[#404040]/40">
           <BellRing className="h-4 w-4 shrink-0 text-amber-600" />
           <div>
-            <p className="text-xs font-black text-slate-950 dark:text-[#FAF7F5]">{t("Recent activity")}</p>
+            <p className="text-xs font-black text-slate-950 dark:text-[#F5F5F5]">{t("Recent activity")}</p>
             <p className="mt-0.5 text-xs font-medium text-slate-500">{t("Latest updates from this area appear in notifications and module pages.")}</p>
           </div>
         </div>
@@ -445,7 +445,7 @@ function PriorityCard({
 
 function EmptyMiniState({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs font-bold text-text-secondary dark:border-[#303030] dark:bg-[#303030]/40">
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs font-bold text-text-secondary dark:border-[#404040] dark:bg-[#404040]/40">
       {text}
     </div>
   );
@@ -482,28 +482,28 @@ function PremiumStatCard({
 }) {
   const palette = {
     finance: {
-      card: "border-[#FED7AA] bg-[#FFF7ED] hover:border-[#FDBA74] hover:bg-[#FFEDD5] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#9A5A22] dark:hover:bg-[#241A12]",
-      chip: "bg-[#FFEDD5] text-[#C2410C] dark:bg-[#7C2D12]/45 dark:text-[#FDBA74]",
-      action: "bg-[#F97316] text-white",
-      wash: "bg-[#F97316]/10",
-      illustration: "text-[#F97316] dark:text-[#FDBA74]",
+      card: "border-[#E6E6E6] bg-[#FFFFFF] hover:border-[#FF9966] hover:bg-[#FFEEE5] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#CC4400] dark:hover:bg-[#241A12]",
+      chip: "bg-[#FFEEE5] text-[#C2410C] dark:bg-[#662200]/45 dark:text-[#FF9966]",
+      action: "bg-[#FF5400] text-white",
+      wash: "bg-[#FF5400]/10",
+      illustration: "text-[#FF5400] dark:text-[#FF9966]",
     },
     visitor: {
-      card: "border-[#BFDBFE] bg-[#EFF6FF] hover:border-[#93C5FD] hover:bg-[#DBEAFE] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#31558C] dark:hover:bg-[#141B25]",
+      card: "border-[#BFDBFE] bg-[#EFF6FF] hover:border-[#93C5FD] hover:bg-[#DBEAFE] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#31558C] dark:hover:bg-[#141B25]",
       chip: "bg-[#DBEAFE] text-[#2563EB] dark:bg-[#1E3A8A]/42 dark:text-[#93C5FD]",
       action: "bg-[#2563EB] text-white",
       wash: "bg-[#2563EB]/10",
       illustration: "text-[#2563EB] dark:text-[#93C5FD]",
     },
     parcel: {
-      card: "border-[#FDE68A] bg-[#FEFCE8] hover:border-[#FACC15] hover:bg-[#FEF9C3] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#8A6A19] dark:hover:bg-[#24200E]",
-      chip: "bg-[#FEF3C7] text-[#A16207] dark:bg-[#713F12]/42 dark:text-[#FDE68A]",
+      card: "border-[#FFCC33] bg-[#FFF9E5] hover:border-[#FFBE00] hover:bg-[#FFE699] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#8A6A19] dark:hover:bg-[#24200E]",
+      chip: "bg-[#FFF2CC] text-[#A16207] dark:bg-[#664D00]/42 dark:text-[#FFCC33]",
       action: "bg-[#CA8A04] text-white",
-      wash: "bg-[#FACC15]/12",
-      illustration: "text-[#CA8A04] dark:text-[#FDE68A]",
+      wash: "bg-[#FFBE00]/12",
+      illustration: "text-[#CA8A04] dark:text-[#FFCC33]",
     },
     helpdesk: {
-      card: "border-[#FECACA] bg-[#FEF2F2] hover:border-[#FCA5A5] hover:bg-[#FEE2E2] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#7A3434] dark:hover:bg-[#271616]",
+      card: "border-[#FECACA] bg-[#FEF2F2] hover:border-[#FCA5A5] hover:bg-[#FEE2E2] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#7A3434] dark:hover:bg-[#271616]",
       chip: "bg-[#FEE2E2] text-[#DC2626] dark:bg-[#7F1D1D]/42 dark:text-[#FCA5A5]",
       action: "bg-[#DC2626] text-white",
       wash: "bg-[#EF4444]/10",
@@ -520,11 +520,11 @@ function PremiumStatCard({
             <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${palette.chip} ring-1 ring-inset ring-white/40 dark:ring-white/10`}>
               <Icon className="h-5 w-5" />
             </div>
-            <p className="truncate text-sm font-bold text-[#1C1917] dark:text-[#FAF7F5]">{title}</p>
+            <p className="truncate text-sm font-bold text-[#333333] dark:text-[#F5F5F5]">{title}</p>
           </div>
           <div className="mt-3 min-w-0">
-            <h3 className="truncate text-2xl font-bold tracking-tight text-[#1C1917] dark:text-[#FAF7F5]">{value}</h3>
-            <p className="mt-0.5 line-clamp-1 text-xs font-semibold text-[#1C1917]/60 dark:text-[#D6D3D1]/82">{note}</p>
+            <h3 className="truncate text-2xl font-bold tracking-tight text-[#333333] dark:text-[#F5F5F5]">{value}</h3>
+            <p className="mt-0.5 line-clamp-1 text-xs font-semibold text-[#333333]/60 dark:text-[#CCCCCC]/82">{note}</p>
           </div>
         </div>
         <div className="relative z-10 flex flex-col items-end justify-between">
@@ -558,17 +558,17 @@ function PremiumModuleTile({
   wide?: boolean;
 }) {
   return (
-    <Link href={href} className={`group relative min-h-[112px] overflow-hidden rounded-[1.25rem] border border-[#FED7AA] bg-white p-3 shadow-[0_8px_28px_-24px_rgba(28,25,23,0.42)] transition-all duration-300 hover:-translate-y-0.5 dark:border-[#303030] dark:bg-[#1E1E1E] ${hover} ${wide ? "md:col-span-2" : ""}`}>
+    <Link href={href} className={`group relative min-h-[112px] overflow-hidden rounded-[1.25rem] border border-[#E6E6E6] bg-white p-3 shadow-[0_8px_28px_-24px_rgba(28,25,23,0.42)] transition-all duration-300 hover:-translate-y-0.5 dark:border-[#404040] dark:bg-[#222222] ${hover} ${wide ? "md:col-span-2" : ""}`}>
       <div className="relative z-10 flex h-full flex-col justify-between">
         <div className="flex items-center justify-between">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${accent} ring-1 ring-inset ring-[#1C1917]/5 transition-transform duration-300 group-hover:scale-105 dark:ring-white/10`}>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${accent} ring-1 ring-inset ring-[#333333]/5 transition-transform duration-300 group-hover:scale-105 dark:ring-white/10`}>
             <Icon className="h-5 w-5" />
           </div>
-          <ArrowRight className="h-4 w-4 text-[#1C1917]/40 transition-transform group-hover:translate-x-1 dark:text-[#D6D3D1]/70" />
+          <ArrowRight className="h-4 w-4 text-[#333333]/40 transition-transform group-hover:translate-x-1 dark:text-[#CCCCCC]/70" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF7F5]">{label}</h3>
-          <p className="mt-0.5 line-clamp-2 text-[11px] font-semibold leading-4 text-[#1C1917]/[0.55] dark:text-[#D6D3D1]">{note}</p>
+          <h3 className="text-sm font-bold text-[#333333] dark:text-[#F5F5F5]">{label}</h3>
+          <p className="mt-0.5 line-clamp-2 text-[11px] font-semibold leading-4 text-[#333333]/[0.55] dark:text-[#CCCCCC]">{note}</p>
         </div>
       </div>
     </Link>
@@ -577,40 +577,40 @@ function PremiumModuleTile({
 
 function DashboardLoadingShell() {
   return (
-    <div className="-m-3 min-h-full overflow-hidden bg-[#FFFBEB] p-2 text-[#1C1917] dark:bg-[#141414] dark:text-[#FAF7F5] sm:-m-4 sm:p-3 lg:-m-6 lg:p-4 xl:p-5">
+    <div className="dashboard-flat-theme -m-3 min-h-full overflow-hidden bg-[#FEFDDF] p-2 text-[#333333] dark:bg-[#171717] dark:text-[#F5F5F5] sm:-m-4 sm:p-3 lg:-m-6 lg:p-4 xl:p-5">
       <div className="pointer-events-none fixed inset-0 opacity-80 dark:opacity-45">
-        <div className="absolute left-[18%] top-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#FDE047]/25 blur-3xl" />
-        <div className="absolute right-[8%] top-[7rem] h-[24rem] w-[24rem] rounded-full bg-[#57534E]/[0.18] blur-3xl" />
-        <div className="absolute bottom-[-12rem] right-[28%] h-[26rem] w-[26rem] rounded-full bg-[#F97316]/[0.16] blur-3xl" />
+        <div className="absolute left-[18%] top-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#FFBE00]/25 blur-3xl" />
+        <div className="absolute right-[8%] top-[7rem] h-[24rem] w-[24rem] rounded-full bg-[#808080]/[0.18] blur-3xl" />
+        <div className="absolute bottom-[-12rem] right-[28%] h-[26rem] w-[26rem] rounded-full bg-[#FF5400]/[0.16] blur-3xl" />
       </div>
       <div className="relative mx-auto max-w-[1560px] pb-20 lg:pb-4">
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-          <div className="relative min-h-[260px] overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/[0.88] p-4 shadow-[0_20px_64px_-54px_rgba(28,25,23,0.72)] dark:border-[#303030] dark:bg-[#1E1E1E]/[0.88] xl:col-span-8">
+          <div className="dashboard-panel relative min-h-[260px] overflow-hidden rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 dark:border-[#404040] dark:bg-[#222222] xl:col-span-8">
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.95),rgba(255,255,255,0.72),rgba(245,245,247,0.28))] dark:bg-[linear-gradient(90deg,rgba(22,15,18,0.95),rgba(22,15,18,0.78),rgba(44,26,26,0.5))]" />
             <div className="relative z-10 flex h-full flex-col justify-center gap-3">
-              <div className="h-9 w-44 animate-pulse rounded-full bg-[#F97316]/10 dark:bg-[#303030]/55" />
-              <div className="h-12 w-full max-w-[720px] animate-pulse rounded-2xl bg-[#FED7AA]/60 dark:bg-[#303030]/55" />
-              <div className="h-6 w-full max-w-[520px] animate-pulse rounded-full bg-[#FED7AA]/60 dark:bg-[#303030]/55" />
+              <div className="h-9 w-44 animate-pulse rounded-full bg-[#FF5400]/10 dark:bg-[#404040]/55" />
+              <div className="h-12 w-full max-w-[720px] animate-pulse rounded-2xl bg-[#E6E6E6]/60 dark:bg-[#404040]/55" />
+              <div className="h-6 w-full max-w-[520px] animate-pulse rounded-full bg-[#E6E6E6]/60 dark:bg-[#404040]/55" />
               <div className="flex gap-3">
-                <div className="h-12 w-32 animate-pulse rounded-2xl bg-[#F97316]/18" />
-                <div className="h-12 w-40 animate-pulse rounded-2xl bg-[#FED7AA]/60 dark:bg-[#303030]/55" />
-                <div className="h-12 w-36 animate-pulse rounded-2xl bg-[#57534E]/12" />
+                <div className="h-12 w-32 animate-pulse rounded-2xl bg-[#FF5400]/18" />
+                <div className="h-12 w-40 animate-pulse rounded-2xl bg-[#E6E6E6]/60 dark:bg-[#404040]/55" />
+                <div className="h-12 w-36 animate-pulse rounded-2xl bg-[#808080]/12" />
               </div>
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:col-span-4 xl:grid-cols-1">
-            <div className="min-h-[160px] animate-pulse rounded-[1.5rem] bg-[#1C1917]/90 dark:bg-[#1E1E1E]" />
-            <div className="min-h-[108px] animate-pulse rounded-[1.5rem] bg-white/80 dark:bg-[#1E1E1E]" />
+            <div className="dashboard-panel min-h-[160px] animate-pulse rounded-[1.5rem] bg-white dark:bg-[#222222]" />
+            <div className="dashboard-panel min-h-[108px] animate-pulse rounded-[1.5rem] bg-white dark:bg-[#222222]" />
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="min-h-[132px] animate-pulse rounded-[1.35rem] bg-white/85 dark:bg-[#1E1E1E]" />
+            <div key={item} className="dashboard-panel min-h-[132px] animate-pulse rounded-[1.35rem] bg-white dark:bg-[#222222]" />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-          <div className="min-h-[340px] animate-pulse rounded-[1.5rem] bg-white/85 dark:bg-[#1E1E1E] xl:col-span-8" />
-          <div className="min-h-[340px] animate-pulse rounded-[1.5rem] bg-white/85 dark:bg-[#1E1E1E] xl:col-span-4" />
+          <div className="dashboard-panel min-h-[340px] animate-pulse rounded-[1.5rem] bg-white dark:bg-[#222222] xl:col-span-8" />
+          <div className="dashboard-panel min-h-[340px] animate-pulse rounded-[1.5rem] bg-white dark:bg-[#222222] xl:col-span-4" />
         </div>
       </div>
     </div>
@@ -640,13 +640,13 @@ function ResidentDashboard({
   return (
     <>
       {/* Mobile view: hidden on lg screens, visible on mobile/tablet */}
-      <div className="block lg:hidden w-full pb-24 text-gray-900 dark:text-[#FAF7F5] space-y-4">
+      <div className="dashboard-flat-theme block w-full space-y-4 pb-24 text-[#333333] dark:text-[#F5F5F5] lg:hidden">
         {/* SECTION 1 - Top Header (directly on cream/dark, clean typography) */}
         <div className="px-1 pt-4 pb-2">
           <p className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-[0.14em]">
             {t(greeting().charAt(0).toUpperCase() + greeting().slice(1))} <span className="text-base">👋</span>
           </p>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-[#FAF7F5] mt-1 leading-tight">
+          <h1 className="text-2xl font-black text-gray-900 dark:text-[#F5F5F5] mt-1 leading-tight">
             {user?.name || t("Resident")}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold mt-1">
@@ -655,30 +655,30 @@ function ResidentDashboard({
         </div>
 
         {/* SECTION 2 - Outstanding Balance Card */}
-        <div className="bg-[#F97316] rounded-2xl px-5 py-4 shadow-[0_8px_20px_rgba(249,115,22,0.22)] flex justify-between items-center text-white">
+        <div className="dashboard-accent-primary flex items-center justify-between rounded-2xl px-5 py-4 text-white">
           <div>
             <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider mb-0.5">{t("Total Outstanding")}</p>
             <h2 className="text-2xl font-black tracking-tight">₹ {formatCurrency(pendingDues).replace("₹", "").trim()}</h2>
           </div>
-          <Link href="/my-bills" className="bg-white text-[#F97316] font-bold text-xs px-4 py-2 rounded-xl shadow-sm hover:bg-orange-50 transition-colors">
+          <Link href="/my-bills" className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-[#FF5400] transition-colors hover:bg-[#FFEEE5]">
             {t("Pay Now")}
           </Link>
         </div>
 
         {/* SECTION 3 - Stats Row */}
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl py-4 px-2 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3)] border border-[#FED7AA]/40 dark:border-[#303030] flex justify-between items-center">
+        <div className="dashboard-panel flex items-center justify-between rounded-2xl border border-[#E6E6E6] bg-white px-2 py-4 dark:border-[#404040] dark:bg-[#222222]">
           <Link href="/notices" className="flex-1 flex flex-col items-center">
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t("Notices")}</span>
-            <span className="text-xl font-extrabold text-[#F97316] dark:text-[#FB923C] leading-none">{String(unreadNotices).padStart(2, "0")}</span>
+            <span className="text-xl font-extrabold text-[#FF5400] dark:text-[#FF7733] leading-none">{String(unreadNotices).padStart(2, "0")}</span>
             <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 font-medium">{t("Unread")}</span>
           </Link>
-          <div className="w-px h-10 bg-gray-100 dark:bg-[#303030]"></div>
+          <div className="w-px h-10 bg-gray-100 dark:bg-[#404040]"></div>
           <Link href="/complaints" className="flex-1 flex flex-col items-center">
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t("Complaints")}</span>
-            <span className="text-xl font-extrabold text-gray-900 dark:text-[#FAF7F5] leading-none">{String(openComplaints).padStart(2, "0")}</span>
+            <span className="text-xl font-extrabold text-gray-900 dark:text-[#F5F5F5] leading-none">{String(openComplaints).padStart(2, "0")}</span>
             <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 font-medium">{t("Open (Stats)")}</span>
           </Link>
-          <div className="w-px h-10 bg-gray-100 dark:bg-[#303030]"></div>
+          <div className="w-px h-10 bg-gray-100 dark:bg-[#404040]"></div>
           <Link href="/my-visitors" className="flex-1 flex flex-col items-center">
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">{t("Visitors")}</span>
             <span className="text-xl font-extrabold text-[#2563EB] dark:text-[#60A5FA] leading-none">{String(visitorsToday).padStart(2, "0")}</span>
@@ -687,19 +687,19 @@ function ResidentDashboard({
         </div>
 
         {/* SECTION 4 - Quick Access Grid (wrapped in card) */}
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3)] border border-[#FED7AA]/40 dark:border-[#303030]">
+        <div className="dashboard-panel rounded-2xl border border-[#E6E6E6] bg-white p-4 dark:border-[#404040] dark:bg-[#222222]">
           <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-4 px-1">{t("Quick Access")}</h3>
           <div className="grid grid-cols-4 gap-y-5 gap-x-2">
             {/* Row 1 */}
             <Link href="/my-bills" className="flex flex-col items-center gap-1.5">
-              <div className="w-11 h-11 rounded-[12px] bg-[#FFF7ED] dark:bg-[#7C2D12]/30 flex items-center justify-center border border-orange-50 dark:border-[#7C2D12]/40">
-                <Receipt className="w-5 h-5 text-[#F97316] dark:text-[#FB923C]" strokeWidth={2} />
+              <div className="w-11 h-11 rounded-[12px] bg-[#FFFFFF] dark:bg-[#662200]/30 flex items-center justify-center border border-orange-50 dark:border-[#662200]/40">
+                <Receipt className="w-5 h-5 text-[#FF5400] dark:text-[#FF7733]" strokeWidth={2} />
               </div>
               <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">{t("My Bills")}</span>
             </Link>
             <Link href="/complaints" className="flex flex-col items-center gap-1.5">
-              <div className="w-11 h-11 rounded-[12px] bg-[#FEF3C7] dark:bg-[#78350F]/30 flex items-center justify-center border border-yellow-50 dark:border-[#78350F]/40">
-                <AlertTriangle className="w-5 h-5 text-[#D97706] dark:text-[#FBBF24]" strokeWidth={2} />
+              <div className="w-11 h-11 rounded-[12px] bg-[#FFF2CC] dark:bg-[#664D00]/30 flex items-center justify-center border border-yellow-50 dark:border-[#664D00]/40">
+                <AlertTriangle className="w-5 h-5 text-[#D97706] dark:text-[#FFBE00]" strokeWidth={2} />
               </div>
               <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">{t("Complaints")}</span>
             </Link>
@@ -710,8 +710,8 @@ function ResidentDashboard({
               <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">{t("Visitors")}</span>
             </Link>
             <Link href="/notices" className="flex flex-col items-center gap-1.5">
-              <div className="w-11 h-11 rounded-[12px] bg-[#FFF7ED] dark:bg-[#7C2D12]/30 flex items-center justify-center border border-orange-50 dark:border-[#7C2D12]/40">
-                <Megaphone className="w-5 h-5 text-[#F97316] dark:text-[#FB923C]" strokeWidth={2} />
+              <div className="w-11 h-11 rounded-[12px] bg-[#FFFFFF] dark:bg-[#662200]/30 flex items-center justify-center border border-orange-50 dark:border-[#662200]/40">
+                <Megaphone className="w-5 h-5 text-[#FF5400] dark:text-[#FF7733]" strokeWidth={2} />
               </div>
               <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">{t("Notices")}</span>
             </Link>
@@ -745,17 +745,17 @@ function ResidentDashboard({
         </div>
 
         {/* SECTION 5 - Go Digital Go Green Banner */}
-        <div className="bg-[#FFF7ED] dark:bg-[#7C2D12]/20 rounded-2xl p-4 flex items-center justify-between relative overflow-hidden border border-orange-100 dark:border-[#7C2D12]/40 shadow-sm">
+        <div className="dashboard-subpanel relative flex items-center justify-between overflow-hidden rounded-2xl border border-[#E6E6E6] bg-[#FFF9E5] p-4 dark:border-[#404040] dark:bg-[#2A2A2A]">
           <div className="relative z-10 flex-1 pr-3">
-            <h3 className="text-[#92400E] dark:text-[#FDBA74] font-bold text-sm leading-tight mb-1">{t("Go Digital. Go Green.")}</h3>
-            <p className="text-[#92400E]/70 dark:text-[#FDBA74]/60 text-[10px] font-semibold leading-relaxed">
+            <h3 className="text-[#92400E] dark:text-[#FF9966] font-bold text-sm leading-tight mb-1">{t("Go Digital. Go Green.")}</h3>
+            <p className="text-[#92400E]/70 dark:text-[#FF9966]/60 text-[10px] font-semibold leading-relaxed">
               {t("Get e-receipts &")}<br/>{t("secure payments.")}
             </p>
           </div>
           {/* Phone illustration */}
           <div className="relative z-10 flex-shrink-0">
-            <div className="relative w-12 h-16 bg-white dark:bg-[#1E1E1E] rounded-xl border border-[#FED7AA] dark:border-[#303030] shadow-sm flex flex-col items-center overflow-hidden">
-              <div className="w-4 h-0.5 bg-[#FED7AA] dark:bg-[#303030] rounded-b-full"></div>
+            <div className="relative w-12 h-16 bg-white dark:bg-[#222222] rounded-xl border border-[#E6E6E6] dark:border-[#404040] shadow-sm flex flex-col items-center overflow-hidden">
+              <div className="w-4 h-0.5 bg-[#E6E6E6] dark:bg-[#404040] rounded-b-full"></div>
               <div className="flex-1 flex flex-col items-center justify-center gap-1">
                 <div className="w-6 h-6 rounded-full bg-[#D1FAE5] dark:bg-[#064E3B]/50 flex items-center justify-center">
                   <span className="text-[#059669] dark:text-[#6EE7B7] text-[10px] font-bold">₹</span>
@@ -768,7 +768,7 @@ function ResidentDashboard({
         {/* SECTION 6 - Consult an Advocate Banner */}
         <Link
           href="/complaints?escalate=legal"
-          className="block bg-red-50 dark:bg-red-950/20 rounded-2xl p-4 flex items-start gap-3 relative overflow-hidden border border-red-100 dark:border-red-900/40 shadow-sm hover:border-red-200 dark:hover:border-red-800 transition-colors active:scale-[0.99]"
+          className="dashboard-subpanel relative flex items-start gap-3 overflow-hidden rounded-2xl border border-[#E6E6E6] bg-[#FFEEE5] p-4 transition-colors hover:border-[#FF5400] dark:border-[#404040] dark:bg-[#2A2A2A]"
         >
           <div className="relative z-10 flex-shrink-0 mt-0.5">
             <Scale className="w-5 h-5 text-red-600 dark:text-red-400" strokeWidth={2.5} />
@@ -786,18 +786,18 @@ function ResidentDashboard({
       </div>
 
       {/* Desktop view: visible on lg screens, hidden on mobile/tablet */}
-      <div className="hidden lg:block -m-3 min-h-full overflow-x-hidden bg-[#FFFBEB] dark:bg-[#141414] p-3 text-[#1C1917] dark:text-[#FAF7F5] sm:-m-4 sm:p-4 lg:-m-6 lg:p-6">
+      <div className="dashboard-flat-theme hidden -m-3 min-h-full overflow-x-hidden bg-[#FEFDDF] p-3 text-[#333333] dark:bg-[#171717] dark:text-[#F5F5F5] sm:-m-4 sm:p-4 lg:block lg:-m-6 lg:p-6">
         <div className="relative mx-auto max-w-[1520px] space-y-3 pb-20 lg:pb-4">
           
           {/* SECTION 1: Welcome Header Card */}
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-[#FED7AA] dark:border-[#303030] bg-white/90 dark:bg-[#1E1E1E]/90 p-6 shadow-[0_18px_58px_-50px_rgba(28,25,23,0.68)]">
-            <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#F97316]/10 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-[#E6E6E6] dark:border-[#404040] bg-white/90 dark:bg-[#222222]/90 p-6 shadow-[0_18px_58px_-50px_rgba(28,25,23,0.68)]">
+            <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#FF5400]/10 blur-3xl" />
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <span className="inline-flex min-h-7 items-center rounded-full border border-[#F97316]/20 bg-[#F97316]/10 px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#F97316] dark:text-[#FB923C]">
+                <span className="inline-flex min-h-7 items-center rounded-full border border-[#FF5400]/20 bg-[#FF5400]/10 px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#FF5400] dark:text-[#FF7733]">
                   {t("Resident Hub")}
                 </span>
-                <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-[#FAF7F5] mt-2">
+                <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-[#F5F5F5] mt-2">
                   {t(greeting().charAt(0).toUpperCase() + greeting().slice(1))}, {user?.name || t("Resident")} 👋
                 </h1>
                 <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-1">
@@ -817,30 +817,30 @@ function ResidentDashboard({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
                 {/* Outstanding Dues Card */}
-                <div className="bg-[#F97316] rounded-[1.5rem] p-6 shadow-[0_12px_30px_rgba(249,115,22,0.25)] text-white flex flex-col justify-between min-h-[160px]">
+                <div className="bg-[#FF5400] rounded-[1.5rem] p-6 shadow-[0_12px_30px_rgba(249,115,22,0.25)] text-white flex flex-col justify-between min-h-[160px]">
                   <div>
                     <p className="text-white/80 text-[11px] font-bold uppercase tracking-wider mb-1">{t("Outstanding Dues")}</p>
                     <h2 className="text-3xl font-black tracking-tight">₹ {formatCurrency(pendingDues).replace("₹", "").trim()}</h2>
                   </div>
                   <div className="mt-4 flex justify-end">
-                    <Link href="/my-bills" className="bg-white text-[#F97316] font-bold text-xs px-5 py-2.5 rounded-xl shadow-md hover:bg-orange-50 transition-all hover:-translate-y-0.5">
+                    <Link href="/my-bills" className="bg-white text-[#FF5400] font-bold text-xs px-5 py-2.5 rounded-xl shadow-md hover:bg-orange-50 transition-all hover:-translate-y-0.5">
                       {t("Pay Now")}
                     </Link>
                   </div>
                 </div>
 
                 {/* Quick Stats Summary */}
-                <div className="bg-white dark:bg-[#1E1E1E] border border-[#FED7AA] dark:border-[#303030] rounded-[1.5rem] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)] flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#222222] border border-[#E6E6E6] dark:border-[#404040] rounded-[1.5rem] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)] flex flex-col justify-between">
                   <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-3 uppercase tracking-wider">{t("Activity Overview")}</h3>
                   <div className="grid grid-cols-3 gap-3">
-                    <Link href="/notices" className="flex flex-col items-center bg-[#FFF7ED] dark:bg-[#7C2D12]/25 rounded-2xl p-3 border border-orange-100 dark:border-[#7C2D12]/40 hover:border-orange-200 dark:hover:border-[#9A3412] transition-colors">
-                      <span className="text-[11px] font-semibold text-[#C2410C] dark:text-[#FDBA74]">{t("Notices")}</span>
-                      <span className="text-2xl font-extrabold text-[#9A3412] dark:text-[#FB923C] mt-1">{String(unreadNotices).padStart(2, "0")}</span>
+                    <Link href="/notices" className="flex flex-col items-center bg-[#FFFFFF] dark:bg-[#662200]/25 rounded-2xl p-3 border border-orange-100 dark:border-[#662200]/40 hover:border-orange-200 dark:hover:border-[#9A3412] transition-colors">
+                      <span className="text-[11px] font-semibold text-[#C2410C] dark:text-[#FF9966]">{t("Notices")}</span>
+                      <span className="text-2xl font-extrabold text-[#9A3412] dark:text-[#FF7733] mt-1">{String(unreadNotices).padStart(2, "0")}</span>
                       <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-medium">{t("Unread")}</span>
                     </Link>
-                    <Link href="/complaints" className="flex flex-col items-center bg-[#FEF3C7] dark:bg-[#78350F]/25 rounded-2xl p-3 border border-yellow-100 dark:border-[#78350F]/40 hover:border-yellow-200 dark:hover:border-[#92400E] transition-colors">
-                      <span className="text-[11px] font-semibold text-[#B45309] dark:text-[#FDE68A]">{t("Complaints")}</span>
-                      <span className="text-2xl font-extrabold text-[#92400E] dark:text-[#FBBF24] mt-1">{String(openComplaints).padStart(2, "0")}</span>
+                    <Link href="/complaints" className="flex flex-col items-center bg-[#FFF2CC] dark:bg-[#664D00]/25 rounded-2xl p-3 border border-yellow-100 dark:border-[#664D00]/40 hover:border-yellow-200 dark:hover:border-[#92400E] transition-colors">
+                      <span className="text-[11px] font-semibold text-[#B45309] dark:text-[#FFCC33]">{t("Complaints")}</span>
+                      <span className="text-2xl font-extrabold text-[#92400E] dark:text-[#FFBE00] mt-1">{String(openComplaints).padStart(2, "0")}</span>
                       <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-medium">{t("Open (Stats)")}</span>
                     </Link>
                     <Link href="/my-visitors" className="flex flex-col items-center bg-[#EFF6FF] dark:bg-[#1E3A8A]/25 rounded-2xl p-3 border border-blue-100 dark:border-[#1E3A8A]/40 hover:border-blue-200 dark:hover:border-[#2563EB] transition-colors">
@@ -854,14 +854,14 @@ function ResidentDashboard({
               </div>
 
               {/* Quick Access Services Card */}
-              <div className="rounded-[1.5rem] border border-[#FED7AA] dark:border-[#303030] bg-white dark:bg-[#1E1E1E] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)]">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-[#FAF7F5] mb-4">{t("Quick Access Services")}</h2>
+              <div className="rounded-[1.5rem] border border-[#E6E6E6] dark:border-[#404040] bg-white dark:bg-[#222222] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)]">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-[#F5F5F5] mb-4">{t("Quick Access Services")}</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { href: "/my-bills", label: t("My Bills"), desc: t("Pay maintenance & utility dues"), icon: Receipt, bg: "bg-[#FFF7ED] dark:bg-[#7C2D12]/30", text: "text-[#F97316] dark:text-[#FB923C]", border: "border-orange-100 dark:border-[#7C2D12]/40" },
-                    { href: "/complaints", label: t("Complaints"), desc: t("Review & track issues"), icon: AlertTriangle, bg: "bg-[#FEF3C7] dark:bg-[#78350F]/30", text: "text-[#D97706] dark:text-[#FBBF24]", border: "border-yellow-100 dark:border-[#78350F]/40" },
+                    { href: "/my-bills", label: t("My Bills"), desc: t("Pay maintenance & utility dues"), icon: Receipt, bg: "bg-[#FFFFFF] dark:bg-[#662200]/30", text: "text-[#FF5400] dark:text-[#FF7733]", border: "border-orange-100 dark:border-[#662200]/40" },
+                    { href: "/complaints", label: t("Complaints"), desc: t("Review & track issues"), icon: AlertTriangle, bg: "bg-[#FFF2CC] dark:bg-[#664D00]/30", text: "text-[#D97706] dark:text-[#FFBE00]", border: "border-yellow-100 dark:border-[#664D00]/40" },
                     { href: "/my-visitors", label: t("Visitors"), desc: t("Approve & invite guests"), icon: UserCheck, bg: "bg-[#EFF6FF] dark:bg-[#1E3A8A]/30", text: "text-[#2563EB] dark:text-[#60A5FA]", border: "border-blue-100 dark:border-[#1E3A8A]/40" },
-                    { href: "/notices", label: t("Notices"), desc: t("Read society circulars"), icon: Megaphone, bg: "bg-[#FFF7ED] dark:bg-[#7C2D12]/30", text: "text-[#F97316] dark:text-[#FB923C]", border: "border-orange-100 dark:border-[#7C2D12]/40" },
+                    { href: "/notices", label: t("Notices"), desc: t("Read society circulars"), icon: Megaphone, bg: "bg-[#FFFFFF] dark:bg-[#662200]/30", text: "text-[#FF5400] dark:text-[#FF7733]", border: "border-orange-100 dark:border-[#662200]/40" },
                     { href: "/amenities", label: t("Amenities"), desc: t("Book clubhouse, gym, pool"), icon: Building2, bg: "bg-[#F5F3FF] dark:bg-[#4C1D95]/30", text: "text-[#8B5CF6] dark:text-[#A78BFA]", border: "border-purple-100 dark:border-[#4C1D95]/40" },
                     { href: "/packages", label: t("Packages"), desc: t("Track courier deliveries"), icon: Package, bg: "bg-[#FEF2F2] dark:bg-[#7F1D1D]/30", text: "text-[#EF4444] dark:text-[#F87171]", border: "border-red-100 dark:border-[#7F1D1D]/40" },
                     { href: "/events", label: t("Events"), desc: t("Upcoming society programs"), icon: CalendarCheck, bg: "bg-[#F5F3FF] dark:bg-[#4C1D95]/30", text: "text-[#8B5CF6] dark:text-[#A78BFA]", border: "border-purple-100 dark:border-[#4C1D95]/40" },
@@ -869,11 +869,11 @@ function ResidentDashboard({
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
-                      <Link key={item.href} href={item.href} className={`group flex flex-col p-4 rounded-[1.2rem] border ${item.border} bg-white dark:bg-[#1E1E1E] hover:bg-orange-50/20 dark:hover:bg-[#F97316]/5 hover:border-[#FDBA74] dark:hover:border-[#9A3412] transition-all hover:-translate-y-0.5`}>
+                      <Link key={item.href} href={item.href} className={`group flex flex-col p-4 rounded-[1.2rem] border ${item.border} bg-white dark:bg-[#222222] hover:bg-orange-50/20 dark:hover:bg-[#FF5400]/5 hover:border-[#FF9966] dark:hover:border-[#9A3412] transition-all hover:-translate-y-0.5`}>
                         <div className={`w-10 h-10 rounded-xl ${item.bg} ${item.text} flex items-center justify-center mb-3 group-hover:scale-105 transition-transform`}>
                           <Icon className="w-5 h-5" strokeWidth={2} />
                         </div>
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-[#FAF7F5]">{item.label}</h3>
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-[#F5F5F5]">{item.label}</h3>
                         <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 mt-1 leading-snug">{item.desc}</p>
                       </Link>
                     );
@@ -882,17 +882,17 @@ function ResidentDashboard({
               </div>
 
               {/* Go Green Banner */}
-              <div className="rounded-[1.5rem] border border-orange-100 dark:border-[#7C2D12]/40 bg-[#FFF7ED] dark:bg-[#7C2D12]/20 p-6 shadow-sm flex items-center justify-between relative overflow-hidden">
-                <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-[#FED7AA]/20 blur-2xl" />
+              <div className="rounded-[1.5rem] border border-orange-100 dark:border-[#662200]/40 bg-[#FFFFFF] dark:bg-[#662200]/20 p-6 shadow-sm flex items-center justify-between relative overflow-hidden">
+                <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-[#E6E6E6]/20 blur-2xl" />
                 <div className="relative z-10 max-w-xl">
-                  <h3 className="text-[#92400E] dark:text-[#FDBA74] font-bold text-lg mb-1">{t("Go Digital. Go Green.")}</h3>
-                  <p className="text-[#92400E]/80 dark:text-[#FDBA74]/60 text-sm font-semibold leading-relaxed">
+                  <h3 className="text-[#92400E] dark:text-[#FF9966] font-bold text-lg mb-1">{t("Go Digital. Go Green.")}</h3>
+                  <p className="text-[#92400E]/80 dark:text-[#FF9966]/60 text-sm font-semibold leading-relaxed">
                     {t("Track maintenance bills, request visitor entries, and make secure instant payments online. Together let's save paper and build a modern digital society.")}
                   </p>
                 </div>
                 <div className="relative z-10 hidden md:block shrink-0 ml-4">
-                  <div className="w-16 h-24 bg-white dark:bg-[#1E1E1E] rounded-2xl border-2 border-[#FED7AA] dark:border-[#303030] shadow-md flex flex-col items-center overflow-hidden">
-                    <div className="w-6 h-1 bg-[#FED7AA] dark:bg-[#303030] rounded-b-full"></div>
+                  <div className="w-16 h-24 bg-white dark:bg-[#222222] rounded-2xl border-2 border-[#E6E6E6] dark:border-[#404040] shadow-md flex flex-col items-center overflow-hidden">
+                    <div className="w-6 h-1 bg-[#E6E6E6] dark:bg-[#404040] rounded-b-full"></div>
                     <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
                       <div className="w-8 h-8 rounded-full bg-[#D1FAE5] dark:bg-[#064E3B]/50 flex items-center justify-center shadow-inner">
                         <span className="text-[#059669] dark:text-[#6EE7B7] text-sm font-bold">₹</span>
@@ -930,18 +930,18 @@ function ResidentDashboard({
             <div className="xl:col-span-4 space-y-4">
               
               {/* Recent Notices */}
-              <div className="rounded-[1.5rem] border border-[#FED7AA] dark:border-[#303030] bg-white dark:bg-[#1E1E1E] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)]">
+              <div className="rounded-[1.5rem] border border-[#E6E6E6] dark:border-[#404040] bg-white dark:bg-[#222222] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)]">
                 <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-base font-bold text-gray-900 dark:text-[#FAF7F5]">{t("Recent Notices")}</h2>
-                  <Link href="/notices" className="text-xs font-bold text-[#F97316] dark:text-[#FB923C] hover:underline">{t("View All")}</Link>
+                  <h2 className="text-base font-bold text-gray-900 dark:text-[#F5F5F5]">{t("Recent Notices")}</h2>
+                  <Link href="/notices" className="text-xs font-bold text-[#FF5400] dark:text-[#FF7733] hover:underline">{t("View All")}</Link>
                 </div>
                 <div className="space-y-2.5">
                   {notices.length === 0 ? (
                     <p className="text-xs text-gray-500 dark:text-gray-400 font-medium py-3 text-center">{t("No notices published yet.")}</p>
                   ) : (
                     notices.slice(0, 3).map((notice) => (
-                      <Link key={notice.id} href="/notices" className="block p-3 rounded-xl border border-gray-100 dark:border-[#303030] hover:border-[#FDBA74] dark:hover:border-[#9A3412] hover:bg-[#FFF7ED] dark:hover:bg-[#7C2D12]/15 transition-colors">
-                        <span className="inline-block px-2 py-0.5 bg-[#FFF7ED] dark:bg-[#7C2D12]/30 text-[#F97316] dark:text-[#FB923C] text-[10px] font-bold rounded-md mb-1.5">
+                      <Link key={notice.id} href="/notices" className="block p-3 rounded-xl border border-gray-100 dark:border-[#404040] hover:border-[#FF9966] dark:hover:border-[#9A3412] hover:bg-[#FFFFFF] dark:hover:bg-[#662200]/15 transition-colors">
+                        <span className="inline-block px-2 py-0.5 bg-[#FFFFFF] dark:bg-[#662200]/30 text-[#FF5400] dark:text-[#FF7733] text-[10px] font-bold rounded-md mb-1.5">
                           {notice.category}
                         </span>
                         <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200 line-clamp-1">{notice.title}</h4>
@@ -953,17 +953,17 @@ function ResidentDashboard({
               </div>
 
               {/* Pending Packages */}
-              <div className="rounded-[1.5rem] border border-[#FED7AA] dark:border-[#303030] bg-white dark:bg-[#1E1E1E] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)]">
+              <div className="rounded-[1.5rem] border border-[#E6E6E6] dark:border-[#404040] bg-white dark:bg-[#222222] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)]">
                 <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-base font-bold text-gray-900 dark:text-[#FAF7F5]">{t("Gate Deliveries")}</h2>
-                  <Link href="/packages" className="text-xs font-bold text-[#F97316] dark:text-[#FB923C] hover:underline">{t("View All")}</Link>
+                  <h2 className="text-base font-bold text-gray-900 dark:text-[#F5F5F5]">{t("Gate Deliveries")}</h2>
+                  <Link href="/packages" className="text-xs font-bold text-[#FF5400] dark:text-[#FF7733] hover:underline">{t("View All")}</Link>
                 </div>
                 <div className="space-y-2.5">
                   {packages.length === 0 ? (
                     <p className="text-xs text-gray-500 dark:text-gray-400 font-medium py-3 text-center">{t("No packages at gate.")}</p>
                   ) : (
                     packages.filter(p => p.status === "received").slice(0, 3).map((pkg) => (
-                      <div key={pkg.id} className="flex justify-between items-center p-3 rounded-xl border border-gray-100 dark:border-[#303030] bg-gray-50 dark:bg-[#141414]">
+                      <div key={pkg.id} className="flex justify-between items-center p-3 rounded-xl border border-gray-100 dark:border-[#404040] bg-gray-50 dark:bg-[#171717]">
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{pkg.courierName || t("Courier")}</h4>
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t("Received at gate")}</p>
@@ -978,15 +978,15 @@ function ResidentDashboard({
               </div>
 
               {/* Upcoming Events */}
-              <div className="rounded-[1.5rem] border border-[#FED7AA] dark:border-[#303030] bg-white dark:bg-[#1E1E1E] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)]">
+              <div className="rounded-[1.5rem] border border-[#E6E6E6] dark:border-[#404040] bg-white dark:bg-[#222222] p-5 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)]">
                 <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-base font-bold text-gray-900 dark:text-[#FAF7F5]">{t("Upcoming Events")}</h2>
-                  <Link href="/events" className="text-xs font-bold text-[#F97316] dark:text-[#FB923C] hover:underline">{t("View All")}</Link>
+                  <h2 className="text-base font-bold text-gray-900 dark:text-[#F5F5F5]">{t("Upcoming Events")}</h2>
+                  <Link href="/events" className="text-xs font-bold text-[#FF5400] dark:text-[#FF7733] hover:underline">{t("View All")}</Link>
                 </div>
                 <div className="space-y-2.5">
                   {bootstrap?.events && bootstrap.events.length > 0 ? (
                     bootstrap.events.slice(0, 2).map((ev) => (
-                      <div key={ev.id} className="p-3 rounded-xl border border-gray-100 dark:border-[#303030]">
+                      <div key={ev.id} className="p-3 rounded-xl border border-gray-100 dark:border-[#404040]">
                         <span className="inline-block px-2 py-0.5 bg-[#F5F3FF] dark:bg-[#4C1D95]/30 text-[#8B5CF6] dark:text-[#A78BFA] text-[10px] font-bold rounded-md mb-1.5">
                           {ev.category}
                         </span>
@@ -1027,19 +1027,19 @@ function AdminMetricCard({
   tone: "orange" | "green" | "blue" | "red" | "yellow" | "purple";
 }) {
   const styles = {
-    orange: "border-[#FED7AA] bg-[#FFF7ED] hover:border-[#FDBA74] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#9A5A22]",
-    green: "border-[#BBF7D0] bg-[#F0FDF4] hover:border-[#86EFAC] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#2F7958]",
-    blue: "border-[#BFDBFE] bg-[#EFF6FF] hover:border-[#93C5FD] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#31558C]",
-    red: "border-[#FECACA] bg-[#FEF2F2] hover:border-[#FCA5A5] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#7A3434]",
-    yellow: "border-[#FDE68A] bg-[#FEFCE8] hover:border-[#FACC15] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#8A6A19]",
-    purple: "border-[#E9D5FF] bg-[#FAF5FF] hover:border-[#C084FC] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#6B3A8F]",
+    orange: "border-[#E6E6E6] bg-[#FFFFFF] hover:border-[#FF9966] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#CC4400]",
+    green: "border-[#BBF7D0] bg-[#F0FDF4] hover:border-[#86EFAC] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#2F7958]",
+    blue: "border-[#BFDBFE] bg-[#EFF6FF] hover:border-[#93C5FD] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#31558C]",
+    red: "border-[#FECACA] bg-[#FEF2F2] hover:border-[#FCA5A5] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#7A3434]",
+    yellow: "border-[#FFCC33] bg-[#FFF9E5] hover:border-[#FFBE00] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#8A6A19]",
+    purple: "border-[#E9D5FF] bg-[#FAF5FF] hover:border-[#C084FC] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#6B3A8F]",
   }[tone];
   const iconStyles = {
-    orange: "bg-[#FFEDD5] text-[#F97316] dark:bg-[#7C2D12]/45 dark:text-[#FDBA74]",
+    orange: "bg-[#FFEEE5] text-[#FF5400] dark:bg-[#662200]/45 dark:text-[#FF9966]",
     green: "bg-[#D1FAE5] text-[#059669] dark:bg-[#064E3B]/45 dark:text-[#6EE7B7]",
     blue: "bg-[#DBEAFE] text-[#2563EB] dark:bg-[#1E3A8A]/42 dark:text-[#93C5FD]",
     red: "bg-[#FEE2E2] text-[#DC2626] dark:bg-[#7F1D1D]/42 dark:text-[#FCA5A5]",
-    yellow: "bg-[#FEF3C7] text-[#A16207] dark:bg-[#713F12]/42 dark:text-[#FDE68A]",
+    yellow: "bg-[#FFF2CC] text-[#A16207] dark:bg-[#664D00]/42 dark:text-[#FFCC33]",
     purple: "bg-[#F3E8FF] text-[#7E22CE] dark:bg-[#581C87]/42 dark:text-[#D8B4FE]",
   }[tone];
 
@@ -1050,12 +1050,12 @@ function AdminMetricCard({
           <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconStyles}`}>
             <Icon className="h-5 w-5" />
           </div>
-          <ArrowRight className="h-4 w-4 text-[#1C1917]/35 transition-transform group-hover:translate-x-1 dark:text-[#D6D3D1]/70" />
+          <ArrowRight className="h-4 w-4 text-[#333333]/35 transition-transform group-hover:translate-x-1 dark:text-[#CCCCCC]/70" />
         </div>
         <div>
-          <p className="text-xs font-bold text-[#1C1917]/55 dark:text-[#D6D3D1]/80">{label}</p>
-          <h3 className="mt-0.5 truncate text-2xl font-bold tracking-tight text-[#1C1917] dark:text-[#FAF7F5]">{value}</h3>
-          <p className="mt-0.5 line-clamp-1 text-[11px] font-semibold text-[#1C1917]/50 dark:text-[#D6D3D1]/72">{note}</p>
+          <p className="text-xs font-bold text-[#333333]/55 dark:text-[#CCCCCC]/80">{label}</p>
+          <h3 className="mt-0.5 truncate text-2xl font-bold tracking-tight text-[#333333] dark:text-[#F5F5F5]">{value}</h3>
+          <p className="mt-0.5 line-clamp-1 text-[11px] font-semibold text-[#333333]/50 dark:text-[#CCCCCC]/72">{note}</p>
         </div>
       </div>
     </Link>
@@ -1066,15 +1066,15 @@ function AdminModuleTile({ module }: { module: ModuleItem }) {
   const Icon = module.icon;
   const { t } = useI18n();
   return (
-    <Link href={module.href} className="group flex min-h-[94px] items-center gap-3 rounded-[1.2rem] border border-[#FED7AA] bg-white p-3 shadow-[0_8px_28px_-24px_rgba(28,25,23,0.38)] transition-all hover:-translate-y-0.5 hover:border-[#FDBA74] hover:bg-[#FFF7ED] dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#9A5A22] dark:hover:bg-[#241A12]">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFEDD5] text-[#F97316] transition-transform group-hover:scale-105 dark:bg-[#7C2D12]/42 dark:text-[#FDBA74]">
+    <Link href={module.href} className="group flex min-h-[94px] items-center gap-3 rounded-[1.2rem] border border-[#E6E6E6] bg-white p-3 shadow-[0_8px_28px_-24px_rgba(28,25,23,0.38)] transition-all hover:-translate-y-0.5 hover:border-[#FF9966] hover:bg-[#FFFFFF] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#CC4400] dark:hover:bg-[#241A12]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFEEE5] text-[#FF5400] transition-transform group-hover:scale-105 dark:bg-[#662200]/42 dark:text-[#FF9966]">
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-sm font-bold text-[#1C1917] dark:text-[#FAF7F5]">{t(module.label)}</h3>
-        <p className="mt-0.5 line-clamp-1 text-[11px] font-semibold text-[#1C1917]/50 dark:text-[#D6D3D1]/72">{t(module.note)}</p>
+        <h3 className="truncate text-sm font-bold text-[#333333] dark:text-[#F5F5F5]">{t(module.label)}</h3>
+        <p className="mt-0.5 line-clamp-1 text-[11px] font-semibold text-[#333333]/50 dark:text-[#CCCCCC]/72">{t(module.note)}</p>
       </div>
-      <ArrowRight className="h-4 w-4 shrink-0 text-[#1C1917]/35 transition-transform group-hover:translate-x-1 dark:text-[#D6D3D1]/70" />
+      <ArrowRight className="h-4 w-4 shrink-0 text-[#333333]/35 transition-transform group-hover:translate-x-1 dark:text-[#CCCCCC]/70" />
     </Link>
   );
 }
@@ -1113,44 +1113,44 @@ function AdminDashboard({
   const riskTotal = aging.current + aging.days30 + aging.days60 + aging.days90Plus;
 
   return (
-    <div className="-m-3 min-h-full overflow-x-hidden bg-[#FFFBEB] p-2 text-[#1C1917] dark:bg-[#141414] dark:text-[#FAF7F5] sm:-m-4 sm:p-3 lg:-m-6 lg:p-4 xl:p-5">
+    <div className="dashboard-flat-theme -m-3 min-h-full overflow-x-hidden bg-[#FEFDDF] p-2 text-[#333333] dark:bg-[#171717] dark:text-[#F5F5F5] sm:-m-4 sm:p-3 lg:-m-6 lg:p-4 xl:p-5">
       <div className="relative mx-auto max-w-[1560px] pb-20 lg:pb-4">
         <motion.section initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42 }} className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-[#FED7AA] bg-white/90 p-4 shadow-[0_18px_58px_-50px_rgba(28,25,23,0.68)] dark:border-[#303030] dark:bg-[#1E1E1E]/92 lg:p-5 xl:col-span-8">
-            <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#F97316]/10 blur-3xl dark:bg-[#F97316]/8" />
+          <div className="dashboard-panel relative overflow-hidden rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 dark:border-[#404040] dark:bg-[#222222] lg:p-5 xl:col-span-8">
+            <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#FF5400]/10 blur-3xl dark:bg-[#FF5400]/8" />
             <div className="relative z-10 flex min-h-[220px] flex-col justify-between gap-6 lg:flex-row lg:items-end">
               <div className="max-w-3xl">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex min-h-7 items-center rounded-full border border-[#F97316]/20 bg-[#F97316]/10 px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#F97316] dark:text-[#FDBA74]">
+                  <span className="inline-flex min-h-7 items-center rounded-full border border-[#FF5400]/20 bg-[#FF5400]/10 px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#FF5400] dark:text-[#FF9966]">
                     {t("Admin command center")}
                   </span>
-                  {isStale && <RefreshCw className="h-4 w-4 animate-spin text-[#F97316]" />}
+                  {isStale && <RefreshCw className="h-4 w-4 animate-spin text-[#FF5400]" />}
                 </div>
-                <h1 className="max-w-[920px] truncate text-3xl font-bold tracking-tight text-[#1C1917] dark:text-[#FAF7F5] sm:text-4xl xl:text-[3.35rem]">
+                <h1 className="max-w-[920px] truncate text-3xl font-bold tracking-tight text-[#333333] dark:text-[#F5F5F5] sm:text-4xl xl:text-[3.35rem]">
                   {user?.societyName || t("Society operations")}
                 </h1>
-                <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-[#1C1917]/60 dark:text-[#D6D3D1]/82">
+                <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-[#333333]/60 dark:text-[#CCCCCC]/82">
                   {t("Track collections, dues, gate movement, residents, and governance work from one focused admin dashboard.")}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Link href="/maintenance" className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#F97316] px-4 text-sm font-bold text-white shadow-lg shadow-[#F97316]/18 transition-transform hover:-translate-y-0.5">
+                  <Link href="/maintenance" className="dashboard-accent-primary inline-flex min-h-10 items-center justify-center rounded-xl bg-[#FF5400] px-4 text-sm font-bold text-white">
                     {t("Raise invoices")}
                   </Link>
-                  <Link href="/reports" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#FED7AA] bg-white px-4 text-sm font-bold text-[#1C1917] transition-transform hover:-translate-y-0.5 dark:border-[#303030] dark:bg-[#303030]/50 dark:text-[#FAF7F5]">
+                  <Link href="/reports" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#E6E6E6] bg-white px-4 text-sm font-bold text-[#333333] dark:border-[#404040] dark:bg-[#2A2A2A] dark:text-[#F5F5F5]">
                     {t("View reports")}
                   </Link>
-                  <Link href="/notices" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#57534E]/20 bg-[#57534E]/10 px-4 text-sm font-bold text-[#57534E] transition-transform hover:-translate-y-0.5 dark:text-[#FDE68A]">
+                  <Link href="/notices" className="dashboard-accent-secondary inline-flex min-h-10 items-center justify-center rounded-xl border border-[#FFBE00] bg-[#FFBE00] px-4 text-sm font-bold text-[#333333] dark:text-[#333333]">
                     {t("Create notice")}
                   </Link>
                 </div>
               </div>
               <div className="grid min-w-[min(100%,22rem)] grid-cols-2 gap-2">
-                <div className="rounded-2xl border border-[#FED7AA] bg-[#FFFBEB] p-3 dark:border-[#303030] dark:bg-[#141414]">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1C1917]/45 dark:text-[#D6D3D1]/70">{t("Collection rate")}</p>
-                  <p className="mt-1 text-3xl font-bold text-[#F97316]">{collectionRate}%</p>
+                <div className="dashboard-subpanel rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] p-3 dark:border-[#404040] dark:bg-[#2A2A2A]">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#333333]/45 dark:text-[#CCCCCC]/70">{t("Collection rate")}</p>
+                  <p className="mt-1 text-3xl font-bold text-[#FF5400]">{collectionRate}%</p>
                 </div>
-                <div className="rounded-2xl border border-[#BBF7D0] bg-[#F0FDF4] p-3 dark:border-[#303030] dark:bg-[#141414]">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1C1917]/45 dark:text-[#D6D3D1]/70">{t("Fund balance")}</p>
+                <div className="dashboard-subpanel rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] p-3 dark:border-[#404040] dark:bg-[#2A2A2A]">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#333333]/45 dark:text-[#CCCCCC]/70">{t("Fund balance")}</p>
                   <p className="mt-1 truncate text-xl font-bold text-[#059669]">{formatCurrency(fundBalance)}</p>
                 </div>
               </div>
@@ -1158,31 +1158,31 @@ function AdminDashboard({
           </div>
 
           <aside className="grid gap-3 md:grid-cols-2 xl:col-span-4 xl:grid-cols-1">
-            <div className="rounded-[1.5rem] border border-[#FED7AA] bg-white/90 p-4 text-[#1C1917] shadow-[0_18px_58px_-50px_rgba(249,115,22,0.36)] dark:border-[#303030] dark:bg-[#1E1E1E]/92 dark:text-[#FAF7F5]">
+            <div className="dashboard-panel rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 text-[#333333] dark:border-[#404040] dark:bg-[#222222] dark:text-[#F5F5F5]">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1C1917]/45 dark:text-[#D6D3D1]/70">{t("This period")}</p>
-                  <h2 className="mt-1.5 text-2xl font-bold text-[#1C1917] dark:text-[#FAF7F5]">{data?.period || "--"}</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#333333]/45 dark:text-[#CCCCCC]/70">{t("This period")}</p>
+                  <h2 className="mt-1.5 text-2xl font-bold text-[#333333] dark:text-[#F5F5F5]">{data?.period || "--"}</h2>
                 </div>
-                <IndianRupee className="h-6 w-6 text-[#F97316]" />
+                <IndianRupee className="h-6 w-6 text-[#FF5400]" />
               </div>
               <div className="mt-5 grid grid-cols-2 gap-2">
-                <div className="rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-2.5 dark:border-[#303030] dark:bg-[#141414]">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1C1917]/45 dark:text-[#D6D3D1]/70">{t("Collected")}</p>
+                <div className="dashboard-subpanel rounded-xl border border-[#E6E6E6] bg-[#F7F7F7] p-2.5 dark:border-[#404040] dark:bg-[#2A2A2A]">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#333333]/45 dark:text-[#CCCCCC]/70">{t("Collected")}</p>
                   <p className="mt-1 truncate text-sm font-bold text-[#059669]">{formatCurrency(collected)}</p>
                 </div>
-                <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] p-2.5 dark:border-[#303030] dark:bg-[#141414]">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1C1917]/45 dark:text-[#D6D3D1]/70">{t("Pending")}</p>
-                  <p className="mt-1 truncate text-sm font-bold text-[#FDBA74]">{formatCurrency(pending)}</p>
+                <div className="dashboard-subpanel rounded-xl border border-[#E6E6E6] bg-[#F7F7F7] p-2.5 dark:border-[#404040] dark:bg-[#2A2A2A]">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#333333]/45 dark:text-[#CCCCCC]/70">{t("Pending")}</p>
+                  <p className="mt-1 truncate text-sm font-bold text-[#FF9966]">{formatCurrency(pending)}</p>
                 </div>
               </div>
             </div>
-            <Link href="/complaints" className="group rounded-[1.5rem] border border-[#FECACA] bg-[#FEF2F2] p-4 shadow-[0_14px_42px_-34px_rgba(239,68,68,0.32)] transition-transform hover:-translate-y-0.5 dark:border-[#303030] dark:bg-[#1E1E1E] dark:hover:border-[#7A3434]">
+            <Link href="/complaints" className="dashboard-panel group rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 transition-colors hover:border-[#FF5400] dark:border-[#404040] dark:bg-[#222222]">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-[#DC2626] dark:text-[#FCA5A5]">{t("Action needed")}</p>
-                  <h3 className="mt-1 text-xl font-bold text-[#1C1917] dark:text-[#FAF7F5]">{data?.openComplaints || 0} {t("open requests")}</h3>
-                  <p className="mt-1 text-xs font-semibold text-[#1C1917]/55 dark:text-[#D6D3D1]/78">{t("Review resident complaints and service tickets.")}</p>
+                  <h3 className="mt-1 text-xl font-bold text-[#333333] dark:text-[#F5F5F5]">{data?.openComplaints || 0} {t("open requests")}</h3>
+                  <p className="mt-1 text-xs font-semibold text-[#333333]/55 dark:text-[#CCCCCC]/78">{t("Review resident complaints and service tickets.")}</p>
                 </div>
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#DC2626] text-white">
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -1200,17 +1200,17 @@ function AdminDashboard({
         </section>
 
         <section className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
-          <div className="rounded-[1.5rem] border border-[#FED7AA] bg-white/90 p-4 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)] dark:border-[#303030] dark:bg-[#1E1E1E]/92 xl:col-span-8">
+          <div className="dashboard-panel rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 dark:border-[#404040] dark:bg-[#222222] xl:col-span-8">
             <div className="mb-4 flex items-end justify-between gap-3">
               <div>
-                <h2 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF7F5]">{t("Collection performance")}</h2>
-                <p className="mt-0.5 text-xs font-semibold text-[#1C1917]/55 dark:text-[#D6D3D1]/78">{t("Collected, pending dues, and expenses across recent months.")}</p>
+                <h2 className="text-xl font-bold text-[#333333] dark:text-[#F5F5F5]">{t("Collection performance")}</h2>
+                <p className="mt-0.5 text-xs font-semibold text-[#333333]/55 dark:text-[#CCCCCC]/78">{t("Collected, pending dues, and expenses across recent months.")}</p>
               </div>
-              <Link href="/reports" className="hidden min-h-9 items-center rounded-xl bg-[#FFFBEB] px-3 text-xs font-bold text-[#1C1917]/60 dark:bg-[#303030]/50 dark:text-[#D6D3D1] sm:inline-flex">
+              <Link href="/reports" className="dashboard-subpanel hidden min-h-9 items-center rounded-xl bg-[#F7F7F7] px-3 text-xs font-bold text-[#333333]/60 dark:bg-[#2A2A2A] dark:text-[#CCCCCC] sm:inline-flex">
                 {t("Reports")}
               </Link>
             </div>
-            <div className="flex h-[260px] items-end gap-3 overflow-hidden rounded-2xl border border-[#FED7AA] bg-[#FFFBEB] p-4 dark:border-[#303030] dark:bg-[#141414]">
+            <div className="dashboard-subpanel flex h-[260px] items-end gap-3 overflow-hidden rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] p-4 dark:border-[#404040] dark:bg-[#2A2A2A]">
               {monthlyTrend.length === 0 ? (
                 <EmptyMiniState text={t("Analytics will appear after bills and expenses are recorded.")} />
               ) : monthlyTrend.map((item) => {
@@ -1219,14 +1219,14 @@ function AdminDashboard({
                 const expenseHeight = Math.max(4, Math.round((item.expenses / maxTrend) * 190));
                 return (
                   <div key={item.period} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-                    <div className="flex h-[200px] w-full max-w-[54px] items-end justify-center gap-1 rounded-full bg-white/70 px-1.5 py-2 dark:bg-[#1E1E1E]">
+                    <div className="flex h-[200px] w-full max-w-[54px] items-end justify-center gap-1 rounded-full bg-white/70 px-1.5 py-2 dark:bg-[#222222]">
                       <span className="w-2.5 rounded-full bg-[#10B981]" style={{ height: collectedHeight }} title={`${t("Collected")}: ${formatCurrency(item.collected)}`} />
-                      <span className="w-2.5 rounded-full bg-[#F97316]" style={{ height: pendingHeight }} title={`${t("Pending")}: ${formatCurrency(item.pending)}`} />
+                      <span className="w-2.5 rounded-full bg-[#FF5400]" style={{ height: pendingHeight }} title={`${t("Pending")}: ${formatCurrency(item.pending)}`} />
                       <span className="w-2.5 rounded-full bg-[#60A5FA]" style={{ height: expenseHeight }} title={`${t("Expenses")}: ${formatCurrency(item.expenses)}`} />
                     </div>
                     <div className="text-center">
-                      <p className="truncate text-[11px] font-bold text-[#1C1917] dark:text-[#FAF7F5]">{item.label}</p>
-                      <p className="text-[10px] font-bold text-[#1C1917]/45 dark:text-[#D6D3D1]/70">{item.collectionRate}%</p>
+                      <p className="truncate text-[11px] font-bold text-[#333333] dark:text-[#F5F5F5]">{item.label}</p>
+                      <p className="text-[10px] font-bold text-[#333333]/45 dark:text-[#CCCCCC]/70">{item.collectionRate}%</p>
                     </div>
                   </div>
                 );
@@ -1235,47 +1235,47 @@ function AdminDashboard({
           </div>
 
           <aside className="space-y-3 xl:col-span-4">
-            <div className="rounded-[1.5rem] border border-[#FED7AA] bg-white/90 p-4 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)] dark:border-[#303030] dark:bg-[#1E1E1E]/92">
+            <div className="dashboard-panel rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 dark:border-[#404040] dark:bg-[#222222]">
               <div className="mb-3 flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF7F5]">{t("Work queue")}</h2>
-                  <p className="mt-0.5 text-xs font-semibold text-[#1C1917]/55 dark:text-[#D6D3D1]/78">{t("Tasks that need admin attention.")}</p>
+                  <h2 className="text-xl font-bold text-[#333333] dark:text-[#F5F5F5]">{t("Work queue")}</h2>
+                  <p className="mt-0.5 text-xs font-semibold text-[#333333]/55 dark:text-[#CCCCCC]/78">{t("Tasks that need admin attention.")}</p>
                 </div>
-                <BellRing className="h-5 w-5 text-[#F97316]" />
+                <BellRing className="h-5 w-5 text-[#FF5400]" />
               </div>
               <div className="space-y-2">
                 {[
-                  { href: "/maintenance", label: t("Pending collection"), value: formatCurrency(pending), icon: Receipt, tone: "bg-[#F97316]" },
+                  { href: "/maintenance", label: t("Pending collection"), value: formatCurrency(pending), icon: Receipt, tone: "bg-[#FF5400]" },
                   { href: "/complaints", label: t("Open complaints"), value: String(data?.openComplaints || 0), icon: AlertTriangle, tone: "bg-[#EF4444]" },
                   { href: "/visitors", label: t("Gate activity today"), value: String(data?.visitorsToday || 0), icon: Shield, tone: "bg-[#60A5FA]" },
                   { href: "/polls", label: t("Active polls"), value: String(data?.activePolls || 0), icon: Vote, tone: "bg-[#A78BFA]" },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
-                    <Link key={item.href} href={item.href} className="flex items-center gap-3 rounded-xl border border-[#FED7AA] bg-[#FFFBEB] p-2.5 transition-all hover:-translate-y-0.5 hover:border-[#FDBA74] dark:border-[#303030] dark:bg-[#141414] dark:hover:border-[#9A5A22]">
+                    <Link key={item.href} href={item.href} className="dashboard-subpanel flex items-center gap-3 rounded-xl border border-[#E6E6E6] bg-[#F7F7F7] p-2.5 transition-colors hover:border-[#FF5400] dark:border-[#404040] dark:bg-[#2A2A2A]">
                       <span className={`h-2.5 w-2.5 rounded-full ${item.tone}`} />
-                      <Icon className="h-4 w-4 text-[#1C1917]/50 dark:text-[#D6D3D1]/78" />
-                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-[#1C1917] dark:text-[#FAF7F5]">{item.label}</span>
-                      <span className="shrink-0 text-sm font-bold text-[#F97316]">{item.value}</span>
+                      <Icon className="h-4 w-4 text-[#333333]/50 dark:text-[#CCCCCC]/78" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-[#333333] dark:text-[#F5F5F5]">{item.label}</span>
+                      <span className="shrink-0 text-sm font-bold text-[#FF5400]">{item.value}</span>
                     </Link>
                   );
                 })}
               </div>
             </div>
 
-            <div className="rounded-[1.5rem] border border-[#FED7AA] bg-white/90 p-4 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)] dark:border-[#303030] dark:bg-[#1E1E1E]/92">
-              <h2 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF7F5]">{t("Dues risk")}</h2>
+            <div className="dashboard-panel rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 dark:border-[#404040] dark:bg-[#222222]">
+              <h2 className="text-xl font-bold text-[#333333] dark:text-[#F5F5F5]">{t("Dues risk")}</h2>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 {[
                   { label: t("Now"), value: aging.current, color: "bg-[#10B981]" },
-                  { label: "30", value: aging.days30, color: "bg-[#FBBF24]" },
-                  { label: "60", value: aging.days60, color: "bg-[#F97316]" },
+                  { label: "30", value: aging.days30, color: "bg-[#FFBE00]" },
+                  { label: "60", value: aging.days60, color: "bg-[#FF5400]" },
                   { label: "90+", value: aging.days90Plus, color: "bg-[#EF4444]" },
                 ].map((item) => (
-                  <div key={item.label} className="rounded-xl bg-[#FFFBEB] p-2.5 dark:bg-[#141414]">
+                  <div key={item.label} className="dashboard-subpanel rounded-xl bg-[#F7F7F7] p-2.5 dark:bg-[#2A2A2A]">
                     <div className={`mb-2 h-1.5 rounded-full ${item.color}`} style={{ opacity: riskTotal > 0 ? 1 : 0.35 }} />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#1C1917]/45 dark:text-[#D6D3D1]/70">{item.label}</p>
-                    <p className="mt-1 truncate text-xs font-bold text-[#1C1917] dark:text-[#FAF7F5]">{formatCurrency(item.value)}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#333333]/45 dark:text-[#CCCCCC]/70">{item.label}</p>
+                    <p className="mt-1 truncate text-xs font-bold text-[#333333] dark:text-[#F5F5F5]">{formatCurrency(item.value)}</p>
                   </div>
                 ))}
               </div>
@@ -1284,11 +1284,11 @@ function AdminDashboard({
         </section>
 
         <section className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
-          <div className="rounded-[1.5rem] border border-[#FED7AA] bg-white/90 p-4 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)] dark:border-[#303030] dark:bg-[#1E1E1E]/92 xl:col-span-8">
+          <div className="dashboard-panel rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 dark:border-[#404040] dark:bg-[#222222] xl:col-span-8">
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
-                <h2 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF7F5]">{t("Admin shortcuts")}</h2>
-                <p className="mt-0.5 text-xs font-semibold text-[#1C1917]/55 dark:text-[#D6D3D1]/78">{t("High-frequency controls for society operations.")}</p>
+                <h2 className="text-xl font-bold text-[#333333] dark:text-[#F5F5F5]">{t("Admin shortcuts")}</h2>
+                <p className="mt-0.5 text-xs font-semibold text-[#333333]/55 dark:text-[#CCCCCC]/78">{t("High-frequency controls for society operations.")}</p>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -1296,22 +1296,22 @@ function AdminDashboard({
             </div>
           </div>
 
-          <aside className="rounded-[1.5rem] border border-[#FED7AA] bg-white/90 p-4 shadow-[0_14px_48px_-40px_rgba(28,25,23,0.58)] dark:border-[#303030] dark:bg-[#1E1E1E]/92 xl:col-span-4">
+          <aside className="dashboard-panel rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 dark:border-[#404040] dark:bg-[#222222] xl:col-span-4">
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF7F5]">{t("Recent billing")}</h2>
-                <p className="mt-0.5 text-xs font-semibold text-[#1C1917]/55 dark:text-[#D6D3D1]/78">{t("Latest invoices and payment updates.")}</p>
+                <h2 className="text-xl font-bold text-[#333333] dark:text-[#F5F5F5]">{t("Recent billing")}</h2>
+                <p className="mt-0.5 text-xs font-semibold text-[#333333]/55 dark:text-[#CCCCCC]/78">{t("Latest invoices and payment updates.")}</p>
               </div>
-              <Link href="/maintenance" className="rounded-xl bg-[#FFFBEB] px-3 py-2 text-xs font-bold text-[#1C1917]/60 dark:bg-[#303030]/50 dark:text-[#D6D3D1]">{t("Open")}</Link>
+              <Link href="/maintenance" className="dashboard-subpanel rounded-xl bg-[#F7F7F7] px-3 py-2 text-xs font-bold text-[#333333]/60 dark:bg-[#2A2A2A] dark:text-[#CCCCCC]">{t("Open")}</Link>
             </div>
             <div className="space-y-2">
               {recentActivity.length === 0 ? <EmptyMiniState text={t("No recent billing activity.")} /> : recentActivity.slice(0, 5).map((item) => (
-                <Link key={item.id} href="/maintenance" className="flex items-center justify-between gap-3 rounded-xl border border-[#FED7AA] bg-[#FFFBEB] p-2.5 transition-all hover:border-[#FDBA74] dark:border-[#303030] dark:bg-[#141414] dark:hover:border-[#9A5A22]">
+                <Link key={item.id} href="/maintenance" className="dashboard-subpanel flex items-center justify-between gap-3 rounded-xl border border-[#E6E6E6] bg-[#F7F7F7] p-2.5 transition-colors hover:border-[#FF5400] dark:border-[#404040] dark:bg-[#2A2A2A]">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-[#1C1917] dark:text-[#FAF7F5]">{item.flatNumber} · {item.ownerName}</p>
-                    <p className="mt-0.5 text-[11px] font-semibold text-[#1C1917]/50 dark:text-[#D6D3D1]/72">{formatShortDate(item.updatedAt, language)} · {t(item.status)}</p>
+                    <p className="truncate text-sm font-bold text-[#333333] dark:text-[#F5F5F5]">{item.flatNumber} · {item.ownerName}</p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-[#333333]/50 dark:text-[#CCCCCC]/72">{formatShortDate(item.updatedAt, language)} · {t(item.status)}</p>
                   </div>
-                  <span className="shrink-0 text-sm font-bold text-[#F97316]">{formatCurrency(item.amount)}</span>
+                  <span className="shrink-0 text-sm font-bold text-[#FF5400]">{formatCurrency(item.amount)}</span>
                 </Link>
               ))}
             </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Building2, Menu, LogOut, Settings, User, Shield, ChevronDown, Copy, Search } from "lucide-react";
+import Image from "next/image";
+import { Menu, LogOut, Settings, User, Shield, ChevronDown, Copy, Search } from "lucide-react";
 import CommandPalette, { clearRecentActions, useCommandPalette } from "@/components/ux/CommandPalette";
 import { useUser } from "@/lib/user-context";
 import { usePersonaNav } from "@/lib/navigation/use-persona-nav";
@@ -37,12 +38,12 @@ const roleBadgeColors: Record<string, string> = {
   chairman: "text-primary",
   secretary: "text-primary",
   treasurer: "text-primary",
-  member: "text-emerald-600",
-  tenant: "text-blue-600",
-  guard: "text-orange-600",
-  watchman: "text-orange-600",
-  vendor_staff: "text-purple-600",
-  facility_manager: "text-teal-600",
+  member: "text-[#CC9900]",
+  tenant: "text-[#CC9900]",
+  guard: "text-[#FF5400]",
+  watchman: "text-[#FF5400]",
+  vendor_staff: "text-[#808080]",
+  facility_manager: "text-[#808080]",
 };
 
 export default function Header({
@@ -102,13 +103,18 @@ export default function Header({
   return (
     <>
     <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-    <header className="sticky top-0 z-30 border-b border-[#FED7AA] bg-[#FFFBEB]/92 backdrop-blur-xl dark:border-[#303030] dark:bg-[#141414]/96">
+    <header className="sticky top-0 z-30 border-b border-[#E6E6E6] bg-[#FEFDDF] dark:border-[#404040] dark:bg-[#171717]">
       <div className="lg:hidden px-2 py-2">
         <div className="flex min-h-[48px] items-center justify-between gap-1.5">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-md shadow-[#F97316]/18">
-              <Building2 className="h-4 w-4" />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="ReManage"
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0 rounded-xl"
+              priority
+            />
             <div className="min-w-0">
               <h1 className="truncate text-sm font-black tracking-tight text-text-primary">
                 {t("ReManage")}
@@ -123,23 +129,23 @@ export default function Header({
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#FED7AA] bg-white text-text-primary shadow-sm active:scale-95 dark:border-[#303030] dark:bg-[#1E1E1E]"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E6E6E6] bg-white text-text-primary active:scale-95 dark:border-[#404040] dark:bg-[#222222]"
               aria-label={t("Search")}
             >
               <Search className="h-4 w-4" />
             </button>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#FED7AA] bg-white dark:border-[#303030] dark:bg-[#1E1E1E]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E6E6E6] bg-white dark:border-[#404040] dark:bg-[#222222]">
               <ThemeToggle compact />
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#FED7AA] bg-white dark:border-[#303030] dark:bg-[#1E1E1E]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E6E6E6] bg-white dark:border-[#404040] dark:bg-[#222222]">
               <LanguageSelector compact />
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#FED7AA] bg-white dark:border-[#303030] dark:bg-[#1E1E1E]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E6E6E6] bg-white dark:border-[#404040] dark:bg-[#222222]">
               <NotificationCenter compact />
             </div>
             <button
               onClick={onMenuToggle}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#FED7AA] bg-white text-text-primary shadow-sm active:scale-95 dark:border-[#303030] dark:bg-[#1E1E1E]"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E6E6E6] bg-white text-text-primary active:scale-95 dark:border-[#404040] dark:bg-[#222222]"
               aria-label={t("Open menu")}
             >
               <Menu className="h-4 w-4" />
@@ -151,7 +157,7 @@ export default function Header({
           <button
             type="button"
             onClick={copyJoinCode}
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[#F97316]/20 bg-[#F97316]/8 px-3 py-1.5 text-[#F97316]"
+            className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[#FF5400]/20 bg-[#FFEEE5] px-3 py-1.5 text-[#FF5400]"
             title={t("Copy society join code")}
           >
             <span className="text-[9px] font-black uppercase tracking-widest text-primary/70">
@@ -178,7 +184,7 @@ export default function Header({
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="hidden min-h-10 items-center gap-2 rounded-xl border border-[#FED7AA] bg-white px-3 text-sm font-semibold text-text-secondary hover:text-text-primary dark:border-[#303030] dark:bg-[#1E1E1E] lg:inline-flex"
+            className="hidden min-h-10 items-center gap-2 rounded-xl border border-[#E6E6E6] bg-white px-3 text-sm font-semibold text-text-secondary hover:text-text-primary dark:border-[#404040] dark:bg-[#222222] lg:inline-flex"
           >
             <Search className="h-4 w-4" />
             <span>{t("Search")}</span>
@@ -188,7 +194,7 @@ export default function Header({
             <button
               type="button"
               onClick={copyJoinCode}
-              className="hidden md:flex items-center gap-2 rounded-xl border border-[#F97316]/20 bg-[#F97316]/8 px-3 py-1.5 text-[#F97316] transition-colors hover:bg-[#F97316]/12"
+              className="hidden items-center gap-2 rounded-xl border border-[#FF5400]/20 bg-[#FFEEE5] px-3 py-1.5 text-[#FF5400] transition-colors hover:bg-[#FFDDCC] md:flex"
               title={t("Copy society join code")}
             >
               <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">
@@ -208,9 +214,9 @@ export default function Header({
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowProfile(!showProfile)}
-            className="flex cursor-pointer items-center gap-2.5 rounded-xl border-l border-[#FED7AA] px-2 py-1.5 pl-3 transition-colors hover:bg-[#FED7AA]/25 dark:border-[#303030] dark:hover:bg-[#1E1E1E]"
+            className="flex cursor-pointer items-center gap-2.5 rounded-xl border-l border-[#E6E6E6] px-2 py-1.5 pl-3 transition-colors hover:bg-[#E6E6E6]/40 dark:border-[#404040] dark:hover:bg-[#222222]"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F97316] shadow-sm">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FF5400]">
                 <span className="text-white text-xs font-bold">{initials}</span>
               </div>
               <div className="hidden sm:block text-left">
@@ -221,11 +227,11 @@ export default function Header({
             </button>
 
             {showProfile && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-[#FED7AA] bg-white shadow-2xl shadow-black/10 animate-in fade-in zoom-in-95 duration-150 dark:border-[#303030] dark:bg-[#1E1E1E]">
+              <div className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-[#E6E6E6] bg-white animate-in fade-in zoom-in-95 duration-150 dark:border-[#404040] dark:bg-[#222222]">
                 {/* Profile Info */}
-                <div className="border-b border-[#FED7AA]/60 bg-[#FFFBEB]/70 p-3 dark:border-[#303030] dark:bg-[#141414]">
+                <div className="border-b border-[#E6E6E6]/60 bg-[#FEFDDF] p-3 dark:border-[#404040] dark:bg-[#171717]">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F97316] shadow-sm">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF5400]">
                       <span className="text-white text-sm font-bold">{initials}</span>
                     </div>
                     <div className="min-w-0">
@@ -243,14 +249,14 @@ export default function Header({
                 <div className="p-1.5">
                   <button
                     onClick={() => { setShowProfile(false); router.push("/settings"); }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-text-primary transition-colors hover:bg-[#FFFBEB] dark:hover:bg-[#141414]"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-text-primary transition-colors hover:bg-[#FEFDDF] dark:hover:bg-[#171717]"
                   >
                     <User className="w-4 h-4 text-text-tertiary" /> {t("My Profile")}
                   </button>
                   {["chairman", "secretary", "treasurer"].includes(userRole) && (
                     <button
                       onClick={() => { setShowProfile(false); router.push("/settings"); }}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-text-primary transition-colors hover:bg-[#FFFBEB] dark:hover:bg-[#141414]"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-text-primary transition-colors hover:bg-[#FEFDDF] dark:hover:bg-[#171717]"
                     >
                       <Settings className="w-4 h-4 text-text-tertiary" /> {t("Society Settings")}
                     </button>
@@ -258,7 +264,7 @@ export default function Header({
                   <div className="my-1.5 border-t border-border/30" />
                   <button
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[#B91C1C] transition-colors hover:bg-[#FEE2E2] dark:text-[#FCA5A5] dark:hover:bg-[#1E1E1E]"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[#993300] transition-colors hover:bg-[#FFEEE5] dark:text-[#FF9966] dark:hover:bg-[#2A2A2A]"
                   >
                     <LogOut className="w-4 h-4" /> {t("Sign Out")}
                   </button>
