@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import toast from "react-hot-toast";
 import {
   ArrowLeft,
   Upload,
@@ -12,6 +11,8 @@ import {
   RefreshCcw,
   Landmark,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { formatCurrency } from "@/lib/utils";
 import StatusBadge from "@/components/ui/StatusBadge";
 
@@ -44,14 +45,16 @@ interface ReconciliationSessionDetail extends ReconciliationSessionSummary {
   lines: ReconciliationLine[];
 }
 
-function periodLabel(session: ReconciliationSessionSummary) {
-  if (!session.periodStart || !session.periodEnd) return session.fileName || "Bank statement";
+function periodLabel(session: ReconciliationSessionSummary, t: (key: string) => string) {
+  if (!session.periodStart || !session.periodEnd) return session.fileName || t("Bank statement");
   const fmt = (value: string) =>
     new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   return `${fmt(session.periodStart)} – ${fmt(session.periodEnd)}`;
 }
 
 export default function BankReconciliationPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sessions, setSessions] = useState<ReconciliationSessionSummary[]>([]);
   const [activeSession, setActiveSession] = useState<ReconciliationSessionDetail | null>(null);
@@ -65,12 +68,12 @@ export default function BankReconciliationPage() {
       const res = await fetch("/api/accounting/reconciliation");
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to load reconciliation sessions");
+        toastT.error(data.error || "Failed to load reconciliation sessions");
         return;
       }
       setSessions(data.sessions || []);
     } catch {
-      toast.error("Failed to load reconciliation sessions");
+      toastT.error("Failed to load reconciliation sessions");
     } finally {
       setLoading(false);
     }
@@ -81,12 +84,12 @@ export default function BankReconciliationPage() {
       const res = await fetch(`/api/accounting/reconciliation/${sessionId}`);
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to load session");
+        toastT.error(data.error || "Failed to load session");
         return;
       }
       setActiveSession(data.session);
     } catch {
-      toast.error("Failed to load session");
+      toastT.error("Failed to load session");
     }
   }, []);
 
@@ -105,14 +108,18 @@ export default function BankReconciliationPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Upload failed");
+        toastT.error(data.error || "Upload failed");
         return;
       }
-      toast.success(`${data.summary.suggestedMatches} matches suggested from ${data.summary.totalLines} bank lines`);
+      toastT.success(
+        t("{matches} matches suggested from {lines} bank lines")
+          .replace("{matches}", String(data.summary.suggestedMatches))
+          .replace("{lines}", String(data.summary.totalLines)),
+      );
       await loadSessions();
       setActiveSession(data.session);
     } catch {
-      toast.error("Upload failed");
+      toastT.error("Upload failed");
     } finally {
       setUploading(false);
     }
@@ -122,7 +129,7 @@ export default function BankReconciliationPage() {
     if (!activeSession || activeSession.status === "confirmed") return;
     const suggested = activeSession.lines.filter((line) => line.matchStatus === "suggested").length;
     if (suggested === 0) {
-      toast.error("No suggested matches to confirm");
+      toastT.error("No suggested matches to confirm");
       return;
     }
 
@@ -133,14 +140,14 @@ export default function BankReconciliationPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Confirm failed");
+        toastT.error(data.error || "Confirm failed");
         return;
       }
-      toast.success(data.message || "Reconciliation confirmed");
+      toastT.success(data.message || "Reconciliation confirmed");
       setActiveSession(data.session);
       await loadSessions();
     } catch {
-      toast.error("Confirm failed");
+      toastT.error("Confirm failed");
     } finally {
       setConfirming(false);
     }
@@ -159,15 +166,15 @@ export default function BankReconciliationPage() {
           <div className="flex items-center gap-3">
             <Landmark className="w-6 h-6 text-primary" />
             <div>
-              <h1 className="page-title">Bank Reconciliation</h1>
+              <h1 className="page-title">{t("Bank Reconciliation")}</h1>
               <p className="text-sm text-text-secondary mt-0.5">
-                Upload your bank statement and auto-match entries to society payments and expenses
+                {t("Upload your bank statement and auto-match entries to society payments and expenses")}
               </p>
             </div>
           </div>
         </div>
         <button onClick={loadSessions} className="btn btn-secondary btn-sm">
-          <RefreshCcw className="w-4 h-4" /> Refresh
+          <RefreshCcw className="w-4 h-4" /> {t("Refresh")}
         </button>
       </div>
 
@@ -177,9 +184,9 @@ export default function BankReconciliationPage() {
             <Upload className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-semibold text-text-primary">Upload bank statement</h2>
+            <h2 className="font-semibold text-text-primary">{t("Upload bank statement")}</h2>
             <p className="text-xs text-text-secondary mt-1">
-              CSV or Excel export from HDFC, ICICI, SBI, Axis, etc. We match amount, date, and reference automatically.
+              {t("CSV or Excel export from HDFC, ICICI, SBI, Axis, etc. We match amount, date, and reference automatically.")}
             </p>
           </div>
         </div>
@@ -195,8 +202,8 @@ export default function BankReconciliationPage() {
           }}
         >
           <FileSpreadsheet className="w-10 h-10 text-text-tertiary mx-auto mb-3" />
-          <p className="font-semibold text-text-primary">Drop bank statement here</p>
-          <p className="text-xs text-text-secondary mt-1">or click to browse · CSV / XLSX</p>
+          <p className="font-semibold text-text-primary">{t("Drop bank statement here")}</p>
+          <p className="text-xs text-text-secondary mt-1">{t("or click to browse · CSV / XLSX")}</p>
           {uploading && <div className="spinner mx-auto mt-4" />}
         </div>
         <input
@@ -214,11 +221,11 @@ export default function BankReconciliationPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="card lg:col-span-1">
-          <h2 className="font-semibold text-text-primary mb-4">Recent uploads</h2>
+          <h2 className="font-semibold text-text-primary mb-4">{t("Recent uploads")}</h2>
           {loading ? (
             <div className="flex justify-center py-8"><div className="spinner" /></div>
           ) : sessions.length === 0 ? (
-            <p className="text-sm text-text-secondary">No reconciliation sessions yet.</p>
+            <p className="text-sm text-text-secondary">{t("No reconciliation sessions yet.")}</p>
           ) : (
             <div className="space-y-2">
               {sessions.map((session) => (
@@ -230,12 +237,14 @@ export default function BankReconciliationPage() {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-text-primary truncate">{session.fileName || "Statement"}</p>
+                    <p className="text-sm font-bold text-text-primary truncate">{session.fileName || t("Statement")}</p>
                     <StatusBadge status={session.status} />
                   </div>
-                  <p className="text-xs text-text-secondary mt-1">{periodLabel(session)}</p>
+                  <p className="text-xs text-text-secondary mt-1">{periodLabel(session, t)}</p>
                   <p className="text-[10px] text-text-tertiary mt-1">
-                    {session.matchedLines}/{session.totalLines} matched
+                    {t("{matched}/{total} matched")
+                      .replace("{matched}", String(session.matchedLines))
+                      .replace("{total}", String(session.totalLines))}
                   </p>
                 </button>
               ))}
@@ -247,26 +256,26 @@ export default function BankReconciliationPage() {
           {!activeSession ? (
             <div className="text-center py-16 text-text-secondary">
               <Landmark className="w-10 h-10 mx-auto mb-3 opacity-40" />
-              <p>Select a session or upload a new bank statement to review matches.</p>
+              <p>{t("Select a session or upload a new bank statement to review matches.")}</p>
             </div>
           ) : (
             <>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
                 <div>
-                  <h2 className="font-semibold text-text-primary">{activeSession.fileName || "Bank statement"}</h2>
-                  <p className="text-xs text-text-secondary mt-1">{periodLabel(activeSession)}</p>
+                  <h2 className="font-semibold text-text-primary">{activeSession.fileName || t("Bank statement")}</h2>
+                  <p className="text-xs text-text-secondary mt-1">{periodLabel(activeSession, t)}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full">
-                    {suggestedCount} suggested
+                    {t("{count} suggested").replace("{count}", String(suggestedCount))}
                   </span>
                   <span className="text-xs font-bold bg-amber-50 text-amber-700 px-3 py-1 rounded-full">
-                    {unmatchedCount} unmatched
+                    {t("{count} unmatched").replace("{count}", String(unmatchedCount))}
                   </span>
                   {activeSession.status !== "confirmed" && suggestedCount > 0 && (
                     <button onClick={confirmAll} disabled={confirming} className="btn btn-primary btn-sm">
-                      {confirming ? <div className="spinner !w-4 !h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                      Confirm all matches
+                      {confirming ? <div className="spinner !w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                      {t("Confirm all matches")}
                     </button>
                   )}
                 </div>
@@ -276,11 +285,11 @@ export default function BankReconciliationPage() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Description</th>
-                      <th>Amount</th>
-                      <th>Match</th>
-                      <th>Score</th>
+                      <th>{t("Date")}</th>
+                      <th>{t("Description")}</th>
+                      <th>{t("Amount")}</th>
+                      <th>{t("Match")}</th>
+                      <th>{t("Score")}</th>
                     </tr>
                   </thead>
                   <tbody>

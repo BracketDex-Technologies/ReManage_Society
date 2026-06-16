@@ -1,0 +1,98 @@
+
+> society-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.105:3000
+- Environments: .env
+✓ Ready in 2.6s
+
+ GET /login 200 in 8.9s (next.js: 1267ms, proxy.ts: 2.1s, application-code: 5.5s)
+ GET /login 200 in 1573ms (next.js: 92ms, proxy.ts: 112ms, application-code: 1369ms)
+ GET /login 200 in 1236ms (next.js: 70ms, proxy.ts: 94ms, application-code: 1072ms)
+ GET /login 200 in 1555ms (next.js: 78ms, proxy.ts: 115ms, application-code: 1361ms)
+ GET /login 200 in 1592ms (next.js: 54ms, proxy.ts: 41ms, application-code: 1497ms)
+ GET /login 200 in 1867ms (next.js: 52ms, proxy.ts: 82ms, application-code: 1733ms)
+ GET /login 200 in 1968ms (next.js: 104ms, proxy.ts: 98ms, application-code: 1766ms)
+ GET /login 200 in 1017ms (next.js: 88ms, proxy.ts: 87ms, application-code: 842ms)
+ GET /login 200 in 2.7s (next.js: 802ms, proxy.ts: 38ms, application-code: 1831ms)
+ GET /login 200 in 1399ms (next.js: 80ms, proxy.ts: 90ms, application-code: 1228ms)
+ GET /login 200 in 1618ms (next.js: 45ms, proxy.ts: 58ms, application-code: 1514ms)
+ GET /login 200 in 637ms (next.js: 96ms, proxy.ts: 44ms, application-code: 497ms)
+ GET /login 200 in 1464ms (next.js: 23ms, proxy.ts: 79ms, application-code: 1362ms)
+ GET /dashboard 200 in 5.2s (next.js: 1396ms, proxy.ts: 707ms, application-code: 3.1s)
+prisma:error Connection terminated due to connection timeout
+⨯ Error: Connection terminated due to connection timeout
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error: Connection terminated unexpectedly
+      at ignore-listed frames
+}
+ GET /api/auth/me 500 in 15.6s (next.js: 3.4s, proxy.ts: 630ms, application-code: 11.5s)
+prisma:error Connection terminated due to connection timeout
+Dashboard API error: Error: Connection terminated due to connection timeout
+    at async (src\app\api\dashboard\route.ts:37:11)
+    at async cached (src\lib\api-cache.ts:52:16)
+    at async GET (src\app\api\dashboard\route.ts:21:18)
+  35 |         allExpensesAggregate,
+  36 |         recentBills,
+> 37 |       ] = await Promise.all([
+     |           ^
+  38 |         prisma.society.findUnique({
+  39 |           where: { id: societyId },
+  40 |           select: { openingBalance: true, totalFlats: true }, {
+  clientVersion: '7.8.0',
+  [cause]: Error: Connection terminated unexpectedly
+      at ignore-listed frames
+}
+ GET /api/dashboard 503 in 16.3s (next.js: 902ms, proxy.ts: 6.4s, application-code: 9.0s)
+prisma:error timeout exceeded when trying to connect
+prisma:error timeout exceeded when trying to connect
+prisma:error timeout exceeded when trying to connect
+prisma:error timeout exceeded when trying to connect
+prisma:error timeout exceeded when trying to connect
+prisma:error timeout exceeded when trying to connect
+prisma:error timeout exceeded when trying to connect
+⨯ Error: timeout exceeded when trying to connect
+    at ignore-listed frames {
+  clientVersion: '7.8.0'
+}
+ GET /api/mobile/bootstrap 500 in 17.2s (next.js: 1321ms, proxy.ts: 6.3s, application-code: 9.5s)
+prisma:error timeout exceeded when trying to connect
+⨯ Error: timeout exceeded when trying to connect
+    at async GET (src\app\api\notifications\route.ts:14:25)
+  12 |   const limit = parseInt(searchParams.get("limit") || "50");
+  13 |
+> 14 |   const notifications = await prisma.notification.findMany({
+     |                         ^
+  15 |     where: {
+  16 |       societyId: session!.societyId,
+  17 |       OR: [ {
+  clientVersion: '7.8.0'
+}
+ GET /api/notifications?limit=30 500 in 12.0s (next.js: 3.7s, proxy.ts: 287ms, application-code: 8.0s)
+prisma:error Connection terminated due to connection timeout
+prisma:error Connection terminated due to connection timeout
+prisma:error Connection terminated due to connection timeout
+ GET /api/notifications?limit=30 200 in 2.1s (next.js: 346ms, proxy.ts: 759ms, application-code: 1008ms)
+ GET /api/dashboard 200 in 10.4s (next.js: 7.2s, proxy.ts: 809ms, application-code: 2.3s)
+ GET /api/dashboard 200 in 2.1s (next.js: 239ms, proxy.ts: 688ms, application-code: 1124ms)
+ GET /api/mobile/bootstrap 200 in 2.1s (next.js: 273ms, proxy.ts: 687ms, application-code: 1151ms)
+ GET /api/notifications?limit=30 200 in 337ms (next.js: 32ms, proxy.ts: 64ms, application-code: 241ms)
+ GET /api/notifications?limit=30 200 in 263ms (next.js: 37ms, proxy.ts: 31ms, application-code: 195ms)
+ GET /api/notifications?limit=30 200 in 266ms (next.js: 28ms, proxy.ts: 44ms, application-code: 194ms)
+ GET /api/notifications?limit=30 200 in 308ms (next.js: 33ms, proxy.ts: 74ms, application-code: 201ms)
+ GET /api/notifications?limit=30 200 in 491ms (next.js: 39ms, proxy.ts: 147ms, application-code: 306ms)
+ GET /api/notifications?limit=30 200 in 431ms (next.js: 84ms, proxy.ts: 132ms, application-code: 216ms)
+ GET /api/notifications?limit=30 200 in 346ms (next.js: 48ms, proxy.ts: 50ms, application-code: 249ms)
+ GET /api/notifications?limit=30 200 in 361ms (next.js: 30ms, proxy.ts: 144ms, application-code: 186ms)
+ GET /api/dashboard 200 in 1198ms (next.js: 728ms, proxy.ts: 124ms, application-code: 346ms)
+ GET /api/mobile/bootstrap 200 in 2.2s (next.js: 85ms, proxy.ts: 654ms, application-code: 1503ms)
+ GET /api/notifications?limit=30 200 in 1893ms (next.js: 98ms, proxy.ts: 358ms, application-code: 1438ms)
+ GET /api/notifications?limit=30 200 in 932ms (next.js: 224ms, proxy.ts: 240ms, application-code: 467ms)
+ GET /api/notifications?limit=30 200 in 873ms (next.js: 127ms, proxy.ts: 386ms, application-code: 361ms)
+ GET /api/notifications?limit=30 200 in 777ms (next.js: 24ms, proxy.ts: 283ms, application-code: 470ms)
+ GET /api/notifications?limit=30 200 in 991ms (next.js: 83ms, proxy.ts: 226ms, application-code: 682ms)
+ GET /api/notifications?limit=30 200 in 913ms (next.js: 253ms, proxy.ts: 295ms, application-code: 364ms)
+[?25h

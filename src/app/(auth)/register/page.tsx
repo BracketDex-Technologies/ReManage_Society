@@ -3,11 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import toast from "react-hot-toast";
 import { Building2, Eye, EyeOff } from "lucide-react";
+import { isOptionalTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
@@ -23,6 +27,10 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOptionalTenDigitPhone(form.phone)) {
+      toastT.error("Enter a valid 10-digit phone number");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -35,14 +43,14 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (res.ok) {
-        toast.success("Account created! Redirecting...");
+        toastT.success("Account created! Redirecting...");
         router.push("/dashboard");
         router.refresh();
       } else {
-        toast.error(data.error || "Registration failed");
+        toastT.error(data.error || "Registration failed");
       }
     } catch {
-      toast.error("Something went wrong — please try again");
+      toastT.error("Something went wrong — please try again");
     } finally {
       setLoading(false);
     }
@@ -56,35 +64,35 @@ export default function RegisterPage() {
             <Building2 className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-text-primary">
-            Create Society
+            {t("Create Society")}
           </h1>
           <p className="text-sm text-text-secondary mt-1">
-            Chairman onboarding for a new society
+            {t("Chairman onboarding for a new society")}
           </p>
         </div>
 
         <div className="card">
           <form onSubmit={handleSubmit}>
             <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-4">
-              Chairman Details
+              {t("Chairman Details")}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="form-group !mb-0">
-                <label htmlFor="name" className="label">Full Name *</label>
-                <input id="name" className="input" placeholder="Your full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                <label htmlFor="name" className="label">{t("Full Name *")}</label>
+                <input id="name" className="input" placeholder={t("Your full name")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div className="form-group !mb-0">
-                <label htmlFor="phone" className="label">Phone</label>
-                <input id="phone" type="tel" className="input" placeholder="10-digit mobile number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <label htmlFor="phone" className="label">{t("Phone")}</label>
+                <input id="phone" {...phoneInputProps} className="input" placeholder={t("10-digit mobile number")} value={form.phone} onChange={(e) => setForm({ ...form, phone: sanitizePhoneInput(e.target.value) })} />
               </div>
               <div className="form-group !mb-0">
-                <label htmlFor="reg-email" className="label">Email *</label>
-                <input id="reg-email" type="email" className="input" placeholder="you@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                <label htmlFor="reg-email" className="label">{t("Email *")}</label>
+                <input id="reg-email" type="email" className="input" placeholder={t("you@email.com")} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               </div>
               <div className="form-group !mb-0">
-                <label htmlFor="reg-password" className="label">Password *</label>
+                <label htmlFor="reg-password" className="label">{t("Password *")}</label>
                 <div className="relative">
-                  <input id="reg-password" type={showPassword ? "text" : "password"} className="input pr-10" placeholder="Min 6 characters" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
+                  <input id="reg-password" type={showPassword ? "text" : "password"} className="input pr-10" placeholder={t("Min 6 characters")} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -93,40 +101,40 @@ export default function RegisterPage() {
             </div>
 
             <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-4">
-              Society Details
+              {t("Society Details")}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="form-group !mb-0 sm:col-span-2">
-                <label htmlFor="societyName" className="label">Society Name *</label>
-                <input id="societyName" className="input" placeholder="Your society name" value={form.societyName} onChange={(e) => setForm({ ...form, societyName: e.target.value })} required />
+                <label htmlFor="societyName" className="label">{t("Society Name *")}</label>
+                <input id="societyName" className="input" placeholder={t("Your society name")} value={form.societyName} onChange={(e) => setForm({ ...form, societyName: e.target.value })} required />
               </div>
               <div className="form-group !mb-0 sm:col-span-2">
-                <label htmlFor="societyAddress" className="label">Address *</label>
-                <input id="societyAddress" className="input" placeholder="Full society address" value={form.societyAddress} onChange={(e) => setForm({ ...form, societyAddress: e.target.value })} required />
+                <label htmlFor="societyAddress" className="label">{t("Address *")}</label>
+                <input id="societyAddress" className="input" placeholder={t("Full society address")} value={form.societyAddress} onChange={(e) => setForm({ ...form, societyAddress: e.target.value })} required />
               </div>
               <div className="form-group !mb-0">
-                <label htmlFor="city" className="label">City *</label>
-                <input id="city" className="input" placeholder="Pune" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required />
+                <label htmlFor="city" className="label">{t("City *")}</label>
+                <input id="city" className="input" placeholder={t("Pune")} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required />
               </div>
               <div className="form-group !mb-0">
-                <label htmlFor="pincode" className="label">Pincode *</label>
-                <input id="pincode" className="input" placeholder="411001" value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} required />
+                <label htmlFor="pincode" className="label">{t("Pincode *")}</label>
+                <input id="pincode" className="input" placeholder={t("411001")} value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} required />
               </div>
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-primary w-full btn-lg">
-              {loading ? <div className="spinner !w-5 !h-5 !border-white/30 !border-t-white" /> : "Create Society"}
+              {loading ? <div className="spinner !w-5 !h-5 !border-white/30 !border-t-white" /> : t("Create Society")}
             </button>
           </form>
 
           <div className="mt-4 text-center">
             <p className="text-sm text-text-secondary">
-              Resident or tenant?{" "}
-              <Link href="/join" className="text-primary font-medium hover:underline">Join your society</Link>
+              {t("Resident or tenant?")}{" "}
+              <Link href="/join" className="text-primary font-medium hover:underline">{t("Join your society")}</Link>
             </p>
             <p className="text-sm text-text-secondary mt-2">
-              Already have an account?{" "}
-              <Link href="/login" className="text-primary font-medium hover:underline">Sign In</Link>
+              {t("Already have an account?")}{" "}
+              <Link href="/login" className="text-primary font-medium hover:underline">{t("Sign In")}</Link>
             </p>
           </div>
         </div>

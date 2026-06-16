@@ -1,12 +1,16 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { isTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 
 export default function AddMemberPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -23,13 +27,13 @@ export default function AddMemberPage() {
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!form.flatNumber) errs.flatNumber = "Flat number is required";
+    if (!form.flatNumber) errs.flatNumber = t("Flat number is required");
     if (!form.ownerName || form.ownerName.length < 2)
-      errs.ownerName = "Owner name must be at least 2 characters";
-    if (!form.contact || !/^\d{10}$/.test(form.contact))
-      errs.contact = "Enter a valid 10-digit mobile number";
+      errs.ownerName = t("Owner name must be at least 2 characters");
+    if (!isTenDigitPhone(form.contact))
+      errs.contact = t("Enter a valid 10-digit mobile number");
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      errs.email = "Enter a valid email address";
+      errs.email = t("Enter a valid email address");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -49,13 +53,13 @@ export default function AddMemberPage() {
       const data = await res.json();
 
       if (res.ok) {
-        toast.success(`Flat ${form.flatNumber} added successfully`);
+        toastT.success(`Flat ${form.flatNumber} added successfully`);
         router.push("/members");
       } else {
-        toast.error(data.error || "Failed to add member");
+        toastT.error(data.error || "Failed to add member");
       }
     } catch {
-      toast.error("Something went wrong — please try again");
+      toastT.error("Something went wrong — please try again");
     } finally {
       setLoading(false);
     }
@@ -78,9 +82,9 @@ export default function AddMemberPage() {
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div>
-          <h1 className="page-title">Add New Member</h1>
+          <h1 className="page-title">{t("Add New Member")}</h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Add a flat and its owner details
+            {t("Add a flat and its owner details")}
           </p>
         </div>
       </div>
@@ -143,12 +147,11 @@ export default function AddMemberPage() {
             <div className="form-group mb-0!">
               <label className="label">Contact Number *</label>
               <input
-                type="tel"
+                {...phoneInputProps}
                 className={`input ${errors.contact ? "!border-danger" : ""}`}
                 placeholder="10-digit mobile"
                 value={form.contact}
-                onChange={(e) => updateField("contact", e.target.value)}
-                maxLength={10}
+                onChange={(e) => updateField("contact", sanitizePhoneInput(e.target.value))}
               />
               {errors.contact && (
                 <p className="form-error">{errors.contact}</p>

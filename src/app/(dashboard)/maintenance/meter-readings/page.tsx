@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import toast from "react-hot-toast";
 import {
   ArrowLeft,
   Upload,
@@ -12,6 +11,8 @@ import {
   AlertTriangle,
   RefreshCcw,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { formatCurrency } from "@/lib/utils";
 
 type MeterType = "water" | "electricity_grid" | "electricity_dg" | "gas";
@@ -62,38 +63,9 @@ interface ImportSession {
   appliedAt: string | null;
 }
 
-const METER_OPTIONS: Array<{ value: MeterType; label: string }> = [
-  { value: "water", label: "Water" },
-  { value: "electricity_grid", label: "Electricity (Grid)" },
-  { value: "electricity_dg", label: "Electricity (DG/Generator)" },
-  { value: "gas", label: "Piped Gas" },
-];
-
-function applyStatusLabel(status: PreviewRow["applyStatus"]) {
-  switch (status) {
-    case "ready":
-      return "Ready";
-    case "flat_not_found":
-      return "Flat not found";
-    case "bill_missing":
-      return "No bill";
-    case "bill_locked":
-      return "Bill locked";
-    default:
-      return "Invalid";
-  }
-}
-
-function applyStatusBadge(status: PreviewRow["applyStatus"]) {
-  const label = applyStatusLabel(status);
-  if (status === "ready") return <span className="badge badge-active">{label}</span>;
-  if (status === "bill_missing" || status === "flat_not_found") {
-    return <span className="badge badge-pending">{label}</span>;
-  }
-  return <span className="badge badge-inactive">{label}</span>;
-}
-
 export default function MeterReadingsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [period, setPeriod] = useState(() => {
     const now = new Date();
@@ -107,18 +79,49 @@ export default function MeterReadingsPage() {
   const [applying, setApplying] = useState(false);
   const pendingFileRef = useRef<File | null>(null);
 
+  const meterOptions: Array<{ value: MeterType; label: string }> = [
+    { value: "water", label: t("Water") },
+    { value: "electricity_grid", label: t("Electricity (Grid)") },
+    { value: "electricity_dg", label: t("Electricity (DG/Generator)") },
+    { value: "gas", label: t("Piped Gas") },
+  ];
+
+  const applyStatusLabel = (status: PreviewRow["applyStatus"]) => {
+    switch (status) {
+      case "ready":
+        return t("Ready");
+      case "flat_not_found":
+        return t("Flat not found");
+      case "bill_missing":
+        return t("No bill");
+      case "bill_locked":
+        return t("Bill locked");
+      default:
+        return t("Invalid");
+    }
+  };
+
+  const applyStatusBadge = (status: PreviewRow["applyStatus"]) => {
+    const label = applyStatusLabel(status);
+    if (status === "ready") return <span className="badge badge-active">{label}</span>;
+    if (status === "bill_missing" || status === "flat_not_found") {
+      return <span className="badge badge-pending">{label}</span>;
+    }
+    return <span className="badge badge-inactive">{label}</span>;
+  };
+
   const loadSessions = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/maintenance/meter-readings?period=${period}`);
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to load import history");
+        toastT.error(data.error || "Failed to load import history");
         return;
       }
       setSessions(data.sessions || []);
     } catch {
-      toast.error("Failed to load import history");
+      toastT.error("Failed to load import history");
     } finally {
       setLoading(false);
     }
@@ -146,23 +149,27 @@ export default function MeterReadingsPage() {
       const res = await fetch(endpoint, { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Upload failed");
+        toastT.error(data.error || "Upload failed");
         return;
       }
 
       if (mode === "preview") {
         pendingFileRef.current = file;
         setPreview({ fileName: file.name, preview: data.preview });
-        toast.success(`Parsed ${data.preview.summary.totalRows} rows`);
+        toastT.success(t("Parsed {count} rows").replace("{count}", String(data.preview.summary.totalRows)));
         return;
       }
 
-      toast.success(`Applied ${data.session.appliedRows} readings (${formatCurrency(data.session.totalCharge)})`);
+      toastT.success(
+        t("Applied {count} readings ({amount})")
+          .replace("{count}", String(data.session.appliedRows))
+          .replace("{amount}", formatCurrency(data.session.totalCharge)),
+      );
       setPreview(null);
       pendingFileRef.current = null;
       await loadSessions();
     } catch {
-      toast.error(mode === "preview" ? "Preview failed" : "Import failed");
+      toastT.error(mode === "preview" ? "Preview failed" : "Import failed");
     } finally {
       setUploading(false);
       setApplying(false);
@@ -171,7 +178,7 @@ export default function MeterReadingsPage() {
 
   const applyPreview = async () => {
     if (!pendingFileRef.current) {
-      toast.error("Upload the file again before applying");
+      toastT.error("Upload the file again before applying");
       return;
     }
     await uploadFile(pendingFileRef.current, "apply");
@@ -183,15 +190,15 @@ export default function MeterReadingsPage() {
         <div className="flex items-center gap-3">
           <Link href="/maintenance" className="btn btn-secondary btn-sm flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
-            Maintenance
+            {t("Maintenance")}
           </Link>
           <div>
             <h1 className="page-title flex items-center gap-2">
               <Gauge className="w-6 h-6 text-primary" />
-              Meter Reading Import
+              {t("Meter Reading Import")}
             </h1>
             <p className="text-sm text-text-secondary mt-0.5">
-              Bulk import water, grid, DG, or gas readings and add utility charges to pending maintenance bills.
+              {t("Bulk import water, grid, DG, or gas readings and add utility charges to pending maintenance bills.")}
             </p>
           </div>
         </div>
@@ -200,7 +207,7 @@ export default function MeterReadingsPage() {
       <div className="card">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="label">Billing Period</label>
+            <label className="label">{t("Billing Period")}</label>
             <input
               type="month"
               className="input"
@@ -213,7 +220,7 @@ export default function MeterReadingsPage() {
             />
           </div>
           <div>
-            <label className="label">Meter Type</label>
+            <label className="label">{t("Meter Type")}</label>
             <select
               className="select"
               value={meterType}
@@ -223,7 +230,7 @@ export default function MeterReadingsPage() {
                 setMeterType(e.target.value as MeterType);
               }}
             >
-              {METER_OPTIONS.map((option) => (
+              {meterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -238,7 +245,7 @@ export default function MeterReadingsPage() {
               className="btn btn-primary w-full flex items-center justify-center gap-2"
             >
               {uploading ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              Upload CSV / Excel
+              {t("Upload CSV / Excel")}
             </button>
             <input
               ref={fileInputRef}
@@ -255,8 +262,8 @@ export default function MeterReadingsPage() {
         </div>
 
         <div className="rounded-lg border border-dashed border-border bg-surface/60 p-4 text-sm text-text-secondary">
-          Expected columns: <strong>Flat No</strong>, <strong>Previous Reading</strong>, <strong>Current Reading</strong>.
-          Optional: Meter Type. Generate monthly maintenance bills first — utility charges attach to pending bills only.
+          {t("Expected columns:")} <strong>{t("Flat No")}</strong>, <strong>{t("Previous Reading")}</strong>, <strong>{t("Current Reading")}</strong>.
+          {t("Optional: Meter Type. Generate monthly maintenance bills first — utility charges attach to pending bills only.")}
         </div>
       </div>
 
@@ -266,11 +273,11 @@ export default function MeterReadingsPage() {
             <div>
               <h2 className="font-semibold flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4 text-primary" />
-                Preview — {preview.fileName}
+                {t("Preview — {fileName}").replace("{fileName}", preview.fileName)}
               </h2>
               <p className="text-xs text-text-secondary mt-1">
-                {preview.preview.summary.readyRows} ready · {preview.preview.summary.invalidRows} invalid ·{" "}
-                {formatCurrency(preview.preview.summary.totalCharge)} total utility charge
+                {preview.preview.summary.readyRows} {t("ready")} · {preview.preview.summary.invalidRows} {t("invalid")} ·{" "}
+                {formatCurrency(preview.preview.summary.totalCharge)} {t("total utility charge")}
               </p>
             </div>
             <button
@@ -279,7 +286,7 @@ export default function MeterReadingsPage() {
               className="btn btn-primary flex items-center gap-2"
             >
               {applying ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              Apply to {preview.preview.summary.readyRows} bills
+              {t("Apply to {count} bills").replace("{count}", String(preview.preview.summary.readyRows))}
             </button>
           </div>
 
@@ -288,9 +295,12 @@ export default function MeterReadingsPage() {
               <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
               <p>
                 {preview.preview.summary.billMissingRows > 0 &&
-                  `${preview.preview.summary.billMissingRows} flats have no pending maintenance bill for ${period}. `}
+                  t("{count} flats have no pending maintenance bill for {period}.")
+                    .replace("{count}", String(preview.preview.summary.billMissingRows))
+                    .replace("{period}", period) + " "}
                 {preview.preview.summary.billLockedRows > 0 &&
-                  `${preview.preview.summary.billLockedRows} bills are already paid or invoiced and were skipped.`}
+                  t("{count} bills are already paid or invoiced and were skipped.")
+                    .replace("{count}", String(preview.preview.summary.billLockedRows))}
               </p>
             </div>
           )}
@@ -299,12 +309,12 @@ export default function MeterReadingsPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Flat</th>
-                  <th>Previous</th>
-                  <th>Current</th>
-                  <th>Units</th>
-                  <th>Charge</th>
-                  <th>Status</th>
+                  <th>{t("Flat")}</th>
+                  <th>{t("Previous")}</th>
+                  <th>{t("Current")}</th>
+                  <th>{t("Units")}</th>
+                  <th>{t("Charge")}</th>
+                  <th>{t("Status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -331,27 +341,27 @@ export default function MeterReadingsPage() {
 
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold">Recent Imports</h2>
+          <h2 className="font-semibold">{t("Recent Imports")}</h2>
           <button onClick={loadSessions} className="btn btn-secondary btn-sm">
-            Refresh
+            {t("Refresh")}
           </button>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-8"><div className="spinner" /></div>
         ) : sessions.length === 0 ? (
-          <p className="text-sm text-text-secondary">No meter imports for {period} yet.</p>
+          <p className="text-sm text-text-secondary">{t("No meter imports for {period} yet.").replace("{period}", period)}</p>
         ) : (
           <div className="table-wrapper">
             <table className="table">
               <thead>
                 <tr>
-                  <th>When</th>
-                  <th>Meter</th>
-                  <th>File</th>
-                  <th>Applied</th>
-                  <th>Charge</th>
-                  <th>Status</th>
+                  <th>{t("When")}</th>
+                  <th>{t("Meter")}</th>
+                  <th>{t("File")}</th>
+                  <th>{t("Applied")}</th>
+                  <th>{t("Charge")}</th>
+                  <th>{t("Status")}</th>
                 </tr>
               </thead>
               <tbody>

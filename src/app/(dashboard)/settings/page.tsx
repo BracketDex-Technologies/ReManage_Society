@@ -1,8 +1,10 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
 import { Settings as SettingsIcon, Save, Shield, Building2, Home, Copy, Plus, RefreshCw, UserCheck, Mail, Phone, X } from "lucide-react";
+import { isOptionalTenDigitPhone, isTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 
 interface FlatLinkedUser {
   id: string;
@@ -36,6 +38,8 @@ interface GuardItem {
 }
 
 export default function SettingsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [flatsLoading, setFlatsLoading] = useState(false);
@@ -104,7 +108,7 @@ export default function SettingsPage() {
     fetch("/api/settings/flats")
       .then((r) => r.json())
       .then((d) => setFlats(d.flats || []))
-      .catch(() => toast.error("Failed to load flats"))
+      .catch(() => toastT.error("Failed to load flats"))
       .finally(() => setFlatsLoading(false));
   };
 
@@ -113,7 +117,7 @@ export default function SettingsPage() {
     fetch("/api/guard")
       .then((r) => r.json())
       .then((d) => setGuards(d.guards || []))
-      .catch(() => toast.error("Failed to load guards"))
+      .catch(() => toastT.error("Failed to load guards"))
       .finally(() => setGuardsLoading(false));
   };
 
@@ -123,6 +127,10 @@ export default function SettingsPage() {
   }, []);
 
   const handleSave = async () => {
+    if (!isOptionalTenDigitPhone(form.legalAdviserPhone)) {
+      toastT.error("Enter a valid 10-digit legal adviser phone number");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/maintenance/settings", {
@@ -131,12 +139,12 @@ export default function SettingsPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success("Settings saved successfully");
+        toastT.success("Settings saved successfully");
       } else {
-        toast.error("Failed to save settings");
+        toastT.error("Failed to save settings");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setSaving(false);
     }
@@ -145,7 +153,7 @@ export default function SettingsPage() {
   const copyJoinCode = () => {
     if (!joinCode) return;
     navigator.clipboard.writeText(joinCode);
-    toast.success("Join code copied");
+    toastT.success("Join code copied");
   };
 
   const createFlats = async () => {
@@ -158,19 +166,23 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Created ${data.created} flats${data.skipped ? `, skipped ${data.skipped}` : ""}`);
+        toastT.success(`Created ${data.created} flats${data.skipped ? `, skipped ${data.skipped}` : ""}`);
         fetchFlats();
       } else {
-        toast.error(data.error || "Failed to create flats");
+        toastT.error(data.error || "Failed to create flats");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setFlatsSaving(false);
     }
   };
 
   const createGuard = async () => {
+    if (!isTenDigitPhone(guardForm.phone)) {
+      toastT.error("Enter a valid 10-digit guard phone number");
+      return;
+    }
     setGuardSaving(true);
     try {
       const res = await fetch("/api/guard", {
@@ -180,14 +192,14 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.loginCredentials ? `Guard created. Temporary login: ${data.loginCredentials.email}` : "Guard created");
+        toastT.success(data.loginCredentials ? `Guard created. Temporary login: ${data.loginCredentials.email}` : "Guard created");
         setGuardForm({ name: "", phone: "", pin: "", gateAssignment: "", shiftStart: "", shiftEnd: "" });
         fetchGuards();
       } else {
-        toast.error(data.error || "Failed to create guard");
+        toastT.error(data.error || "Failed to create guard");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setGuardSaving(false);
     }
@@ -201,14 +213,14 @@ export default function SettingsPage() {
         body: JSON.stringify({ guardId, isActive }),
       });
       if (res.ok) {
-        toast.success(isActive ? "Guard approved" : "Guard paused");
+        toastT.success(isActive ? "Guard approved" : "Guard paused");
         fetchGuards();
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to update guard");
+        toastT.error(data.error || "Failed to update guard");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     }
   };
 
@@ -237,7 +249,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-3">
           <SettingsIcon className="w-6 h-6 text-primary" />
           <div>
-            <h1 className="page-title">Settings</h1>
+            <h1 className="page-title">{t("Settings")}</h1>
             <p className="text-sm text-text-secondary mt-0.5">
               Configure society profile, flats, gate staff, and access
             </p>
@@ -345,9 +357,10 @@ export default function SettingsPage() {
                     <label className="label">Call Number</label>
                     <input
                       className="input"
-                      placeholder="+91..."
+                      placeholder="10-digit phone"
+                      {...phoneInputProps}
                       value={form.legalAdviserPhone}
-                      onChange={(e) => setForm({ ...form, legalAdviserPhone: e.target.value })}
+                      onChange={(e) => setForm({ ...form, legalAdviserPhone: sanitizePhoneInput(e.target.value) })}
                     />
                   </div>
                 </div>
@@ -487,7 +500,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="label">Phone</label>
-                <input className="input" maxLength={10} value={guardForm.phone} onChange={(e) => setGuardForm({ ...guardForm, phone: e.target.value.replace(/\D/g, "") })} />
+                <input {...phoneInputProps} className="input" value={guardForm.phone} onChange={(e) => setGuardForm({ ...guardForm, phone: sanitizePhoneInput(e.target.value) })} />
               </div>
               <div>
                 <label className="label">4-digit PIN</label>

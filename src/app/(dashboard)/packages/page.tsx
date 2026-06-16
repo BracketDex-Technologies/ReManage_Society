@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
 import { Plus, Package as PackageIcon, Search, CheckCircle, Clock, AlertTriangle, Truck } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 
 interface PackageEntry {
   id: string;
@@ -25,6 +26,8 @@ const statusStyles: Record<string, { bg: string; text: string; label: string }> 
 };
 
 export default function PackagesPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [packages, setPackages] = useState<PackageEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -39,9 +42,9 @@ export default function PackagesPage() {
     fetch("/api/packages")
       .then((r) => r.json())
       .then((d) => setPackages(Array.isArray(d) ? d : []))
-      .catch(() => toast.error("Failed to load packages"))
+      .catch(() => toastT.error("Failed to load packages"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [toastT]);
 
   useEffect(() => { fetchPackages(); }, [fetchPackages]);
 
@@ -55,15 +58,15 @@ export default function PackagesPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success("Package logged successfully");
+        toastT.success("Package logged successfully");
         setShowForm(false);
         setForm({ flatNumber: "", courierName: "", description: "" });
         fetchPackages();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed to log package");
+        toastT.error(d.error || "Failed to log package");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
     finally { setSaving(false); }
   };
 
@@ -75,10 +78,10 @@ export default function PackagesPage() {
         body: JSON.stringify({ packageId, action: "collected" }),
       });
       if (res.ok) {
-        toast.success("Package marked as collected ✅");
+        toastT.success("Package marked as collected ✅");
         fetchPackages();
       }
-    } catch { toast.error("Failed to update"); }
+    } catch { toastT.error("Failed to update"); }
   };
 
   const filtered = packages.filter((p) => {
@@ -99,12 +102,12 @@ export default function PackagesPage() {
             <PackageIcon className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">Parcel Desk</h1>
-            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">Track deliveries & courier packages</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">{t("Parcel Desk")}</h1>
+            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">{t("Track deliveries & courier packages")}</p>
           </div>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary !rounded-xl px-5 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm shadow-md shadow-primary/10 flex items-center justify-center">
-          <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> Log Package
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> {t("Log Package")}
         </button>
       </div>
 
@@ -123,7 +126,7 @@ export default function PackagesPage() {
               </div>
               <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.val}</p>
             </div>
-            <p className="text-[9px] sm:text-[10px] font-bold text-text-tertiary mt-4 tracking-[0.1em] uppercase">{s.label}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-text-tertiary mt-4 tracking-[0.1em] uppercase">{t(s.label)}</p>
           </div>
         ))}
       </div>
@@ -133,13 +136,13 @@ export default function PackagesPage() {
         <div className="flex gap-2 overflow-x-auto pb-1">
           {["all", "received", "collected", "returned"].map((f) => (
             <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all ${filter === f ? "bg-primary text-white shadow-sm" : "bg-surface text-text-secondary hover:bg-primary/5"}`}>
-              {f === "all" ? "All" : (statusStyles[f]?.label || f)}
+              {f === "all" ? t("All") : t(statusStyles[f]?.label || f)}
             </button>
           ))}
         </div>
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-          <input className="input !rounded-xl !bg-surface/50 !border-border/60 !pl-11 pr-4 py-2.5 text-xs sm:text-sm font-semibold w-full" placeholder="Search flat or courier..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="input !rounded-xl !bg-surface/50 !border-border/60 !pl-11 pr-4 py-2.5 text-xs sm:text-sm font-semibold w-full" placeholder={t("Search flat or courier...")} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -147,13 +150,13 @@ export default function PackagesPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className="spinner !w-8 !h-8" />
-          <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">Loading packages...</p>
+          <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">{t("Loading packages...")}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="card text-center py-24 bg-surface/30 border-dashed border-2">
           <PackageIcon className="w-10 h-10 text-text-tertiary mx-auto mb-4 opacity-20" />
-          <p className="text-text-primary font-bold">No packages found</p>
-          <p className="text-xs text-text-secondary mt-1">Log incoming deliveries at the gate</p>
+          <p className="text-text-primary font-bold">{t("No packages found")}</p>
+          <p className="text-xs text-text-secondary mt-1">{t("Log incoming deliveries at the gate")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -168,21 +171,21 @@ export default function PackagesPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h4 className="text-base font-bold text-text-primary">{p.courierName || "Package"}</h4>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>{style.label}</span>
+                      <h4 className="text-base font-bold text-text-primary">{p.courierName || t("Package")}</h4>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>{t(style.label)}</span>
                     </div>
-                    <p className="text-xs text-text-secondary">Flat {p.flat.wing ? `${p.flat.wing}-` : ""}{p.flat.flatNumber} · {p.flat.ownerName}</p>
+                    <p className="text-xs text-text-secondary">{t("Flat")} {p.flat.wing ? `${p.flat.wing}-` : ""}{p.flat.flatNumber} · {p.flat.ownerName}</p>
                     {p.description && <p className="text-[11px] text-text-tertiary mt-1">{p.description}</p>}
                     <div className="flex items-center gap-3 mt-2">
                       <span className="text-[10px] text-text-tertiary">{new Date(p.receivedAt).toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })}</span>
-                      {hoursAgo > 0 && p.status === "received" && <span className={`text-[10px] font-bold ${hoursAgo > 24 ? "text-red-500" : "text-amber-500"}`}>{hoursAgo}h ago</span>}
+                      {hoursAgo > 0 && p.status === "received" && <span className={`text-[10px] font-bold ${hoursAgo > 24 ? "text-red-500" : "text-amber-500"}`}>{hoursAgo}{t("h ago")}</span>}
                     </div>
                   </div>
                 </div>
                 {p.status === "received" && (
                   <div className="mt-4 pt-3 border-t border-border/40">
                     <button onClick={() => markCollected(p.id)} className="w-full btn btn-primary !rounded-xl !py-2.5 text-[10px] sm:text-xs font-bold flex items-center justify-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5" /> Mark Collected
+                      <CheckCircle className="w-3.5 h-3.5" /> {t("Mark Collected")}
                     </button>
                   </div>
                 )}
@@ -196,23 +199,23 @@ export default function PackagesPage() {
       {showForm && (
         <div className="modal-overlay !bg-black/60 backdrop-blur-sm z-[100]" onClick={() => setShowForm(false)}>
           <div className="bg-white w-full max-w-md sm:rounded-[2rem] h-full sm:h-auto overflow-y-auto !p-6 sm:!p-10 shadow-2xl animate-in fade-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold text-text-primary mb-6">Log New Package</h3>
+            <h3 className="text-xl font-bold text-text-primary mb-6">{t("Log New Package")}</h3>
             <form onSubmit={handleSubmit} className="space-y-5 pb-20 sm:pb-0">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Flat Number *</label>
-                <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="e.g. A-101" value={form.flatNumber} onChange={(e) => setForm({ ...form, flatNumber: e.target.value })} required />
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Flat Number *")}</label>
+                <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("e.g. A-101")} value={form.flatNumber} onChange={(e) => setForm({ ...form, flatNumber: e.target.value })} required />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Courier Name</label>
-                <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="Amazon, Flipkart, Swiggy..." value={form.courierName} onChange={(e) => setForm({ ...form, courierName: e.target.value })} />
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Courier Name")}</label>
+                <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("Amazon, Flipkart, Swiggy...")} value={form.courierName} onChange={(e) => setForm({ ...form, courierName: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Description</label>
-                <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="Large box, envelope..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Description")}</label>
+                <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("Large box, envelope...")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">Cancel</button>
-                <button type="submit" disabled={saving} className="flex-[2] btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20">{saving ? "Logging..." : "Log Package"}</button>
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">{t("Cancel")}</button>
+                <button type="submit" disabled={saving} className="flex-[2] btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20">{saving ? t("Logging...") : t("Log Package")}</button>
               </div>
             </form>
           </div>

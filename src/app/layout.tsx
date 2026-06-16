@@ -3,7 +3,6 @@ import "./globals.css";
 import ToastProvider from "@/components/ui/Toast";
 import Script from "next/script";
 import { I18nProvider } from "@/lib/i18n";
-import PageTextTranslator from "@/components/ui/PageTextTranslator";
 import { AppDialogProvider } from "@/components/ui/AppDialogProvider";
 
 export const viewport: Viewport = {
@@ -63,7 +62,6 @@ export default function RootLayout({
         <ToastProvider />
         <I18nProvider>
           <AppDialogProvider>
-            <PageTextTranslator />
             {children}
           </AppDialogProvider>
         </I18nProvider>

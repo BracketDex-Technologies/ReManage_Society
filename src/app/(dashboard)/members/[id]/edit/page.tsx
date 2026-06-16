@@ -1,12 +1,16 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { isTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 
 export default function EditMemberPage({ params }: { params: Promise<{ id: string }> }) {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { id } = use(params);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -42,20 +46,20 @@ export default function EditMemberPage({ params }: { params: Promise<{ id: strin
         setFetching(false);
       })
       .catch(() => {
-        toast.error("Failed to load member");
+        toastT.error("Failed to load member");
         setFetching(false);
       });
   }, [id]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!form.flatNumber) errs.flatNumber = "Flat number is required";
+    if (!form.flatNumber) errs.flatNumber = t("Flat number is required");
     if (!form.ownerName || form.ownerName.length < 2)
-      errs.ownerName = "Owner name must be at least 2 characters";
-    if (!form.contact || !/^\d{10}$/.test(form.contact))
-      errs.contact = "Enter a valid 10-digit mobile number";
+      errs.ownerName = t("Owner name must be at least 2 characters");
+    if (!isTenDigitPhone(form.contact))
+      errs.contact = t("Enter a valid 10-digit mobile number");
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      errs.email = "Enter a valid email address";
+      errs.email = t("Enter a valid email address");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -75,13 +79,13 @@ export default function EditMemberPage({ params }: { params: Promise<{ id: strin
       const data = await res.json();
 
       if (res.ok) {
-        toast.success(`Flat ${form.flatNumber} updated successfully`);
+        toastT.success(`Flat ${form.flatNumber} updated successfully`);
         router.push("/members");
       } else {
-        toast.error(data.error || "Failed to update member");
+        toastT.error(data.error || "Failed to update member");
       }
     } catch {
-      toast.error("Something went wrong — please try again");
+      toastT.error("Something went wrong — please try again");
     } finally {
       setLoading(false);
     }
@@ -107,9 +111,9 @@ export default function EditMemberPage({ params }: { params: Promise<{ id: strin
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div>
-          <h1 className="page-title">Edit Member</h1>
+          <h1 className="page-title">{t("Edit Member")}</h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Update flat {form.flatNumber} details
+            {t("Update flat")} {form.flatNumber} {t("details")}
           </p>
         </div>
       </div>
@@ -141,7 +145,7 @@ export default function EditMemberPage({ params }: { params: Promise<{ id: strin
             </div>
             <div className="form-group mb-0!">
               <label className="label">Contact Number *</label>
-              <input type="tel" className={`input ${errors.contact ? "!border-danger" : ""}`} value={form.contact} onChange={(e) => updateField("contact", e.target.value)} maxLength={10} />
+              <input {...phoneInputProps} className={`input ${errors.contact ? "!border-danger" : ""}`} value={form.contact} onChange={(e) => updateField("contact", sanitizePhoneInput(e.target.value))} />
               {errors.contact && <p className="form-error">{errors.contact}</p>}
             </div>
             <div className="form-group mb-0!">

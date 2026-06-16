@@ -1,9 +1,11 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
 import { Plus, UserPlus, Search, Phone, Calendar, Home, CheckCircle, Clock, AlertTriangle, X, KeyRound, Copy, Pencil, LogOut } from "lucide-react";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
+import { isTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 
 interface TenantEntry {
   id: string;
@@ -55,6 +57,8 @@ const formatFlatLabel = (flat?: { flatNumber?: string | null; wing?: string | nu
 };
 
 export default function TenantsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { confirm, prompt } = useAppDialog();
   const [tenants, setTenants] = useState<TenantEntry[]>([]);
   const [flats, setFlats] = useState<Flat[]>([]);
@@ -86,7 +90,7 @@ export default function TenantsPage() {
     fetch("/api/tenants")
       .then((r) => r.json())
       .then((d) => setTenants(Array.isArray(d) ? d : []))
-      .catch(() => toast.error("Failed to load tenants"))
+      .catch(() => toastT.error("Failed to load tenants"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -100,6 +104,10 @@ export default function TenantsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isTenDigitPhone(form.phone)) {
+      toastT.error("Enter a valid 10-digit tenant phone number");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/tenants", {
@@ -111,18 +119,18 @@ export default function TenantsPage() {
         const data = await res.json();
         if (data.loginCredentials) {
           setLastCredentials(data.loginCredentials);
-          toast.success("Tenant registered and login created");
+          toastT.success("Tenant registered and login created");
         } else {
-          toast.success("Tenant registered. Add email later to create login.");
+          toastT.success("Tenant registered. Add email later to create login.");
         }
         setShowForm(false);
         setForm({ flatId: "", name: "", phone: "", email: "", idProofType: "aadhaar", leaseStart: "", leaseEnd: "", monthlyRent: "", password: "", billingResponsibility: "OWNER" });
         fetchTenants();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed to register tenant");
+        toastT.error(d.error || "Failed to register tenant");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
     finally { setSaving(false); }
   };
 
@@ -153,14 +161,14 @@ export default function TenantsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to create login");
+        toastT.error(data.error || "Failed to create login");
         return;
       }
       setLastCredentials(data.loginCredentials);
-      toast.success("Tenant login created");
+      toastT.success("Tenant login created");
       fetchTenants();
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setCreatingLoginFor(null);
     }
@@ -169,7 +177,7 @@ export default function TenantsPage() {
   const copyCredentials = () => {
     if (!lastCredentials) return;
     navigator.clipboard.writeText(`Email: ${lastCredentials.email}\nPassword: ${lastCredentials.password}`);
-    toast.success("Credentials copied");
+    toastT.success("Credentials copied");
   };
 
   const updateMaintenancePayer = async (tenant: TenantEntry, billingResponsibility: string) => {
@@ -186,13 +194,13 @@ export default function TenantsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to update maintenance payer");
+        toastT.error(data.error || "Failed to update maintenance payer");
         return;
       }
-      toast.success(data.message || "Maintenance payer updated");
+      toastT.success(data.message || "Maintenance payer updated");
       fetchTenants();
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setUpdatingPayerFor(null);
     }
@@ -214,6 +222,10 @@ export default function TenantsPage() {
   const saveTenantEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTenant) return;
+    if (!isTenDigitPhone(editForm.phone)) {
+      toastT.error("Enter a valid 10-digit tenant phone number");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/tenants", {
@@ -223,14 +235,14 @@ export default function TenantsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to update tenant");
+        toastT.error(data.error || "Failed to update tenant");
         return;
       }
-      toast.success("Tenant updated");
+      toastT.success("Tenant updated");
       setEditingTenant(null);
       fetchTenants();
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setSaving(false);
     }
@@ -253,28 +265,28 @@ export default function TenantsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to move out tenant");
+        toastT.error(data.error || "Failed to move out tenant");
         return;
       }
-      toast.success(data.message || "Tenant moved out");
+      toastT.success(data.message || "Tenant moved out");
       fetchTenants();
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setSaving(false);
     }
   };
 
-  const filtered = tenants.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase()) ||
-    t.phone.includes(search) ||
-    (t.flat?.flatNumber || "").toLowerCase().includes(search.toLowerCase())
+  const filtered = tenants.filter((tenant) =>
+    tenant.name.toLowerCase().includes(search.toLowerCase()) ||
+    tenant.phone.includes(search) ||
+    (tenant.flat?.flatNumber || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const active = tenants.filter((t) => getStatus(t.status) === "active").length;
-  const expiringSoon = tenants.filter((t) => {
-    if (!t.leaseEnd || getStatus(t.status) !== "active") return false;
-    const days = (new Date(t.leaseEnd).getTime() - Date.now()) / 86400000;
+  const active = tenants.filter((tenant) => getStatus(tenant.status) === "active").length;
+  const expiringSoon = tenants.filter((tenant) => {
+    if (!tenant.leaseEnd || getStatus(tenant.status) !== "active") return false;
+    const days = (new Date(tenant.leaseEnd).getTime() - Date.now()) / 86400000;
     return days > 0 && days <= 30;
   }).length;
 
@@ -287,8 +299,8 @@ export default function TenantsPage() {
             <UserPlus className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">Tenant Management</h1>
-            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">Register & manage tenant lifecycle</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">{t("Tenant Management")}</h1>
+            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">{t("Register & manage tenant lifecycle")}</p>
           </div>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary !rounded-xl px-5 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm shadow-md shadow-primary/10 flex items-center justify-center">
@@ -302,7 +314,7 @@ export default function TenantsPage() {
           { label: "TOTAL", val: tenants.length, color: "text-primary", bg: "bg-primary/5", icon: UserPlus },
           { label: "ACTIVE", val: active, color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle },
           { label: "EXPIRING SOON", val: expiringSoon, color: "text-amber-600", bg: "bg-amber-50", icon: Clock },
-          { label: "EXPIRED", val: tenants.filter((t) => getStatus(t.status) === "expired").length, color: "text-red-600", bg: "bg-red-50", icon: AlertTriangle },
+          { label: "EXPIRED", val: tenants.filter((tenant) => getStatus(tenant.status) === "expired").length, color: "text-red-600", bg: "bg-red-50", icon: AlertTriangle },
         ].map((s) => (
           <div key={s.label} className="bg-white p-4 sm:p-6 rounded-2xl border border-border/50 group transition-all hover:border-primary/20 hover:shadow-sm">
             <div className="flex items-center justify-between">
@@ -358,88 +370,88 @@ export default function TenantsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {filtered.map((t) => {
-            const normalizedStatus = getStatus(t.status);
+          {filtered.map((tenant) => {
+            const normalizedStatus = getStatus(tenant.status);
             const style = statusStyles[normalizedStatus] || statusStyles.pending;
-            const daysLeft = t.leaseEnd ? Math.ceil((new Date(t.leaseEnd).getTime() - Date.now()) / 86400000) : null;
+            const daysLeft = tenant.leaseEnd ? Math.ceil((new Date(tenant.leaseEnd).getTime() - Date.now()) / 86400000) : null;
             return (
-              <div key={t.id} className={`bg-white rounded-[1.25rem] border p-5 sm:p-6 transition-all hover:shadow-md group ${daysLeft !== null && daysLeft <= 30 && daysLeft > 0 ? "border-l-4 border-l-amber-400" : daysLeft !== null && daysLeft <= 0 ? "border-l-4 border-l-red-400" : "border-border/60"}`}>
+              <div key={tenant.id} className={`bg-white rounded-[1.25rem] border p-5 sm:p-6 transition-all hover:shadow-md group ${daysLeft !== null && daysLeft <= 30 && daysLeft > 0 ? "border-l-4 border-l-amber-400" : daysLeft !== null && daysLeft <= 0 ? "border-l-4 border-l-red-400" : "border-border/60"}`}>
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-2xl ${style.bg} flex items-center justify-center ${style.text} shrink-0`}>
                     <UserPlus className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h4 className="text-base font-bold text-text-primary">{t.name}</h4>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>{style.label}</span>
+                      <h4 className="text-base font-bold text-text-primary">{tenant.name}</h4>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>{t(style.label)}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
-                      <span className="flex items-center gap-1 text-xs text-text-secondary"><Home className="w-3 h-3" /> {formatFlatLabel(t.flat)}</span>
-                      <span className="flex items-center gap-1 text-xs text-text-secondary"><Phone className="w-3 h-3" /> {t.phone}</span>
-                      <span className={`flex items-center gap-1 text-xs font-semibold ${t.hasLogin ? "text-emerald-600" : "text-amber-600"}`}>
-                        <KeyRound className="w-3 h-3" /> {t.hasLogin ? "Login active" : "No app login"}
+                      <span className="flex items-center gap-1 text-xs text-text-secondary"><Home className="w-3 h-3" /> {formatFlatLabel(tenant.flat)}</span>
+                      <span className="flex items-center gap-1 text-xs text-text-secondary"><Phone className="w-3 h-3" /> {tenant.phone}</span>
+                      <span className={`flex items-center gap-1 text-xs font-semibold ${tenant.hasLogin ? "text-emerald-600" : "text-amber-600"}`}>
+                        <KeyRound className="w-3 h-3" /> {tenant.hasLogin ? t("Login active") : t("No app login")}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
                       <span className="flex items-center gap-1 text-[10px] text-text-tertiary">
-                        <Calendar className="w-3 h-3" /> {new Date(t.leaseStart).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                        {t.leaseEnd && ` → ${new Date(t.leaseEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
+                        <Calendar className="w-3 h-3" /> {new Date(tenant.leaseStart).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        {tenant.leaseEnd && ` → ${new Date(tenant.leaseEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
                       </span>
                     </div>
-                    {t.monthlyRent && <p className="text-xs font-bold text-primary mt-1.5">Private rent: ₹{t.monthlyRent.toLocaleString("en-IN")}/month</p>}
+                    {tenant.monthlyRent && <p className="text-xs font-bold text-primary mt-1.5">{t("Private rent")}: ₹{tenant.monthlyRent.toLocaleString("en-IN")}/month</p>}
                     {daysLeft !== null && daysLeft > 0 && daysLeft <= 30 && (
-                      <p className="text-[10px] font-bold text-amber-600 mt-2 bg-amber-50 px-2 py-1 rounded-lg inline-block">Lease expires in {daysLeft} days</p>
+                      <p className="text-[10px] font-bold text-amber-600 mt-2 bg-amber-50 px-2 py-1 rounded-lg inline-block">{t("Lease expires in")} {daysLeft} {t("days")}</p>
                     )}
                     {daysLeft !== null && daysLeft <= 0 && (
-                      <p className="text-[10px] font-bold text-red-600 mt-2 bg-red-50 px-2 py-1 rounded-lg inline-block">Lease expired</p>
+                      <p className="text-[10px] font-bold text-red-600 mt-2 bg-red-50 px-2 py-1 rounded-lg inline-block">{t("Lease expired")}</p>
                     )}
                     <div className="mt-3 rounded-xl border border-border bg-white p-3">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Society maintenance payer</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">{t("Society maintenance payer")}</label>
                       <select
                         className="select !rounded-lg !py-2 !text-xs mt-2"
-                        value={t.billingResponsibility || "OWNER"}
-                        disabled={updatingPayerFor === t.id}
-                        onChange={(e) => updateMaintenancePayer(t, e.target.value)}
+                        value={tenant.billingResponsibility || "OWNER"}
+                        disabled={updatingPayerFor === tenant.id}
+                        onChange={(e) => updateMaintenancePayer(tenant, e.target.value)}
                       >
-                        <option value="OWNER">Owner pays society</option>
-                        <option value="TENANT">Tenant pays society directly</option>
+                        <option value="OWNER">{t("Owner pays society")}</option>
+                        <option value="TENANT">{t("Tenant pays society directly")}</option>
                       </select>
                       <p className="text-[10px] text-text-secondary mt-1">
-                        {t.billingResponsibility === "TENANT"
-                          ? "Invoices for this unit will appear in the tenant's My Bills."
-                          : "Invoices should go to the owner/co-owner. Link owner first for this to work cleanly."}
+                        {tenant.billingResponsibility === "TENANT"
+                          ? t("Invoices for this unit will appear in the tenant's My Bills.")
+                          : t("Invoices should go to the owner/co-owner. Link owner first for this to work cleanly.")}
                       </p>
                     </div>
-                    <div className={`mt-3 rounded-xl px-3 py-2 ${t.flat?.ownerLinked ? "bg-surface/70" : "bg-amber-50"}`}>
-                      <p className={`text-[10px] font-bold uppercase tracking-widest ${t.flat?.ownerLinked ? "text-text-tertiary" : "text-amber-700"}`}>
-                        {t.flat?.ownerLinked ? "Linked owner" : "Owner not linked yet"}
+                    <div className={`mt-3 rounded-xl px-3 py-2 ${tenant.flat?.ownerLinked ? "bg-surface/70" : "bg-amber-50"}`}>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${tenant.flat?.ownerLinked ? "text-text-tertiary" : "text-amber-700"}`}>
+                        {tenant.flat?.ownerLinked ? t("Linked owner") : t("Owner not linked yet")}
                       </p>
-                      <p className="text-xs font-semibold text-text-primary mt-0.5">{t.flat?.ownerName || "Add owner/co-owner occupancy for this unit"}</p>
-                      {(t.flat?.ownerPhone || t.flat?.ownerEmail) && (
+                      <p className="text-xs font-semibold text-text-primary mt-0.5">{tenant.flat?.ownerName || t("Add owner/co-owner occupancy for this unit")}</p>
+                      {(tenant.flat?.ownerPhone || tenant.flat?.ownerEmail) && (
                         <p className="text-[10px] text-text-secondary mt-0.5">
-                          {[t.flat.ownerPhone, t.flat.ownerEmail].filter(Boolean).join(" · ")}
+                          {[tenant.flat.ownerPhone, tenant.flat.ownerEmail].filter(Boolean).join(" · ")}
                         </p>
                       )}
                     </div>
-                    {!t.hasLogin && (
+                    {!tenant.hasLogin && (
                       <button
-                        onClick={() => createTenantLogin(t)}
-                        disabled={creatingLoginFor === t.id}
+                        onClick={() => createTenantLogin(tenant)}
+                        disabled={creatingLoginFor === tenant.id}
                         className="btn btn-secondary btn-sm mt-3 !rounded-xl"
                       >
                         <KeyRound className="w-4 h-4" />
-                        {creatingLoginFor === t.id ? "Creating..." : "Create Tenant Login"}
+                        {creatingLoginFor === tenant.id ? t("Creating...") : t("Create Tenant Login")}
                       </button>
                     )}
                     <div className="flex flex-wrap gap-2 mt-3">
-                      <button onClick={() => openEditTenant(t)} className="btn btn-secondary btn-sm !rounded-xl">
+                      <button onClick={() => openEditTenant(tenant)} className="btn btn-secondary btn-sm !rounded-xl">
                         <Pencil className="w-4 h-4" />
-                        Edit
+                        {t("Edit")}
                       </button>
-                      {getStatus(t.status) === "active" && (
-                        <button onClick={() => terminateTenant(t)} disabled={saving} className="btn btn-danger btn-sm !rounded-xl">
+                      {getStatus(tenant.status) === "active" && (
+                        <button onClick={() => terminateTenant(tenant)} disabled={saving} className="btn btn-danger btn-sm !rounded-xl">
                           <LogOut className="w-4 h-4" />
-                          Move Out
+                          {t("Move Out")}
                         </button>
                       )}
                     </div>
@@ -476,7 +488,7 @@ export default function TenantsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Phone *</label>
-                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="+91..." value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+                  <input {...phoneInputProps} className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="10-digit phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: sanitizePhoneInput(e.target.value) })} required />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -547,7 +559,7 @@ export default function TenantsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Phone *</label>
-                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} required />
+                  <input {...phoneInputProps} className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: sanitizePhoneInput(e.target.value) })} required />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

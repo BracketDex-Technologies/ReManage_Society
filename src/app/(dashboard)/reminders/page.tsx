@@ -1,7 +1,8 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
 import { Send, Check, X, MessageSquare } from "lucide-react";
 import { formatCurrency, formatPeriod, formatDate } from "@/lib/utils";
 import { useUser } from "@/lib/user-context";
@@ -22,6 +23,8 @@ interface PendingFlat {
 
 
 export default function RemindersPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [pendingFlats, setPendingFlats] = useState<PendingFlat[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingId, setSendingId] = useState<string | null>(null);
@@ -71,7 +74,7 @@ export default function RemindersPage() {
           }));
         setPendingFlats(flats);
       })
-      .catch(() => toast.error("Failed to load pending bills"))
+      .catch(() => toastT.error("Failed to load pending bills"))
       .finally(() => setLoading(false));
   }, [period]);
 
@@ -106,7 +109,7 @@ export default function RemindersPage() {
         f.flatId === flat.flatId ? { ...f, sent: true, lastReminder: "Just now" } : f
       )
     );
-    toast.success(`WhatsApp opened for ${flat.ownerName}`);
+    toastT.success(`WhatsApp opened for ${flat.ownerName}`);
   };
 
   // Send via API (requires WhatsApp Business API credentials)
@@ -120,7 +123,7 @@ export default function RemindersPage() {
       const data = await res.json();
 
       if (data.sent > 0) {
-        toast.success(`Reminders sent to ${data.sent} members`);
+        toastT.success(`Reminders sent to ${data.sent} members`);
         setPendingFlats((prev) =>
           prev.map((f) =>
             flatIds.includes(f.flatId)
@@ -129,7 +132,7 @@ export default function RemindersPage() {
           )
         );
       } else {
-        toast.error(data.error || "Failed to send reminders");
+        toastT.error(data.error || "Failed to send reminders");
         setPendingFlats((prev) =>
           prev.map((f) =>
             flatIds.includes(f.flatId) ? { ...f, failed: true } : f
@@ -137,7 +140,7 @@ export default function RemindersPage() {
         );
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     }
   };
 
@@ -171,7 +174,7 @@ export default function RemindersPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Send Payment Reminders</h1>
+          <h1 className="page-title">{t("Send Payment Reminders")}</h1>
           <p className="text-sm text-text-secondary mt-1">
             {periodLabel} — {pendingFlats.length} flats have pending maintenance
           </p>

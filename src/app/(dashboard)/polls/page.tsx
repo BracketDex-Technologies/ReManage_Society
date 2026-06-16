@@ -1,8 +1,9 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
 import { useUser } from "@/lib/user-context";
-import toast from "react-hot-toast";
 import { Plus, Vote, BarChart3, Lock, Share2, Calendar, User, Info, CheckCircle2, X } from "lucide-react";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 import { ModuleEmptyState, ModulePageHeader } from "@/components/ux/ModulePageKit";
@@ -21,6 +22,8 @@ interface Poll {
 }
 
 export default function PollsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { confirm } = useAppDialog();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +40,7 @@ export default function PollsPage() {
     fetch("/api/polls")
       .then((r) => r.json())
       .then((d) => setPolls(d.polls || []))
-      .catch(() => toast.error("Failed to load polls"))
+      .catch(() => toastT.error("Failed to load polls"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -47,7 +50,7 @@ export default function PollsPage() {
     e.preventDefault();
     const validOptions = form.options.filter((o) => o.trim());
     if (validOptions.length < 2) {
-      toast.error("At least 2 valid options are required");
+      toastT.error("At least 2 valid options are required");
       return;
     }
     setSaving(true);
@@ -58,21 +61,21 @@ export default function PollsPage() {
         body: JSON.stringify({ ...form, options: validOptions }),
       });
       if (res.ok) {
-        toast.success("Poll published across society");
+        toastT.success("Poll published across society");
         setShowForm(false);
         setForm({ title: "", description: "", options: ["", ""], closesAt: "" });
         fetchPolls();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed to create poll");
+        toastT.error(d.error || "Failed to create poll");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
     finally { setSaving(false); }
   };
 
   const handleVote = async (pollId: string, optionIndex: number) => {
     if (!myFlat) {
-      toast.error("You must have an assigned flat to vote");
+      toastT.error("You must have an assigned flat to vote");
       return;
     }
     try {
@@ -82,13 +85,13 @@ export default function PollsPage() {
         body: JSON.stringify({ vote: optionIndex, flatNumber: myFlat }),
       });
       if (res.ok) {
-        toast.success("Your vote has been recorded!");
+        toastT.success("Your vote has been recorded!");
         fetchPolls();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Voting failed");
+        toastT.error(d.error || "Voting failed");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
   };
 
   const closePoll = async (id: string) => {
@@ -103,7 +106,7 @@ export default function PollsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "closed" }),
     });
-    toast.success("Poll concluded");
+    toastT.success("Poll concluded");
     fetchPolls();
   };
 
@@ -119,9 +122,9 @@ export default function PollsPage() {
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       <ModulePageHeader
         icon={Vote}
-        title="Society Voice"
-        description="Create governance polls, vote once per flat, and review live participation."
-        meta={`${polls.length} polls`}
+        title={t("Society Voice")}
+        description={t("Create governance polls, vote once per flat, and review live participation.")}
+        meta={`${polls.length} ${t("polls")}`}
         tone="violet"
         actions={isAdmin && (
           <button onClick={() => setShowForm(true)} className="btn btn-primary gap-2 px-8 py-3 rounded-xl font-black shadow-lg shadow-primary/20 flex items-center">

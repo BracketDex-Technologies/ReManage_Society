@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Download, BarChart3, TrendingUp, PieChart, IndianRupee, AlertTriangle, Landmark, Archive } from "lucide-react";
 import Link from "next/link";
-import toast from "react-hot-toast";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { formatCurrency } from "@/lib/utils";
 import { BarChart, DonutChart, LineChart } from "@/components/ui/Charts";
 import { expenseCategoryLabel } from "@/lib/finance-categories";
@@ -90,6 +91,8 @@ const METHOD_COLORS: Record<string, string> = {
 };
 
 export default function ReportsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [tab, setTab] = useState<"monthly" | "annual" | "financial">("monthly");
   const [monthly, setMonthly] = useState<MonthlyReport | null>(null);
   const [annual, setAnnual] = useState<AnnualReport | null>(null);
@@ -127,7 +130,7 @@ export default function ReportsPage() {
             setMonthly(parsed);
           } else {
             setMonthly(null);
-            setLoadError(typeof d?.error === "string" ? d.error : "Failed to load monthly report");
+            setLoadError(typeof d?.error === "string" ? d.error : t("Failed to load monthly report"));
           }
           setLoading(false);
         } else if (tab === "annual") {
@@ -139,7 +142,7 @@ export default function ReportsPage() {
             setAnnual(d);
           } else {
             setAnnual(null);
-            setLoadError(typeof d?.error === "string" ? d.error : "Failed to load annual report");
+            setLoadError(typeof d?.error === "string" ? d.error : t("Failed to load annual report"));
           }
           setLoading(false);
         } else if (tab === "financial") {
@@ -150,13 +153,13 @@ export default function ReportsPage() {
             setFinancial(d);
           } else {
             setFinancial(null);
-            setLoadError(typeof d?.error === "string" ? d.error : "Failed to load financial report");
+            setLoadError(typeof d?.error === "string" ? d.error : t("Failed to load financial report"));
           }
           setLoading(false);
         }
       } catch {
         if (!cancelled) {
-          setLoadError("Failed to load report data");
+          setLoadError(t("Failed to load report data"));
           setLoading(false);
         }
       }
@@ -171,7 +174,7 @@ export default function ReportsPage() {
       const res = await fetch(`/api/reports/auditor-export?year=${encodeURIComponent(auditorFiscalYear)}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Could not generate auditor export");
+        toastT.error(data.error || "Could not generate auditor export");
         return;
       }
       const blob = await res.blob();
@@ -183,9 +186,9 @@ export default function ReportsPage() {
       link.download = fileName;
       link.click();
       URL.revokeObjectURL(link.href);
-      toast.success("Auditor export downloaded");
+      toastT.success("Auditor export downloaded");
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setExportingAuditor(false);
     }
@@ -197,19 +200,19 @@ export default function ReportsPage() {
         <div className="flex items-center gap-3">
           <BarChart3 className="w-6 h-6 text-primary" />
           <div>
-            <h1 className="page-title">Financial Reports</h1>
+            <h1 className="page-title">{t("Financial Reports")}</h1>
             <p className="text-sm text-text-secondary mt-0.5">
-              {tab === "monthly" ? `Monthly Report — ${periodLabel}` : `Annual Summary — ${period.split("-")[0]}`}
+              {tab === "monthly" ? `${t("Monthly Report")} — ${periodLabel}` : `${t("Annual Summary")} — ${period.split("-")[0]}`}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/reports/reconciliation" className="btn btn-primary btn-sm">
-            <Landmark className="w-4 h-4" /> Bank Reconciliation
+            <Landmark className="w-4 h-4" /> {t("Bank Reconciliation")}
           </Link>
           <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-2 py-1">
             <label htmlFor="auditor-fy" className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-              FY
+              {t("FY")}
             </label>
             <select
               id="auditor-fy"
@@ -234,30 +237,30 @@ export default function ReportsPage() {
               onClick={downloadAuditorExport}
               disabled={exportingAuditor}
               className="btn btn-secondary btn-sm"
-              title="Trial balance, balance sheet, ledger, expense proofs"
+              title={t("Trial balance, balance sheet, ledger, expense proofs")}
             >
               {exportingAuditor ? (
                 <div className="spinner !w-4 !h-4" />
               ) : (
                 <>
-                  <Archive className="w-4 h-4" /> Auditor ZIP
+                  <Archive className="w-4 h-4" /> {t("Auditor ZIP")}
                 </>
               )}
             </button>
           </div>
           <button className="btn btn-secondary btn-sm">
-            <Download className="w-4 h-4" /> Export PDF
+            <Download className="w-4 h-4" /> {t("Export PDF")}
           </button>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-white border border-border rounded-lg p-0.5 mb-6 w-fit">
-        {(["monthly", "annual", "financial"] as const).map((t) => (
+        {(["monthly", "annual", "financial"] as const).map((tabKey) => (
           <button
-            key={t}
+            key={tabKey}
             onClick={() => {
-              setTab(t);
+              setTab(tabKey);
               setLoading(true);
               setLoadError(null);
               setMonthly(null);
@@ -265,10 +268,10 @@ export default function ReportsPage() {
               setFinancial(null);
             }}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              tab === t ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"
+              tab === tabKey ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"
             }`}
           >
-            {t === "monthly" ? "Monthly Collection" : t === "annual" ? "Annual Summary" : "Income & Expense (P&L)"}
+            {tabKey === "monthly" ? t("Monthly Collection") : tabKey === "annual" ? t("Annual Summary") : t("Income & Expense (P&L)")}
           </button>
         ))}
       </div>
@@ -285,32 +288,32 @@ export default function ReportsPage() {
           {/* Summary Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="stat-card border-l-4 border-l-primary">
-              <p className="text-xs text-text-secondary">Total Inventory</p>
+              <p className="text-xs text-text-secondary">{t("Total Inventory")}</p>
               <p className="text-2xl font-bold mt-1">{monthly.summary.totalFlats}</p>
-              <p className="text-xs text-text-secondary">created flats</p>
+              <p className="text-xs text-text-secondary">{t("created flats")}</p>
             </div>
             <div className="stat-card border-l-4 border-l-indigo-500">
-              <p className="text-xs text-text-secondary">Active Flats</p>
+              <p className="text-xs text-text-secondary">{t("Active Flats")}</p>
               <p className="text-2xl font-bold mt-1">{monthly.summary.activeFlats}</p>
-              <p className="text-xs text-text-secondary">{monthly.summary.billsGenerated} invoices generated</p>
+              <p className="text-xs text-text-secondary">{monthly.summary.billsGenerated} {t("invoices generated")}</p>
             </div>
             <div className="stat-card border-l-4 border-l-slate-400">
-              <p className="text-xs text-text-secondary">Vacant / Unlinked</p>
+              <p className="text-xs text-text-secondary">{t("Vacant / Unlinked")}</p>
               <p className="text-2xl font-bold mt-1">{monthly.summary.vacantFlats}</p>
-              <p className="text-xs text-text-secondary">not billable yet</p>
+              <p className="text-xs text-text-secondary">{t("not billable yet")}</p>
             </div>
             <div className="stat-card border-l-4 border-l-success">
-              <p className="text-xs text-text-secondary">Collected</p>
+              <p className="text-xs text-text-secondary">{t("Collected")}</p>
               <p className="text-2xl font-bold mt-1 text-success">{formatCurrency(monthly.summary.totalCollected)}</p>
-              <p className="text-xs text-success">{monthly.summary.paid} flats paid</p>
+              <p className="text-xs text-success">{monthly.summary.paid} {t("flats paid")}</p>
             </div>
             <div className="stat-card border-l-4 border-l-danger">
-              <p className="text-xs text-text-secondary">Pending</p>
+              <p className="text-xs text-text-secondary">{t("Pending")}</p>
               <p className="text-2xl font-bold mt-1 text-danger">{formatCurrency(monthly.summary.totalPending)}</p>
-              <p className="text-xs text-danger">{monthly.summary.pending} flats pending</p>
+              <p className="text-xs text-danger">{monthly.summary.pending} {t("flats pending")}</p>
             </div>
             <div className="stat-card border-l-4 border-l-warning">
-              <p className="text-xs text-text-secondary">Collection Rate</p>
+              <p className="text-xs text-text-secondary">{t("Collection Rate")}</p>
               <p className="text-2xl font-bold mt-1">{monthly.summary.collectionRate}%</p>
               <div className="mt-2 h-2 bg-border rounded-full overflow-hidden">
                 <div
@@ -328,7 +331,7 @@ export default function ReportsPage() {
               <div className="card">
                 <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-primary" />
-                  Payment Methods
+                  {t("Payment Methods")}
                 </h3>
                 <DonutChart
                   data={monthly.paymentMethodBreakdown.map((m) => ({
@@ -337,7 +340,7 @@ export default function ReportsPage() {
                     color: METHOD_COLORS[m.method] || METHOD_COLORS.unknown,
                   }))}
                   centerValue={`${monthly.paymentMethodBreakdown.reduce((s, m) => s + m.count, 0)}`}
-                  centerLabel="Payments"
+                  centerLabel={t("Payments")}
                   size={170}
                 />
                 <div className="mt-4 space-y-2">
@@ -352,7 +355,7 @@ export default function ReportsPage() {
                       </div>
                       <div className="text-right">
                         <span className="font-medium">{formatCurrency(m.amount)}</span>
-                        <span className="text-text-secondary ml-2">({m.count} flats)</span>
+                        <span className="text-text-secondary ml-2">({m.count} {t("flats")})</span>
                       </div>
                     </div>
                   ))}
@@ -364,19 +367,19 @@ export default function ReportsPage() {
             <div className="card">
               <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
                 <IndianRupee className="w-4 h-4 text-primary" />
-                Income Summary
+                {t("Income Summary")}
               </h3>
               <div className="space-y-4">
                 <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl">
-                  <p className="text-xs text-success-text font-medium">Total Collected</p>
+                  <p className="text-xs text-success-text font-medium">{t("Total Collected")}</p>
                   <p className="text-3xl font-bold text-success-text mt-1">{formatCurrency(monthly.summary.totalCollected)}</p>
                 </div>
                 <div className="p-4 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl">
-                  <p className="text-xs text-danger-text font-medium">Total Pending</p>
+                  <p className="text-xs text-danger-text font-medium">{t("Total Pending")}</p>
                   <p className="text-3xl font-bold text-danger-text mt-1">{formatCurrency(monthly.summary.totalPending)}</p>
                 </div>
                 <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
-                  <p className="text-xs text-primary font-medium">Expected Total</p>
+                  <p className="text-xs text-primary font-medium">{t("Expected Total")}</p>
                   <p className="text-3xl font-bold text-primary mt-1">
                     {formatCurrency(monthly.summary.totalCollected + monthly.summary.totalPending)}
                   </p>
@@ -390,17 +393,17 @@ export default function ReportsPage() {
             <div className="card">
               <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-danger" />
-                Pending Active Flats ({monthly.pendingFlats.length})
+                {t("Pending Active Flats ({count})").replace("{count}", String(monthly.pendingFlats.length))}
               </h3>
               <div className="table-wrapper !border-0">
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Flat</th>
-                      <th>Owner</th>
-                      <th className="hidden sm:table-cell">Contact</th>
-                      <th className="text-right">Amount</th>
-                      <th className="text-right">Action</th>
+                      <th>{t("Flat")}</th>
+                      <th>{t("Owner")}</th>
+                      <th className="hidden sm:table-cell">{t("Contact")}</th>
+                      <th className="text-right">{t("Amount")}</th>
+                      <th className="text-right">{t("Action")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -415,7 +418,7 @@ export default function ReportsPage() {
                             onClick={() => window.open(`https://wa.me/91${f.contact}`, "_blank")}
                             className="btn btn-secondary btn-sm !py-1 !px-2 text-xs"
                           >
-                            WhatsApp
+                            {t("WhatsApp")}
                           </button>
                         </td>
                       </tr>
@@ -432,7 +435,7 @@ export default function ReportsPage() {
           <div className="card">
             <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              Annual Collection Trend — {annual.year}
+              {t("Annual Collection Trend — {year}").replace("{year}", String(annual.year))}
             </h3>
             <BarChart
               data={annual.months.filter((m) => m.generated > 0).map((m) => ({
@@ -440,7 +443,7 @@ export default function ReportsPage() {
                 value1: m.collected,
                 value2: m.pending,
               }))}
-              labels={["Collected", "Pending"]}
+              labels={[t("Collected"), t("Pending")]}
               colors={["#22c55e", "#ef4444"]}
               height={260}
             />
@@ -450,7 +453,7 @@ export default function ReportsPage() {
           <div className="card">
             <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-primary" />
-              Monthly Collection Rate
+              {t("Monthly Collection Rate")}
             </h3>
             <LineChart
               data={annual.months.filter((m) => m.generated > 0).map((m) => ({
@@ -464,16 +467,16 @@ export default function ReportsPage() {
 
           {/* Annual Table */}
           <div className="card">
-            <h3 className="font-semibold text-sm mb-4">Detailed Breakdown</h3>
+            <h3 className="font-semibold text-sm mb-4">{t("Detailed Breakdown")}</h3>
             <div className="table-wrapper !border-0">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Month</th>
-                    <th className="text-right">Generated</th>
-                    <th className="text-right">Collected</th>
-                    <th className="text-right">Pending</th>
-                    <th className="text-right">Rate</th>
+                    <th>{t("Month")}</th>
+                    <th className="text-right">{t("Generated")}</th>
+                    <th className="text-right">{t("Collected")}</th>
+                    <th className="text-right">{t("Pending")}</th>
+                    <th className="text-right">{t("Rate")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -491,7 +494,7 @@ export default function ReportsPage() {
                     </tr>
                   ))}
                   <tr className="bg-surface font-semibold">
-                    <td>Total</td>
+                    <td>{t("Total")}</td>
                     <td className="text-right">{formatCurrency(annual.totals.generated)}</td>
                     <td className="text-right text-success">{formatCurrency(annual.totals.collected)}</td>
                     <td className="text-right text-danger">{formatCurrency(annual.totals.pending)}</td>
@@ -506,15 +509,15 @@ export default function ReportsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="card border-l-4 border-l-success">
-              <p className="text-xs text-text-secondary">Total Income</p>
+              <p className="text-xs text-text-secondary">{t("Total Income")}</p>
               <p className="text-2xl font-bold mt-1 text-success">{formatCurrency(financial.income.total)}</p>
             </div>
             <div className="card border-l-4 border-l-danger">
-              <p className="text-xs text-text-secondary">Total Expenses</p>
+              <p className="text-xs text-text-secondary">{t("Total Expenses")}</p>
               <p className="text-2xl font-bold mt-1 text-danger">{formatCurrency(financial.expenses.total)}</p>
             </div>
             <div className={`card border-l-4 ${financial.profitOrLoss >= 0 ? 'border-l-success' : 'border-l-danger'}`}>
-              <p className="text-xs text-text-secondary">Net Profit / Loss</p>
+              <p className="text-xs text-text-secondary">{t("Net Profit / Loss")}</p>
               <p className={`text-2xl font-bold mt-1 ${financial.profitOrLoss >= 0 ? 'text-success' : 'text-danger'}`}>
                 {financial.profitOrLoss >= 0 ? "+" : ""}{formatCurrency(financial.profitOrLoss)}
               </p>
@@ -522,16 +525,16 @@ export default function ReportsPage() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="card">
-              <h3 className="font-semibold text-sm mb-4 border-b border-border pb-2">Income Breakdown</h3>
+              <h3 className="font-semibold text-sm mb-4 border-b border-border pb-2">{t("Income Breakdown")}</h3>
               <div className="space-y-3">
-                <div className="flex justify-between"><span>Maintenance Collection</span><span className="font-medium">{formatCurrency(financial.income.maintenance)}</span></div>
-                <div className="flex justify-between"><span>Marketplace & Amenities</span><span className="font-medium">{formatCurrency(financial.income.marketplace)}</span></div>
-                <div className="flex justify-between"><span>Other Receipts</span><span className="font-medium">{formatCurrency(financial.income.other)}</span></div>
-                <div className="flex justify-between pt-2 border-t border-border font-bold"><span>Total Income</span><span className="text-success">{formatCurrency(financial.income.total)}</span></div>
+                <div className="flex justify-between"><span>{t("Maintenance Collection")}</span><span className="font-medium">{formatCurrency(financial.income.maintenance)}</span></div>
+                <div className="flex justify-between"><span>{t("Marketplace & Amenities")}</span><span className="font-medium">{formatCurrency(financial.income.marketplace)}</span></div>
+                <div className="flex justify-between"><span>{t("Other Receipts")}</span><span className="font-medium">{formatCurrency(financial.income.other)}</span></div>
+                <div className="flex justify-between pt-2 border-t border-border font-bold"><span>{t("Total Income")}</span><span className="text-success">{formatCurrency(financial.income.total)}</span></div>
               </div>
             </div>
             <div className="card">
-              <h3 className="font-semibold text-sm mb-4 border-b border-border pb-2">Expense Breakdown</h3>
+              <h3 className="font-semibold text-sm mb-4 border-b border-border pb-2">{t("Expense Breakdown")}</h3>
               <div className="space-y-3">
                 {Object.entries(financial.expenses.byCategory || {})
                   .filter(([, amount]) => amount > 0)
@@ -543,9 +546,9 @@ export default function ReportsPage() {
                     </div>
                   ))}
                 {Object.values(financial.expenses.byCategory || {}).every((amount) => amount <= 0) && (
-                  <p className="text-sm text-text-secondary">No expenses recorded for this period.</p>
+                  <p className="text-sm text-text-secondary">{t("No expenses recorded for this period.")}</p>
                 )}
-                <div className="flex justify-between pt-2 border-t border-border font-bold"><span>Total Expense</span><span className="text-danger">{formatCurrency(financial.expenses.total)}</span></div>
+                <div className="flex justify-between pt-2 border-t border-border font-bold"><span>{t("Total Expense")}</span><span className="text-danger">{formatCurrency(financial.expenses.total)}</span></div>
               </div>
             </div>
           </div>

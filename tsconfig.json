@@ -45,5 +45,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "scratch", "**/*.test.ts", "**/*.test.tsx", "tests"]
+  "exclude": ["node_modules", "scratch", "**/*.test.ts", "**/*.test.tsx", "tests", "scripts", "messages/overrides"]
 }

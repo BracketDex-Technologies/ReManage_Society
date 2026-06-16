@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { History, Filter, User, Calendar, ArrowRight } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 interface ActivityLogEntry {
   id: string;
@@ -45,6 +46,7 @@ const MODULES = [
 ];
 
 export default function ActivityLogPage() {
+  const { t } = useI18n();
   const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [module, setModule] = useState("all");
@@ -75,12 +77,12 @@ export default function ActivityLogPage() {
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
+
+    if (diffMins < 1) return t("just now");
+    if (diffMins < 60) return `${diffMins}${t("m ago")}`;
     const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `${diffHrs}h ago`;
-    
+    if (diffHrs < 24) return `${diffHrs}${t("h ago")}`;
+
     return d.toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
@@ -89,15 +91,20 @@ export default function ActivityLogPage() {
     });
   };
 
+  const moduleLabel = (m: string) => {
+    if (m === "all") return t("All");
+    return `${MODULE_ICONS[m] || ""} ${m.charAt(0).toUpperCase() + m.slice(1)}`;
+  };
+
   return (
     <div>
       <div className="page-header">
         <div className="flex items-center gap-3">
           <History className="w-6 h-6 text-primary" />
           <div>
-            <h1 className="page-title">Activity Log</h1>
+            <h1 className="page-title">{t("Activity Log")}</h1>
             <p className="text-sm text-text-secondary mt-0.5">
-              Track all actions and changes across your society
+              {t("Track all actions and changes across your society")}
             </p>
           </div>
         </div>
@@ -117,7 +124,7 @@ export default function ActivityLogPage() {
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
-              {m === "all" ? "All" : `${MODULE_ICONS[m] || ""} ${m.charAt(0).toUpperCase() + m.slice(1)}`}
+              {moduleLabel(m)}
             </button>
           ))}
         </div>
@@ -131,15 +138,15 @@ export default function ActivityLogPage() {
       ) : logs.length === 0 ? (
         <div className="card text-center py-12">
           <History className="w-12 h-12 mx-auto mb-3 text-border" />
-          <h3 className="font-semibold text-lg mb-1">No activity yet</h3>
+          <h3 className="font-semibold text-lg mb-1">{t("No activity yet")}</h3>
           <p className="text-sm text-text-secondary">
-            Actions will appear here as users interact with the system
+            {t("Actions will appear here as users interact with the system")}
           </p>
         </div>
       ) : (
         <div className="space-y-1">
           {logs.map((log, i) => {
-            const showDate = i === 0 || 
+            const showDate = i === 0 ||
               new Date(logs[i - 1].createdAt).toDateString() !== new Date(log.createdAt).toDateString();
 
             return (
@@ -202,17 +209,17 @@ export default function ActivityLogPage() {
                 disabled={page === 1}
                 className="btn btn-secondary btn-sm"
               >
-                Previous
+                {t("Previous")}
               </button>
               <span className="flex items-center text-sm text-text-secondary px-3">
-                Page {page} of {totalPages}
+                {t("Page")} {page} {t("of")} {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="btn btn-secondary btn-sm"
               >
-                Next
+                {t("Next")}
               </button>
             </div>
           )}

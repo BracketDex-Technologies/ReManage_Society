@@ -1,7 +1,8 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
 import { FolderOpen, Plus, FileText, Eye, Trash2, Shield, Settings, File, X } from "lucide-react";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 
@@ -25,6 +26,8 @@ const categoryConfig: Record<string, { icon: React.ComponentType<{className?: st
 };
 
 export default function DocumentsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { confirm } = useAppDialog();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +41,7 @@ export default function DocumentsPage() {
     fetch("/api/documents")
       .then((r) => r.json())
       .then((d) => setDocuments(d.documents || []))
-      .catch(() => toast.error("Failed to load"))
+      .catch(() => toastT.error("Failed to load"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -48,7 +51,7 @@ export default function DocumentsPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 3_000_000) {
-        toast.error("Document must be under 3 MB for preview storage");
+        toastT.error("Document must be under 3 MB for preview storage");
         return;
       }
       const reader = new FileReader();
@@ -69,7 +72,7 @@ export default function DocumentsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.fileUrl) {
-      toast.error("Please select a file first");
+      toastT.error("Please select a file first");
       return;
     }
     
@@ -81,15 +84,15 @@ export default function DocumentsPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success("Document uploaded");
+        toastT.success("Document uploaded");
         setShowForm(false);
         setForm({ title: "", category: "general", fileName: "", fileUrl: "", fileSize: 0 });
         fetchDocuments();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed");
+        toastT.error(d.error || "Failed");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
     finally { setSaving(false); }
   };
 
@@ -102,7 +105,7 @@ export default function DocumentsPage() {
     });
     if (!ok) return;
     await fetch(`/api/documents/${id}`, { method: "DELETE" });
-    toast.success("Document deleted");
+    toastT.success("Document deleted");
     fetchDocuments();
   };
 
@@ -125,8 +128,8 @@ export default function DocumentsPage() {
         <div className="flex items-center gap-3">
           <FolderOpen className="w-6 h-6 text-primary" />
           <div>
-            <h1 className="page-title">Document Repository</h1>
-            <p className="text-sm text-text-secondary mt-0.5">{documents.length} documents securely stored</p>
+            <h1 className="page-title">{t("Document Repository")}</h1>
+            <p className="text-sm text-text-secondary mt-0.5">{documents.length} {t("documents securely stored")}</p>
           </div>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary btn-sm">

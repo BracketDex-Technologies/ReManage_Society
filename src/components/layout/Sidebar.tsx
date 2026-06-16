@@ -63,7 +63,9 @@ export default function Sidebar({
   const visibleSections = personaNav?.navigation.sections ?? [];
   const displaySocietyName = societyName?.trim() || "ReManage";
   const displaySocietyAddress = societyAddress?.trim() || "Society";
-  const displayUserRole = personaNav ? getPersonaLabel(personaNav.persona) : userRole.charAt(0).toUpperCase() + userRole.slice(1).replace("_", " ");
+  const displayUserRole = personaNav
+    ? t(getPersonaLabel(personaNav.persona))
+    : t(userRole.charAt(0).toUpperCase() + userRole.slice(1).replace("_", " "));
 
   const toggleSection = (title: string) => {
     setCollapsedSections((current) => ({ ...current, [title]: !current[title] }));

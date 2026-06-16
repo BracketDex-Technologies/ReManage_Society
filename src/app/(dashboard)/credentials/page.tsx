@@ -1,8 +1,10 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
 import { Key, Users, Shield, UserPlus, Download, RefreshCw, Copy, Eye, EyeOff, Search } from "lucide-react";
+import { isOptionalTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 
 interface UserAccount {
   id: string;
@@ -42,6 +44,8 @@ const roleStyles: Record<string, { bg: string; text: string; label: string }> = 
 };
 
 export default function CredentialsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [users, setUsers] = useState<GroupedUsers | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -63,7 +67,7 @@ export default function CredentialsPage() {
     fetch("/api/credentials")
       .then((r) => r.json())
       .then((d) => setUsers(d))
-      .catch(() => toast.error("Failed to load accounts"))
+      .catch(() => toastT.error("Failed to load accounts"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -80,17 +84,21 @@ export default function CredentialsPage() {
       const data = await res.json();
       if (res.ok) {
         setGeneratedAccounts(data.accounts || []);
-        toast.success(`${data.created} accounts created`);
+        toastT.success(`${data.created} accounts created`);
         fetchUsers();
       } else {
-        toast.error(data.error || "Failed to generate");
+        toastT.error(data.error || "Failed to generate");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
     finally { setGenerating(false); }
   };
 
   const createCommitteeAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOptionalTenDigitPhone(committeeForm.phone)) {
+      toastT.error("Enter a valid 10-digit phone number");
+      return;
+    }
     setCommitteeSaving(true);
     try {
       const res = await fetch("/api/credentials", {
@@ -100,15 +108,15 @@ export default function CredentialsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`${committeeForm.role} account created`);
+        toastT.success(`${committeeForm.role} account created`);
         setCommitteeForm({ name: "", email: "", phone: "", password: "", role: "secretary" });
         setActiveTab("admins");
         fetchUsers();
       } else {
-        toast.error(data.error || "Failed to create account");
+        toastT.error(data.error || "Failed to create account");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setCommitteeSaving(false);
     }
@@ -116,7 +124,7 @@ export default function CredentialsPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success("Copied!", { duration: 1500 });
+    toastT.success("Copied!", { duration: 1500 });
   };
 
   const exportCSV = () => {
@@ -132,7 +140,7 @@ export default function CredentialsPage() {
     a.download = "resident_credentials.csv";
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("CSV downloaded");
+    toastT.success("CSV downloaded");
   };
 
   const getAllUsers = (): UserAccount[] => {
@@ -160,8 +168,8 @@ export default function CredentialsPage() {
             <Key className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">Access Control</h1>
-            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">Manage login credentials for all users</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">{t("Access Control")}</h1>
+            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">{t("Manage login credentials for all users")}</p>
           </div>
         </div>
         <button
@@ -224,7 +232,7 @@ export default function CredentialsPage() {
           </div>
           <div>
             <label className="label">Phone</label>
-            <input className="input" maxLength={10} value={committeeForm.phone} onChange={(e) => setCommitteeForm({ ...committeeForm, phone: e.target.value.replace(/\D/g, "") })} />
+            <input {...phoneInputProps} className="input" value={committeeForm.phone} onChange={(e) => setCommitteeForm({ ...committeeForm, phone: sanitizePhoneInput(e.target.value) })} />
           </div>
           <div className="md:col-span-2">
             <label className="label">Temporary Password *</label>

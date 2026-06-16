@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { UserCheck, Clock, Plus, Calendar, ShieldCheck, X, Phone, User, CheckCircle2, XCircle, Bell, ArrowDownLeft, ArrowUpRight, History, AlertCircle } from "lucide-react";
-import toast from "react-hot-toast";
 import { LIVE_FAST_INTERVAL_MS } from "@/lib/live-refresh";
 import NotifyAdminButton from "@/components/ux/NotifyAdminButton";
+import { isOptionalTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 
 interface Visitor {
   id: string;
@@ -30,7 +32,17 @@ const purposeStyles: Record<string, { bg: string, text: string }> = {
   other: { bg: "bg-gray-500/5", text: "text-gray-600" },
 };
 
+const purposeLabels: Record<string, string> = {
+  delivery: "Delivery",
+  guest: "Guest",
+  service: "Service",
+  cab: "Cab",
+  other: "Other",
+};
+
 export default function MyVisitorsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -64,11 +76,11 @@ export default function MyVisitorsPage() {
         setVisitors(data.visitors);
       }
     } catch {
-      if (!isBackground) toast.error("Failed to load visitors");
+      if (!isBackground) toastT.error("Failed to load visitors");
     } finally {
       if (!isBackground) setLoading(false);
     }
-  }, [showHistory]);
+  }, [showHistory, toastT]);
 
   useEffect(() => {
     fetchVisitors();
@@ -97,12 +109,16 @@ export default function MyVisitorsPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.visitorName || !form.expectedAt) {
-      toast.error("Name and expected time are required");
+      toastT.error("Name and expected time are required");
+      return;
+    }
+    if (!isOptionalTenDigitPhone(form.phone)) {
+      toastT.error("Enter a valid 10-digit guest contact number");
       return;
     }
 
     setSaving(true);
-    const load = toast.loading("Issuing pre-approval...");
+    const loadId = toastT.loading("Issuing pre-approval...");
     try {
       const res = await fetch("/api/my-visitors", {
         method: "POST",
@@ -110,16 +126,16 @@ export default function MyVisitorsPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success("Visitor pre-approved successfully", { id: load });
+        toastT.success("Visitor pre-approved successfully", { id: loadId });
         setShowForm(false);
         setForm({ visitorName: "", phone: "", purpose: "guest", expectedAt: new Date().toISOString().slice(0, 16) });
         fetchVisitors();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed to add", { id: load });
+        toastT.error(d.error || "Failed to add", { id: loadId });
       }
     } catch {
-      toast.error("Something went wrong", { id: load });
+      toastT.error("Something went wrong", { id: loadId });
     } finally {
       setSaving(false);
     }
@@ -146,16 +162,16 @@ export default function MyVisitorsPage() {
   const visitDuration = (entry?: string | null, exit?: string | null) => {
     if (!entry || !exit) return "";
     const minutes = Math.max(0, Math.round((new Date(exit).getTime() - new Date(entry).getTime()) / 60000));
-    if (minutes < 60) return `${minutes} min`;
+    if (minutes < 60) return `${minutes} ${t("min")}`;
     return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
   };
 
   const statusLabel = (visitor: Visitor) => {
-    if (visitor.status === "expected" && !visitor.residentResponse && !visitor.isPreApproved) return "Waiting at gate";
-    if (visitor.status === "expected" && visitor.residentResponse === "approved") return visitor.isPreApproved ? "Pre-approved" : "Approved for entry";
-    if (visitor.status === "in") return "Inside premise";
-    if (visitor.status === "out") return "Visit completed";
-    if (visitor.status === "rejected") return "Rejected";
+    if (visitor.status === "expected" && !visitor.residentResponse && !visitor.isPreApproved) return t("Waiting at gate");
+    if (visitor.status === "expected" && visitor.residentResponse === "approved") return visitor.isPreApproved ? t("Pre-approved") : t("Approved for entry");
+    if (visitor.status === "in") return t("Inside premise");
+    if (visitor.status === "out") return t("Visit completed");
+    if (visitor.status === "rejected") return t("Rejected");
     return visitor.status;
   };
 
@@ -169,13 +185,13 @@ export default function MyVisitorsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || (action === "approved" ? "Visitor approved" : "Visitor rejected"));
+        toastT.success(data.message || (action === "approved" ? "Visitor approved" : "Visitor rejected"));
         fetchVisitors();
       } else {
-        toast.error(data.error || "Failed");
+        toastT.error(data.error || "Failed");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setActionLoading(null);
     }
@@ -183,19 +199,18 @@ export default function MyVisitorsPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-500 px-4 sm:px-6 lg:px-0 pb-20">
-      {/* Header - Synchronized Clean Style */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shadow-sm border border-primary/5 font-bold">
             <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">Expected Guests</h1>
-            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium italic sm:not-italic">Pre-approve visitors for faster entry</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">{t("Expected Guests")}</h1>
+            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium italic sm:not-italic">{t("Pre-approve visitors for faster entry")}</p>
           </div>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary !rounded-xl px-6 sm:px-8 py-2.5 sm:py-3 font-bold text-sm shadow-md shadow-primary/10 transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center shrink-0">
-          <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> Pre-approve Guest
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> {t("Pre-approve Guest")}
         </button>
       </div>
 
@@ -205,9 +220,9 @@ export default function MyVisitorsPage() {
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
               <div>
-                <p className="text-sm font-bold text-amber-950 dark:text-amber-100">Flat not linked yet</p>
+                <p className="text-sm font-bold text-amber-950 dark:text-amber-100">{t("Flat not linked yet")}</p>
                 <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">
-                  Visitor records need your flat assigned. Notify the committee admin with one tap.
+                  {t("Visitor records need your flat assigned. Notify the committee admin with one tap.")}
                 </p>
               </div>
             </div>
@@ -217,33 +232,32 @@ export default function MyVisitorsPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
-        {/* Main List */}
         <div className="lg:col-span-3 space-y-4">
           <div className="flex items-center justify-between px-1">
              <h3 className="text-base sm:text-lg font-bold text-text-primary flex items-center gap-2">
-                <Clock className="w-5 h-5 text-text-tertiary" /> Personal Log
+                <Clock className="w-5 h-5 text-text-tertiary" /> {t("Personal Log")}
              </h3>
              <button onClick={() => setShowHistory((value) => !value)} className="btn btn-secondary btn-sm !rounded-xl text-xs font-bold">
                <History className="w-4 h-4" />
-               {showHistory ? "Recent" : "Full History"}
+               {showHistory ? t("Recent") : t("Full History")}
              </button>
           </div>
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <div className="spinner !w-8 !h-8" />
-              <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">Syncing records...</p>
+              <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">{t("Syncing records...")}</p>
             </div>
           ) : visitors.length === 0 ? (
             <div className="card text-center py-24 bg-surface/30 border-dashed border-2">
               <Calendar className="w-12 h-12 text-text-tertiary mx-auto mb-4 opacity-20" />
               <p className="text-text-primary font-bold">
-                {noFlatLinked ? "Waiting for flat assignment" : "No visitor records."}
+                {noFlatLinked ? t("Waiting for flat assignment") : t("No visitor records.")}
               </p>
               <p className="text-xs text-text-secondary mt-1">
                 {noFlatLinked
-                  ? "Once your flat is linked, gate entries and pre-approved guests will appear here."
-                  : "Gate entries and pre-approved guests will appear here."}
+                  ? t("Once your flat is linked, gate entries and pre-approved guests will appear here.")
+                  : t("Gate entries and pre-approved guests will appear here.")}
               </p>
               {noFlatLinked && (
                 <div className="mt-4 flex justify-center">
@@ -267,11 +281,11 @@ export default function MyVisitorsPage() {
                                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                                    <h4 className="text-base sm:text-lg font-bold text-text-primary tracking-tight leading-tight">{v.visitorName}</h4>
                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>
-                                      {v.purpose}
+                                      {t(purposeLabels[v.purpose] || v.purpose)}
                                    </span>
                                    {needsApproval && (
                                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 flex items-center gap-1">
-                                       <Bell className="w-3 h-3" /> Approval needed
+                                       <Bell className="w-3 h-3" /> {t("Approval needed")}
                                      </span>
                                    )}
                                 </div>
@@ -298,7 +312,7 @@ export default function MyVisitorsPage() {
                                 className="btn bg-emerald-600 text-white !rounded-xl !py-2.5 !px-4 text-xs font-bold"
                               >
                                 <CheckCircle2 className="w-4 h-4" />
-                                Approve
+                                {t("Approve")}
                               </button>
                               <button
                                 onClick={() => handleApproval(v.id, "rejected")}
@@ -306,7 +320,7 @@ export default function MyVisitorsPage() {
                                 className="btn bg-red-600 text-white !rounded-xl !py-2.5 !px-4 text-xs font-bold"
                               >
                                 <XCircle className="w-4 h-4" />
-                                Reject
+                                {t("Reject")}
                               </button>
                             </div>
                          ) : (
@@ -314,23 +328,23 @@ export default function MyVisitorsPage() {
                              {!v.entryTime ? (
                                <p className="text-[10px] font-semibold text-text-secondary flex items-center justify-end gap-1">
                                  <Calendar className="w-3 h-3" />
-                                 {v.expectedAt ? `Expected ${formatDateTime(v.expectedAt)}` : `Requested ${formatDateTime(v.createdAt)}`}
+                                 {v.expectedAt ? `${t("Expected")} ${formatDateTime(v.expectedAt)}` : `${t("Requested")} ${formatDateTime(v.createdAt)}`}
                                </p>
                              ) : (
                                <p className="text-[10px] font-semibold text-text-secondary flex items-center justify-end gap-1">
                                  <ArrowDownLeft className="w-3 h-3" />
-                                 In {formatDateTime(v.entryTime)}
+                                 {t("In")} {formatDateTime(v.entryTime)}
                                </p>
                              )}
                              {v.exitTime && (
                                <p className="text-[10px] font-semibold text-text-secondary flex items-center justify-end gap-1">
                                  <ArrowUpRight className="w-3 h-3" />
-                                 Out {formatTime(v.exitTime)}
+                                 {t("Out")} {formatTime(v.exitTime)}
                                </p>
                              )}
                              {v.exitTime && (
                                <p className="text-[10px] font-bold text-primary">
-                                 Duration {visitDuration(v.entryTime, v.exitTime)}
+                                 {t("Duration")} {visitDuration(v.entryTime, v.exitTime)}
                                </p>
                              )}
                           </div>
@@ -343,18 +357,17 @@ export default function MyVisitorsPage() {
           )}
         </div>
 
-        {/* Info Column */}
         <div className="space-y-6 hidden lg:block">
            <div className="p-5 rounded-2xl bg-surface border border-border/40">
-              <h3 className="font-bold text-[10px] text-text-tertiary uppercase tracking-widest mb-4">Pro-Tips</h3>
+              <h3 className="font-bold text-[10px] text-text-tertiary uppercase tracking-widest mb-4">{t("Pro-Tips")}</h3>
               <ul className="space-y-3">
                  {[
                     { text: "Saves 2 mins at the gate", icon: Clock },
                     { text: "Identity verified by security", icon: ShieldCheck },
                     { text: "Works for 24 hours", icon: UserCheck },
-                 ].map((t, i) => (
+                 ].map((tip, i) => (
                     <li key={i} className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
-                       <t.icon className="w-3.5 h-3.5 text-text-tertiary" /> {t.text}
+                       <tip.icon className="w-3.5 h-3.5 text-text-tertiary" /> {t(tip.text)}
                     </li>
                  ))}
               </ul>
@@ -362,7 +375,6 @@ export default function MyVisitorsPage() {
         </div>
       </div>
 
-      {/* Pre-approval Modal - Mobile Optimized */}
       {showForm && (
         <div className="modal-overlay !bg-black/60 backdrop-blur-sm z-[100]" onClick={() => setShowForm(false)}>
           <div className="bg-white w-full max-w-xl sm:rounded-[2rem] h-full sm:h-auto overflow-y-auto !p-6 sm:!p-10 shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
@@ -372,8 +384,8 @@ export default function MyVisitorsPage() {
                      <Plus className="w-6 h-6" />
                   </div>
                   <div>
-                     <h3 className="text-xl font-bold text-text-primary tracking-tight">Access Token</h3>
-                     <p className="text-xs font-medium text-text-secondary mt-0.5">Smooth entry for your guests</p>
+                     <h3 className="text-xl font-bold text-text-primary tracking-tight">{t("Access Token")}</h3>
+                     <p className="text-xs font-medium text-text-secondary mt-0.5">{t("Smooth entry for your guests")}</p>
                   </div>
                </div>
                <button onClick={() => setShowForm(false)} className="p-2 rounded-full hover:bg-surface text-text-tertiary transition-colors"><X className="w-6 h-6" /></button>
@@ -382,36 +394,36 @@ export default function MyVisitorsPage() {
             <form onSubmit={handleAdd} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Guest Name *</label>
-                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="John Doe" value={form.visitorName} onChange={(e) => setForm({ ...form, visitorName: e.target.value })} required />
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Guest Name *")}</label>
+                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("John Doe")} value={form.visitorName} onChange={(e) => setForm({ ...form, visitorName: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Guest Contact</label>
-                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="+91 XXXX XXXX" maxLength={10} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Guest Contact")}</label>
+                  <input {...phoneInputProps} className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("10-digit phone")} value={form.phone} onChange={(e) => setForm({ ...form, phone: sanitizePhoneInput(e.target.value) })} />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Purpose</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Purpose")}</label>
                   <select className="select !rounded-xl !bg-surface font-bold text-sm py-3.5 px-4" value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })}>
-                    <option value="guest">Guest / Relative</option>
-                    <option value="delivery">Delivery</option>
-                    <option value="service">Service / Repair</option>
-                    <option value="cab">Cab / Taxi</option>
-                    <option value="other">Other</option>
+                    <option value="guest">{t("Guest / Relative")}</option>
+                    <option value="delivery">{t("Delivery")}</option>
+                    <option value="service">{t("Service / Repair")}</option>
+                    <option value="cab">{t("Cab / Taxi")}</option>
+                    <option value="other">{t("Other")}</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Expected Time *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Expected Time *")}</label>
                   <input type="datetime-local" className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3" value={form.expectedAt} onChange={(e) => setForm({ ...form, expectedAt: e.target.value })} required />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-6 sticky bottom-0 bg-white sm:static">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">Cancel</button>
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">{t("Cancel")}</button>
                 <button type="submit" disabled={saving} className="flex-[2] btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20">
-                  {saving ? "Issuing..." : "Confirm Pass"}
+                  {saving ? t("Issuing...") : t("Confirm Pass")}
                 </button>
               </div>
             </form>

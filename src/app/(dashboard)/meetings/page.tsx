@@ -1,7 +1,8 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
 import { Plus, FileText, Calendar, Image as ImageIcon, Trash2 } from "lucide-react";
 
 interface Meeting {
@@ -26,6 +27,8 @@ const typeConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function MeetingsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -47,7 +50,7 @@ export default function MeetingsPage() {
     fetch("/api/meetings")
       .then((r) => r.json())
       .then((d) => setMeetings(d.meetings || []))
-      .catch(() => toast.error("Failed to load"))
+      .catch(() => toastT.error("Failed to load"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -56,7 +59,7 @@ export default function MeetingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.agenda && !form.minutes && form.photoUrls.filter(Boolean).length === 0) {
-      toast.error("Add meeting text or at least one photo");
+      toastT.error("Add meeting text or at least one photo");
       return;
     }
     setSaving(true);
@@ -67,15 +70,15 @@ export default function MeetingsPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success("Meeting minutes recorded");
+        toastT.success("Meeting minutes recorded");
         setShowForm(false);
         setForm({ title: "", date: new Date().toISOString().split("T")[0], meetingType: "general", attendees: "", agenda: "", minutes: "", decisions: "", photoUrls: [] });
         fetchMeetings();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed");
+        toastT.error(d.error || "Failed");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
     finally { setSaving(false); }
   };
 
@@ -94,11 +97,11 @@ export default function MeetingsPage() {
     const selected = Array.from(files).slice(0, 6);
     selected.forEach((file) => {
       if (!file.type.startsWith("image/")) {
-        toast.error("Only image photos are supported");
+        toastT.error("Only image photos are supported");
         return;
       }
       if (file.size > 1_500_000) {
-        toast.error(`${file.name} must be under 1.5 MB`);
+        toastT.error(`${file.name} must be under 1.5 MB`);
         return;
       }
       const reader = new FileReader();
@@ -125,8 +128,8 @@ export default function MeetingsPage() {
         <div className="flex items-center gap-3">
           <FileText className="w-6 h-6 text-primary" />
           <div>
-            <h1 className="page-title">Meeting Minutes</h1>
-            <p className="text-sm text-text-secondary mt-0.5">{meetings.length} meetings recorded</p>
+            <h1 className="page-title">{t("Meeting Minutes")}</h1>
+            <p className="text-sm text-text-secondary mt-0.5">{meetings.length} {t("meetings recorded")}</p>
           </div>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary btn-sm">

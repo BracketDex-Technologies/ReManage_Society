@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useUser } from "@/lib/user-context";
-import toast from "react-hot-toast";
 import {
   Building2, Plus, Calendar, Clock, Users, X, Trash2,
   MapPin, IndianRupee, CheckCircle, ChevronLeft, ChevronRight,
@@ -13,6 +12,8 @@ import { useAppDialog } from "@/components/ui/AppDialogProvider";
 import DuesEnforcementBanner from "@/components/ux/DuesEnforcementBanner";
 import { useDuesEnforcementStatus } from "@/lib/use-dues-enforcement";
 import { ModuleEmptyState, ModulePageHeader } from "@/components/ux/ModulePageKit";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 
 interface Facility {
   id: string;
@@ -61,12 +62,9 @@ const timeSlots = [
   "13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00",
 ];
 
-const formatTime = (t: string) => {
-  const h = parseInt(t.split(":")[0]);
-  return h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
-};
-
 export default function AmenitiesPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { confirm } = useAppDialog();
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
@@ -96,6 +94,11 @@ export default function AmenitiesPage() {
   const isAdmin = ["chairman", "secretary", "treasurer"].includes(user?.role || "");
   const { status: duesStatus, blocked: duesBlocked } = useDuesEnforcementStatus();
 
+  const formatTime = (time: string) => {
+    const h = parseInt(time.split(":")[0]);
+    return h < 12 ? `${h} ${t("AM")}` : h === 12 ? t("12 PM") : `${h - 12} ${t("PM")}`;
+  };
+
   const fetchFacilities = useCallback(() => {
     setLoading(true);
     Promise.all([
@@ -106,9 +109,9 @@ export default function AmenitiesPage() {
         setFacilities(facData.facilities || facData || []);
         setMyBookings(bookData.bookings || bookData || []);
       })
-      .catch(() => toast.error("Failed to load"))
+      .catch(() => toastT.error("Failed to load"))
       .finally(() => setLoading(false));
-  }, [selectedDate]);
+  }, [selectedDate, toastT]);
 
   useEffect(() => {
     fetchFacilities();
@@ -126,11 +129,11 @@ export default function AmenitiesPage() {
     e.preventDefault();
     if (!selectedFacility) return;
     if (bookingForm.startTime >= bookingForm.endTime) {
-      toast.error("End time must be after start time");
+      toastT.error("End time must be after start time");
       return;
     }
     if (doesRangeOverlapBooking(selectedFacility, bookingForm.startTime, bookingForm.endTime)) {
-      toast.error("This time range overlaps an existing booking");
+      toastT.error("This time range overlaps an existing booking");
       return;
     }
     setSaving(true);
@@ -149,14 +152,14 @@ export default function AmenitiesPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Booking confirmed");
+        toastT.success("Booking confirmed");
         setShowBookingModal(false);
         fetchFacilities();
       } else {
-        toast.error(data.error || "Booking failed");
+        toastT.error(data.error || "Booking failed");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setSaving(false);
     }
@@ -165,7 +168,7 @@ export default function AmenitiesPage() {
   const handleAddFacility = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!facilityForm.name) {
-      toast.error("Facility name required");
+      toastT.error("Facility name required");
       return;
     }
     setSaving(true);
@@ -176,16 +179,16 @@ export default function AmenitiesPage() {
         body: JSON.stringify(facilityForm),
       });
       if (res.ok) {
-        toast.success("Facility added!");
+        toastT.success("Facility added!");
         setShowAddFacility(false);
         setFacilityForm({ name: "", description: "", capacity: "", ratePerHour: "0", rules: "" });
         fetchFacilities();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed");
+        toastT.error(d.error || "Failed");
       }
     } catch {
-      toast.error("Failed");
+      toastT.error("Failed");
     } finally {
       setSaving(false);
     }
@@ -193,9 +196,9 @@ export default function AmenitiesPage() {
 
   const cancelBooking = async (bookingId: string) => {
     const ok = await confirm({
-      title: "Cancel Booking",
-      message: "Cancel this amenity booking? The slot will become available for others.",
-      confirmLabel: "Cancel Booking",
+      title: t("Cancel Booking"),
+      message: t("Cancel this amenity booking? The slot will become available for others."),
+      confirmLabel: t("Cancel Booking"),
       danger: true,
     });
     if (!ok) return;
@@ -206,11 +209,11 @@ export default function AmenitiesPage() {
         body: JSON.stringify({ bookingId }),
       });
       if (res.ok) {
-        toast.success("Booking cancelled");
+        toastT.success("Booking cancelled");
         fetchFacilities();
       }
     } catch {
-      toast.error("Failed");
+      toastT.error("Failed");
     }
   };
 
@@ -246,13 +249,13 @@ export default function AmenitiesPage() {
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 px-4 sm:px-6 lg:px-0 pb-20">
       <ModulePageHeader
         icon={Building2}
-        title="Amenity Booking"
-        description="Reserve shared spaces, review availability, and manage facility slots."
-        meta={`${facilities.length} amenities`}
+        title={t("Amenity Booking")}
+        description={t("Reserve shared spaces, review availability, and manage facility slots.")}
+        meta={`${facilities.length} ${t("amenities")}`}
         tone="primary"
         actions={isAdmin && (
           <button onClick={() => setShowAddFacility(true)} className="btn btn-primary !rounded-xl px-5 py-2.5 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-primary/10">
-            <Plus className="w-4 h-4" /> Add Amenity
+            <Plus className="w-4 h-4" /> {t("Add Amenity")}
           </button>
         )}
       />
@@ -263,7 +266,7 @@ export default function AmenitiesPage() {
       <div className="flex gap-2">
         {(["facilities", "my-bookings"] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === tab ? "bg-primary text-white shadow-sm" : "bg-surface text-text-secondary hover:bg-primary/5"}`}>
-            {tab === "facilities" ? "All Amenities" : "My Bookings"}
+            {tab === "facilities" ? t("All Amenities") : t("My Bookings")}
           </button>
         ))}
       </div>
@@ -292,8 +295,8 @@ export default function AmenitiesPage() {
           ) : facilities.length === 0 ? (
             <ModuleEmptyState
               icon={Building2}
-              title="No amenities configured"
-              description={isAdmin ? "Add the first amenity to open reservations." : "Amenity reservations will appear after setup."}
+              title={t("No amenities configured")}
+              description={isAdmin ? t("Add the first amenity to open reservations.") : t("Amenity reservations will appear after setup.")}
               tone="primary"
             />
           ) : (
@@ -315,30 +318,30 @@ export default function AmenitiesPage() {
                         </div>
                       </div>
                       <button onClick={() => openBooking(f)} className="btn btn-primary !rounded-xl !py-2 !px-4 text-xs font-bold opacity-80 group-hover:opacity-100 transition-opacity" disabled={duesBlocked && !isAdmin}>
-                        Book
+                        {t("Book")}
                       </button>
                     </div>
                     <div className="flex items-center gap-4 mt-3">
                       {f.capacity && (
                         <span className="text-[10px] font-bold text-text-tertiary flex items-center gap-1">
-                          <Users className="w-3 h-3" /> {f.capacity} capacity
+                          <Users className="w-3 h-3" /> {f.capacity} {t("capacity")}
                         </span>
                       )}
                       <span className="text-[10px] font-bold text-text-tertiary flex items-center gap-1">
-                        <IndianRupee className="w-3 h-3" /> {f.ratePerHour > 0 ? `₹${f.ratePerHour}/hr` : "Free"}
+                        <IndianRupee className="w-3 h-3" /> {f.ratePerHour > 0 ? `₹${f.ratePerHour}/hr` : t("Free")}
                       </span>
                       <span className="text-[10px] font-bold text-primary flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> {f.bookings?.filter((b) => b.status === "confirmed").length || 0} booked today
+                        <Calendar className="w-3 h-3" /> {f.bookings?.filter((b) => b.status === "confirmed").length || 0} {t("booked today")}
                       </span>
                     </div>
                   </div>
 
                   {/* Time Slots Grid */}
                   <div className="p-4">
-                    <p className="text-[9px] font-bold text-text-tertiary uppercase tracking-wider mb-2">Availability</p>
+                    <p className="text-[9px] font-bold text-text-tertiary uppercase tracking-wider mb-2">{t("Availability")}</p>
                     {getBookedRanges(f).length > 0 && (
                       <div className="mb-3 rounded-xl border border-red-100 bg-red-50 p-3">
-                        <p className="text-[9px] font-black uppercase tracking-wider text-red-600">Booked slots</p>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-red-600">{t("Booked slots")}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {getBookedRanges(f).map((booking) => (
                             <span key={booking.id} className="rounded-lg bg-white px-2.5 py-1 text-[10px] font-bold text-red-700 ring-1 ring-red-100">
@@ -349,20 +352,20 @@ export default function AmenitiesPage() {
                       </div>
                     )}
                     <div className="flex flex-wrap gap-1.5">
-                      {timeSlots.map((t) => {
-                        const booked = isSlotBooked(f, t);
-                        const booking = getSlotBooking(f, t);
+                      {timeSlots.map((slot) => {
+                        const booked = isSlotBooked(f, slot);
+                        const booking = getSlotBooking(f, slot);
                         return (
                           <div
-                            key={t}
-                            title={booked && booking ? `Booked by Flat ${booking.flatNumber}` : "Available"}
+                            key={slot}
+                            title={booked && booking ? `${t("Booked by Flat")} ${booking.flatNumber}` : t("Available")}
                             className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-default ${
                               booked
                                 ? "bg-red-500/10 text-red-600"
                                 : "bg-green-500/10 text-green-700"
                             }`}
                           >
-                            {booked ? "Booked" : formatTime(t)}
+                            {booked ? t("Booked") : formatTime(slot)}
                           </div>
                         );
                       })}
@@ -380,7 +383,7 @@ export default function AmenitiesPage() {
       {activeTab === "my-bookings" && (
         <div className="space-y-3">
           {myBookings.length === 0 ? (
-            <ModuleEmptyState icon={Calendar} title="No bookings yet" description="Book an amenity to see your reservations here." tone="primary" />
+            <ModuleEmptyState icon={Calendar} title={t("No bookings yet")} description={t("Book an amenity to see your reservations here.")} tone="primary" />
           ) : (
             myBookings.map((b) => (
               <div key={b.id} className="bg-white rounded-2xl border border-border/50 p-4 sm:p-5 flex items-center justify-between gap-4 hover:shadow-sm transition-all">
@@ -414,14 +417,14 @@ export default function AmenitiesPage() {
                   {b.status === "confirmed" && new Date(b.date) >= new Date(new Date().toDateString()) ? (
                     <>
                       <span className="text-[9px] font-bold text-green-600 flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" /> Confirmed
+                        <CheckCircle className="w-3 h-3" /> {t("Confirmed")}
                       </span>
-                      <button onClick={() => cancelBooking(b.id)} className="p-2 rounded-xl hover:bg-red-50 text-red-500 transition-colors" title="Cancel">
+                      <button onClick={() => cancelBooking(b.id)} className="p-2 rounded-xl hover:bg-red-50 text-red-500 transition-colors" title={t("Cancel")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </>
                   ) : (
-                    <span className="text-[9px] font-bold text-text-tertiary">{b.status === "cancelled" ? "Cancelled" : "Completed"}</span>
+                    <span className="text-[9px] font-bold text-text-tertiary">{b.status === "cancelled" ? t("Cancelled") : t("Completed")}</span>
                   )}
                 </div>
               </div>
@@ -445,7 +448,7 @@ export default function AmenitiesPage() {
                   );
                 })()}
                 <div>
-                  <h2 className="text-lg font-bold text-text-primary">Book {selectedFacility.name}</h2>
+                  <h2 className="text-lg font-bold text-text-primary">{t("Book")} {selectedFacility.name}</h2>
                   <p className="text-xs text-text-secondary">
                     {new Date(selectedDate).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}
                   </p>
@@ -456,21 +459,21 @@ export default function AmenitiesPage() {
             <form onSubmit={handleBook} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">Start Time</label>
+                  <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">{t("Start Time")}</label>
                   <select className="input !rounded-xl text-sm font-semibold" value={bookingForm.startTime} onChange={(e) => setBookingForm({ ...bookingForm, startTime: e.target.value })}>
-                    {timeSlots.map((t) => (
-                      <option key={t} value={t} disabled={isSlotBooked(selectedFacility, t)}>
-                        {formatTime(t)} {isSlotBooked(selectedFacility, t) ? "(Booked)" : ""}
+                    {timeSlots.map((slot) => (
+                      <option key={slot} value={slot} disabled={isSlotBooked(selectedFacility, slot)}>
+                        {formatTime(slot)} {isSlotBooked(selectedFacility, slot) ? t("(Booked)") : ""}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">End Time</label>
+                  <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">{t("End Time")}</label>
                   <select className="input !rounded-xl text-sm font-semibold" value={bookingForm.endTime} onChange={(e) => setBookingForm({ ...bookingForm, endTime: e.target.value })}>
-                    {timeSlots.filter((t) => t > bookingForm.startTime).map((t) => (
-                      <option key={t} value={t} disabled={doesRangeOverlapBooking(selectedFacility, bookingForm.startTime, t)}>
-                        {formatTime(t)} {doesRangeOverlapBooking(selectedFacility, bookingForm.startTime, t) ? "(Crosses booked slot)" : ""}
+                    {timeSlots.filter((slot) => slot > bookingForm.startTime).map((slot) => (
+                      <option key={slot} value={slot} disabled={doesRangeOverlapBooking(selectedFacility, bookingForm.startTime, slot)}>
+                        {formatTime(slot)} {doesRangeOverlapBooking(selectedFacility, bookingForm.startTime, slot) ? t("(Crosses booked slot)") : ""}
                       </option>
                     ))}
                   </select>
@@ -478,7 +481,7 @@ export default function AmenitiesPage() {
               </div>
               {getBookedRanges(selectedFacility).length > 0 && (
                 <div className="rounded-xl border border-red-100 bg-red-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-red-600">Unavailable today</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-red-600">{t("Unavailable today")}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {getBookedRanges(selectedFacility).map((booking) => (
                       <span key={booking.id} className="rounded-lg bg-white px-2.5 py-1 text-[10px] font-bold text-red-700 ring-1 ring-red-100">
@@ -490,17 +493,17 @@ export default function AmenitiesPage() {
               )}
               {selectedRangeBlocked && (
                 <p className="rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">
-                  This time range overlaps an existing booking. Please choose another available slot.
+                  {t("This time range overlaps an existing booking. Please choose another available slot.")}
                 </p>
               )}
               <div>
-                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">Purpose (optional)</label>
-                <input className="input !rounded-xl text-sm font-semibold" value={bookingForm.purpose} onChange={(e) => setBookingForm({ ...bookingForm, purpose: e.target.value })} placeholder="Birthday party, workout session..." />
+                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">{t("Purpose (optional)")}</label>
+                <input className="input !rounded-xl text-sm font-semibold" value={bookingForm.purpose} onChange={(e) => setBookingForm({ ...bookingForm, purpose: e.target.value })} placeholder={t("Birthday party, workout session...")} />
               </div>
               {selectedFacility.ratePerHour > 0 && (
                 <div className="bg-amber-50 rounded-xl p-3 text-xs text-amber-700 font-medium flex items-center gap-2">
                   <IndianRupee className="w-4 h-4 shrink-0" />
-                  Estimated cost: ₹{selectedFacility.ratePerHour * Math.max(parseInt(bookingForm.endTime) - parseInt(bookingForm.startTime), 1)}
+                  {t("Estimated cost:")} ₹{selectedFacility.ratePerHour * Math.max(parseInt(bookingForm.endTime) - parseInt(bookingForm.startTime), 1)}
                 </div>
               )}
               {selectedFacility.rules && (
@@ -509,10 +512,10 @@ export default function AmenitiesPage() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowBookingModal(false)} className="btn btn-secondary !rounded-xl !py-2.5 !px-6 text-xs font-bold">Cancel</button>
+                <button type="button" onClick={() => setShowBookingModal(false)} className="btn btn-secondary !rounded-xl !py-2.5 !px-6 text-xs font-bold">{t("Cancel")}</button>
                 <button type="submit" disabled={saving || selectedRangeBlocked || (duesBlocked && !isAdmin)} className="btn btn-primary !rounded-xl !py-2.5 !px-6 text-xs font-bold flex items-center gap-2">
                   {saving ? <div className="spinner !w-4 !h-4" /> : <CheckCircle className="w-4 h-4" />}
-                  {saving ? "Booking..." : "Confirm Booking"}
+                  {saving ? t("Booking...") : t("Confirm Booking")}
                 </button>
               </div>
             </form>
@@ -525,37 +528,37 @@ export default function AmenitiesPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-text-primary">Add Amenity</h2>
+              <h2 className="text-lg font-bold text-text-primary">{t("Add Amenity")}</h2>
               <button onClick={() => setShowAddFacility(false)} className="p-2 rounded-lg hover:bg-surface"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleAddFacility} className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">Name *</label>
-                <input className="input !rounded-xl text-sm font-semibold" required value={facilityForm.name} onChange={(e) => setFacilityForm({ ...facilityForm, name: e.target.value })} placeholder="Gym, Swimming Pool, Party Hall..." />
+                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">{t("Name *")}</label>
+                <input className="input !rounded-xl text-sm font-semibold" required value={facilityForm.name} onChange={(e) => setFacilityForm({ ...facilityForm, name: e.target.value })} placeholder={t("Gym, Swimming Pool, Party Hall...")} />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">Description</label>
-                <input className="input !rounded-xl text-sm font-semibold" value={facilityForm.description} onChange={(e) => setFacilityForm({ ...facilityForm, description: e.target.value })} placeholder="Fully equipped with cardio machines..." />
+                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">{t("Description")}</label>
+                <input className="input !rounded-xl text-sm font-semibold" value={facilityForm.description} onChange={(e) => setFacilityForm({ ...facilityForm, description: e.target.value })} placeholder={t("Fully equipped with cardio machines...")} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">Capacity</label>
+                  <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">{t("Capacity")}</label>
                   <input type="number" className="input !rounded-xl text-sm font-semibold" value={facilityForm.capacity} onChange={(e) => setFacilityForm({ ...facilityForm, capacity: e.target.value })} placeholder="20" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">Rate/Hour (₹)</label>
-                  <input type="number" className="input !rounded-xl text-sm font-semibold" value={facilityForm.ratePerHour} onChange={(e) => setFacilityForm({ ...facilityForm, ratePerHour: e.target.value })} placeholder="0 = Free" />
+                  <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">{t("Rate/Hour (₹)")}</label>
+                  <input type="number" className="input !rounded-xl text-sm font-semibold" value={facilityForm.ratePerHour} onChange={(e) => setFacilityForm({ ...facilityForm, ratePerHour: e.target.value })} placeholder={t("0 = Free")} />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">Rules</label>
-                <input className="input !rounded-xl text-sm font-semibold" value={facilityForm.rules} onChange={(e) => setFacilityForm({ ...facilityForm, rules: e.target.value })} placeholder="No shoes, max 2 hours per booking..." />
+                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-1.5 block">{t("Rules")}</label>
+                <input className="input !rounded-xl text-sm font-semibold" value={facilityForm.rules} onChange={(e) => setFacilityForm({ ...facilityForm, rules: e.target.value })} placeholder={t("No shoes, max 2 hours per booking...")} />
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddFacility(false)} className="btn btn-secondary !rounded-xl !py-2.5 !px-6 text-xs font-bold">Cancel</button>
+                <button type="button" onClick={() => setShowAddFacility(false)} className="btn btn-secondary !rounded-xl !py-2.5 !px-6 text-xs font-bold">{t("Cancel")}</button>
                 <button type="submit" disabled={saving} className="btn btn-primary !rounded-xl !py-2.5 !px-6 text-xs font-bold flex items-center gap-2">
                   {saving ? <div className="spinner !w-4 !h-4" /> : <Plus className="w-4 h-4" />}
-                  {saving ? "Adding..." : "Add Amenity"}
+                  {saving ? t("Adding...") : t("Add Amenity")}
                 </button>
               </div>
             </form>

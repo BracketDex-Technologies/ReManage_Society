@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Receipt, Download, AlertTriangle, IndianRupee, Wallet, Smartphone, Copy, CheckCircle, X, ArrowRight, Home, UserRound, HandCoins } from "lucide-react";
-import toast from "react-hot-toast";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import Link from "next/link";
 import PageState from "@/components/ux/PageState";
 import { LIVE_FAST_INTERVAL_MS } from "@/lib/live-refresh";
@@ -106,6 +107,8 @@ function currentPeriod() {
 }
 
 export default function MyBillsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [bills, setBills] = useState<MyBill[]>([]);
   const [stats, setStats] = useState({ totalPending: 0, totalPaid: 0 });
   const [rentStats, setRentStats] = useState({ rentPending: 0, rentPaid: 0, ownerPending: 0, ownerReceived: 0 });
@@ -152,7 +155,7 @@ export default function MyBillsPage() {
         setStaffForm((current) => ({ ...current, month: current.month || staffData.defaultMonth || currentPeriod() }));
       }
     } catch {
-      if (!isBackground) toast.error("Failed to load your bills");
+      if (!isBackground) toastT.error("Failed to load your bills");
     } finally {
       if (!isBackground) setLoading(false);
     }
@@ -198,7 +201,7 @@ export default function MyBillsPage() {
   const createRentInvoice = async () => {
     if (!selectedRental) return;
     if (!rentForm.period || !rentForm.amount || !rentForm.dueDate) {
-      toast.error("Period, amount and due date are required");
+      toastT.error("Period, amount and due date are required");
       return;
     }
     setSavingRent(true);
@@ -215,14 +218,14 @@ export default function MyBillsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Private rent invoice raised");
+        toastT.success("Private rent invoice raised");
         setSelectedRental(null);
         fetchBills();
       } else {
-        toast.error(data.error || "Failed to raise rent invoice");
+        toastT.error(data.error || "Failed to raise rent invoice");
       }
     } catch {
-      toast.error("Network error");
+      toastT.error("Network error");
     } finally {
       setSavingRent(false);
     }
@@ -238,13 +241,13 @@ export default function MyBillsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Private rent payment recorded");
+        toastT.success("Private rent payment recorded");
         fetchBills();
       } else {
-        toast.error(data.error || "Failed to update rent invoice");
+        toastT.error(data.error || "Failed to update rent invoice");
       }
     } catch {
-      toast.error("Network error");
+      toastT.error("Network error");
     } finally {
       setSavingRent(false);
     }
@@ -260,13 +263,13 @@ export default function MyBillsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Private rent paid. Owner has been notified.");
+        toastT.success("Private rent paid. Owner has been notified.");
         fetchBills();
       } else {
-        toast.error(data.error || "Failed to pay rent");
+        toastT.error(data.error || "Failed to pay rent");
       }
     } catch {
-      toast.error("Network error");
+      toastT.error("Network error");
     } finally {
       setSavingRent(false);
     }
@@ -274,7 +277,7 @@ export default function MyBillsPage() {
 
   const createStaffPayment = async () => {
     if (!staffForm.staffId || !staffForm.month || !staffForm.amount) {
-      toast.error("Select staff, month and amount");
+      toastT.error("Select staff, month and amount");
       return;
     }
     setSavingStaffPayment(true);
@@ -286,14 +289,14 @@ export default function MyBillsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Staff payment entry added");
+        toastT.success("Staff payment entry added");
         setStaffForm({ staffId: "", month: currentPeriod(), amount: "", note: "" });
         fetchBills();
       } else {
-        toast.error(data.error || "Failed to add staff payment");
+        toastT.error(data.error || "Failed to add staff payment");
       }
     } catch {
-      toast.error("Network error");
+      toastT.error("Network error");
     } finally {
       setSavingStaffPayment(false);
     }
@@ -309,13 +312,13 @@ export default function MyBillsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Staff payment marked paid");
+        toastT.success("Staff payment marked paid");
         fetchBills();
       } else {
-        toast.error(data.error || "Failed to update staff payment");
+        toastT.error(data.error || "Failed to update staff payment");
       }
     } catch {
-      toast.error("Network error");
+      toastT.error("Network error");
     } finally {
       setSavingStaffPayment(false);
     }
@@ -339,12 +342,12 @@ export default function MyBillsPage() {
 
   const copyUpiId = (upiId: string) => {
     navigator.clipboard.writeText(upiId);
-    toast.success("UPI ID copied!");
+    toastT.success("UPI ID copied!");
   };
 
   const submitUtrConfirmation = async () => {
     if (!selectedBill || !utrNumber.trim()) {
-      toast.error("Please enter the UTR/Transaction number");
+      toastT.error("Please enter the UTR/Transaction number");
       return;
     }
     setSubmittingUtr(true);
@@ -355,15 +358,15 @@ export default function MyBillsPage() {
         body: JSON.stringify({ utrNumber: utrNumber.trim(), paidVia: "upi" }),
       });
       if (res.ok) {
-        toast.success("Payment successful. Receipt generated.");
+        toastT.success("Payment successful. Receipt generated.");
         setShowPaymentModal(false);
         fetchBills();
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to submit");
+        toastT.error(data.error || "Failed to submit");
       }
     } catch {
-      toast.error("Network error");
+      toastT.error("Network error");
     } finally {
       setSubmittingUtr(false);
       setPayingBillId(null);
@@ -374,8 +377,8 @@ export default function MyBillsPage() {
     return (
       <PageState
         variant="loading"
-        title="Loading bills"
-        description="Fetching your maintenance, rent, and staff payment dues."
+        title={t("Loading bills")}
+        description={t("Fetching your maintenance, rent, and staff payment dues.")}
       />
     );
   }
@@ -388,8 +391,8 @@ export default function MyBillsPage() {
           <Wallet className="w-6 h-6 sm:w-8 sm:h-8" />
         </div>
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">My Bills & Payments</h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">View history & pay via UPI — zero charges</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">{t("My Bills & Payments")}</h1>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">{t("View history & pay via UPI — zero charges")}</p>
         </div>
       </div>
 
@@ -397,15 +400,15 @@ export default function MyBillsPage() {
       <div className="grid grid-cols-2 gap-4 sm:gap-6">
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-border/50 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -translate-y-8 translate-x-8" />
-          <p className="text-[9px] sm:text-[10px] font-bold text-text-tertiary tracking-[0.1em] uppercase mb-2">PENDING DUES</p>
+          <p className="text-[9px] sm:text-[10px] font-bold text-text-tertiary tracking-[0.1em] uppercase mb-2">{t("PENDING DUES")}</p>
           <p className="text-2xl sm:text-3xl font-bold text-danger">{formatCurrency(stats.totalPending)}</p>
-          {stats.totalPending > 0 && <p className="text-[10px] text-danger mt-2 font-medium">⚠ Clear dues to avoid late fees</p>}
+          {stats.totalPending > 0 && <p className="text-[10px] text-danger mt-2 font-medium">{t("⚠ Clear dues to avoid late fees")}</p>}
         </div>
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-border/50 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -translate-y-8 translate-x-8" />
-          <p className="text-[9px] sm:text-[10px] font-bold text-text-tertiary tracking-[0.1em] uppercase mb-2">TOTAL PAID</p>
+          <p className="text-[9px] sm:text-[10px] font-bold text-text-tertiary tracking-[0.1em] uppercase mb-2">{t("TOTAL PAID")}</p>
           <p className="text-2xl sm:text-3xl font-bold text-emerald-600">{formatCurrency(stats.totalPaid)}</p>
-          <p className="text-[10px] text-emerald-600 mt-2 font-medium">✓ Thank you for timely payments</p>
+          <p className="text-[10px] text-emerald-600 mt-2 font-medium">{t("✓ Thank you for timely payments")}</p>
         </div>
       </div>
 
@@ -413,15 +416,15 @@ export default function MyBillsPage() {
       {bills.length === 0 ? (
         <div className="card text-center py-24 bg-surface/30 border-dashed border-2">
           <Receipt className="w-10 h-10 text-text-tertiary mx-auto mb-4 opacity-20" />
-          <p className="text-text-primary font-bold">No bills generated yet</p>
-          <p className="text-xs text-text-secondary mt-1">Bills appear here once generated by your society admin</p>
+          <p className="text-text-primary font-bold">{t("No bills generated yet")}</p>
+          <p className="text-xs text-text-secondary mt-1">{t("Bills appear here once generated by your society admin")}</p>
         </div>
       ) : (
         <div className="space-y-3">
           {bills.map((bill) => {
             const total = bill.totalAmount || bill.amount + bill.lateFee + bill.gstAmount;
             const isOverdue = new Date(bill.dueDate) < new Date() && bill.status === "pending";
-            const invoiceTitle = bill.description || "Society Dues";
+            const invoiceTitle = bill.description || t("Society Dues");
             const billType = (bill.billType || "maintenance").replace("_", " ");
             const billingCycle = (bill.billingCycle || "monthly").replace("_", " ");
             return (
@@ -437,23 +440,30 @@ export default function MyBillsPage() {
                         <StatusBadge status={bill.status} />
                         {isOverdue && (
                           <span className="flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                            <AlertTriangle className="w-3 h-3" /> OVERDUE
+                            <AlertTriangle className="w-3 h-3" /> {t("OVERDUE")}
                           </span>
                         )}
                       </div>
                       <p className="text-[10px] text-primary font-bold uppercase tracking-wider mt-1">
-                        Society invoice · Payable to {bill.society?.name || "society"} · {billType} · {billingCycle} · {bill.period}
+                        {t("Society invoice · Payable to {society} · {billType} · {billingCycle} · {period}")
+                          .replace("{society}", bill.society?.name || t("society"))
+                          .replace("{billType}", billType)
+                          .replace("{billingCycle}", billingCycle)
+                          .replace("{period}", bill.period)}
                       </p>
                       <div className="flex items-center gap-4 mt-1.5 flex-wrap">
-                        <span className="text-xs text-text-secondary">Base: {formatCurrency(bill.amount)}</span>
-                        {bill.lateFee > 0 && <span className="text-xs text-danger font-medium">+ Late: {formatCurrency(bill.lateFee)}</span>}
-                        {bill.gstAmount > 0 && <span className="text-xs text-text-secondary">+ GST: {formatCurrency(bill.gstAmount)}</span>}
-                        <span className="text-xs text-text-tertiary">Due: {new Date(bill.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                        <span className="text-xs text-text-secondary">{t("Base:")} {formatCurrency(bill.amount)}</span>
+                        {bill.lateFee > 0 && <span className="text-xs text-danger font-medium">+ {t("Late:")} {formatCurrency(bill.lateFee)}</span>}
+                        {bill.gstAmount > 0 && <span className="text-xs text-text-secondary">+ {t("GST:")} {formatCurrency(bill.gstAmount)}</span>}
+                        <span className="text-xs text-text-tertiary">{t("Due:")} {new Date(bill.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
                       </div>
                       {bill.paidAt && (
                         <p className="text-[10px] text-emerald-600 mt-1">
-                          Paid {formatCurrency(bill.paidAmount || total)} via {bill.paidVia?.toUpperCase()} on {new Date(bill.paidAt).toLocaleDateString("en-IN")}
-                          {bill.receiptNumber && ` · Receipt #${bill.receiptNumber}`}
+                          {t("Paid {amount} via {method} on {date}")
+                            .replace("{amount}", formatCurrency(bill.paidAmount || total))
+                            .replace("{method}", bill.paidVia?.toUpperCase() || "")
+                            .replace("{date}", new Date(bill.paidAt).toLocaleDateString("en-IN"))}
+                          {bill.receiptNumber && ` · ${t("Receipt")} #${bill.receiptNumber}`}
                         </p>
                       )}
                     </div>
@@ -461,7 +471,7 @@ export default function MyBillsPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="text-left sm:text-right">
                       <p className="text-lg sm:text-xl font-bold text-text-primary">{formatCurrency(total)}</p>
-                      <p className="text-[10px] text-text-secondary">Society dues</p>
+                      <p className="text-[10px] text-text-secondary">{t("Society dues")}</p>
                     </div>
                     {(bill.status === "pending" || bill.status === "partial") ? (
                       <button
@@ -469,11 +479,11 @@ export default function MyBillsPage() {
                         disabled={payingBillId === bill.id}
                         className="btn btn-primary !rounded-xl !py-2.5 !px-5 text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/10"
                       >
-                        <IndianRupee className="w-3.5 h-3.5" /> Pay Now
+                        <IndianRupee className="w-3.5 h-3.5" /> {t("Pay Now")}
                       </button>
                     ) : bill.receiptNumber ? (
                       <Link href={`/receipts/${bill.id}`} className="btn btn-secondary !rounded-xl !py-2.5 !px-4 text-xs font-bold flex items-center gap-1.5">
-                        <Download className="w-3.5 h-3.5" /> Receipt
+                        <Download className="w-3.5 h-3.5" /> {t("Receipt")}
                       </Link>
                     ) : null}
                   </div>
@@ -491,9 +501,9 @@ export default function MyBillsPage() {
               <Home className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-text-primary">Private Rent</h2>
+              <h2 className="text-lg font-black text-text-primary">{t("Private Rent")}</h2>
               <p className="text-xs text-text-secondary">
-                Owner-to-tenant rent tracking. This is private money and is not counted in society finance.
+                {t("Owner-to-tenant rent tracking. This is private money and is not counted in society finance.")}
               </p>
             </div>
           </div>
@@ -502,11 +512,11 @@ export default function MyBillsPage() {
             <div className="card">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <div>
-                  <h3 className="font-bold text-sm text-text-primary">Rent Payable</h3>
-                  <p className="text-xs text-text-secondary mt-1">Pay this directly to your linked owner.</p>
+                  <h3 className="font-bold text-sm text-text-primary">{t("Rent Payable")}</h3>
+                  <p className="text-xs text-text-secondary mt-1">{t("Pay this directly to your linked owner.")}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase text-text-tertiary">Pending Rent</p>
+                  <p className="text-[10px] font-bold uppercase text-text-tertiary">{t("Pending Rent")}</p>
                   <p className="text-lg font-black text-danger">{formatCurrency(rentStats.rentPending)}</p>
                 </div>
               </div>
@@ -520,7 +530,8 @@ export default function MyBillsPage() {
                           <StatusBadge status={invoice.status} />
                         </div>
                         <p className="text-xs text-text-secondary mt-1">
-                          Private rent · Payable to owner {invoice.owner?.name || "Owner"}
+                          {t("Private rent · Payable to owner {owner}")
+                            .replace("{owner}", invoice.owner?.name || t("Owner"))}
                           {invoice.owner?.phone ? ` · ${invoice.owner.phone}` : ""}
                         </p>
                         <p className="text-[10px] text-text-tertiary mt-1">
@@ -532,8 +543,8 @@ export default function MyBillsPage() {
                         <p className="text-xl font-black text-text-primary">{formatCurrency(invoice.amount)}</p>
                         <p className="text-[10px] text-text-secondary">
                           {invoice.status === "paid" && invoice.paidAt
-                            ? `Paid on ${new Date(invoice.paidAt).toLocaleDateString("en-IN")}`
-                            : "Private rent, not society dues"}
+                            ? t("Paid on {date}").replace("{date}", new Date(invoice.paidAt).toLocaleDateString("en-IN"))
+                            : t("Private rent, not society dues")}
                         </p>
                         {invoice.status === "pending" ? (
                           <button
@@ -541,10 +552,10 @@ export default function MyBillsPage() {
                             disabled={savingRent}
                             className="btn btn-primary btn-sm !rounded-xl"
                           >
-                            <IndianRupee className="w-3.5 h-3.5" /> Pay Now
+                            <IndianRupee className="w-3.5 h-3.5" /> {t("Pay Now")}
                           </button>
                         ) : invoice.receiptNumber ? (
-                          <span className="text-[10px] font-bold text-success">Receipt #{invoice.receiptNumber}</span>
+                          <span className="text-[10px] font-bold text-success">{t("Receipt")} #{invoice.receiptNumber}</span>
                         ) : null}
                       </div>
                     </div>
@@ -558,30 +569,30 @@ export default function MyBillsPage() {
             <div className="card">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <div>
-                  <h3 className="font-bold text-sm text-text-primary">Owner Rent Collection</h3>
-                  <p className="text-xs text-text-secondary mt-1">Raise rent invoices only for tenants linked to your owned units.</p>
+                  <h3 className="font-bold text-sm text-text-primary">{t("Owner Rent Collection")}</h3>
+                  <p className="text-xs text-text-secondary mt-1">{t("Raise rent invoices only for tenants linked to your owned units.")}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-right">
                   <div>
-                    <p className="text-[10px] font-bold uppercase text-text-tertiary">To Collect</p>
+                    <p className="text-[10px] font-bold uppercase text-text-tertiary">{t("To Collect")}</p>
                     <p className="text-lg font-black text-amber-700">{formatCurrency(rentStats.ownerPending)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase text-text-tertiary">Received</p>
+                    <p className="text-[10px] font-bold uppercase text-text-tertiary">{t("Received")}</p>
                     <p className="text-lg font-black text-success">{formatCurrency(rentStats.ownerReceived)}</p>
                   </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 <div className="rounded-2xl border border-warning/20 bg-warning-bg/40 p-4">
-                  <p className="text-[10px] font-bold uppercase text-warning-text">Pending Rent</p>
+                  <p className="text-[10px] font-bold uppercase text-warning-text">{t("Pending Rent")}</p>
                   <p className="text-2xl font-black text-warning-text mt-1">{formatCurrency(rentStats.ownerPending)}</p>
-                  <p className="text-xs text-text-secondary mt-1">Invoices waiting for tenant payment.</p>
+                  <p className="text-xs text-text-secondary mt-1">{t("Invoices waiting for tenant payment.")}</p>
                 </div>
                 <div className="rounded-2xl border border-success/20 bg-success-bg/40 p-4">
-                  <p className="text-[10px] font-bold uppercase text-success">Received Rent</p>
+                  <p className="text-[10px] font-bold uppercase text-success">{t("Received Rent")}</p>
                   <p className="text-2xl font-black text-success mt-1">{formatCurrency(rentStats.ownerReceived)}</p>
-                  <p className="text-xs text-text-secondary mt-1">Private rent payments recorded from tenants.</p>
+                  <p className="text-xs text-text-secondary mt-1">{t("Private rent payments recorded from tenants.")}</p>
                 </div>
               </div>
               <div className="space-y-3">
@@ -596,7 +607,10 @@ export default function MyBillsPage() {
                           <div>
                             <p className="text-sm font-black text-text-primary">{rental.tenantName}</p>
                             <p className="text-xs text-text-secondary">
-                              Flat {rental.flatNumber} · {rental.tenantPhone} · Monthly rent {formatCurrency(rental.monthlyRent)}
+                              {t("Flat {flat} · {phone} · Monthly rent {rent}")
+                                .replace("{flat}", rental.flatNumber)
+                                .replace("{phone}", rental.tenantPhone)
+                                .replace("{rent}", formatCurrency(rental.monthlyRent))}
                             </p>
                           </div>
                         </div>
@@ -620,7 +634,7 @@ export default function MyBillsPage() {
                                       disabled={savingRent}
                                       className="btn btn-secondary btn-sm !text-[10px]"
                                     >
-                                      Mark Paid
+                                      {t("Mark Paid")}
                                     </button>
                                   )}
                                 </div>
@@ -630,7 +644,7 @@ export default function MyBillsPage() {
                         )}
                       </div>
                       <button onClick={() => openRentModal(rental)} className="btn btn-primary btn-sm shrink-0">
-                        Raise Rent Invoice
+                        {t("Raise Rent Invoice")}
                       </button>
                     </div>
                   </div>
@@ -648,9 +662,9 @@ export default function MyBillsPage() {
               <HandCoins className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-text-primary">Staff Payments</h2>
+              <h2 className="text-lg font-black text-text-primary">{t("Staff Payments")}</h2>
               <p className="text-xs text-text-secondary">
-                Private payments from your flat to linked daily-help staff. This is not society payroll or society expense.
+                {t("Private payments from your flat to linked daily-help staff. This is not society payroll or society expense.")}
               </p>
             </div>
           </div>
@@ -658,22 +672,22 @@ export default function MyBillsPage() {
           <div className="card">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
               <div className="rounded-2xl border border-border bg-surface/50 p-4">
-                <p className="text-[10px] font-bold uppercase text-text-tertiary">Linked Staff</p>
+                <p className="text-[10px] font-bold uppercase text-text-tertiary">{t("Linked Staff")}</p>
                 <p className="text-2xl font-black text-text-primary mt-1">{staffStats.linkedStaff}</p>
               </div>
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-[10px] font-bold uppercase text-amber-700">Pending</p>
+                <p className="text-[10px] font-bold uppercase text-amber-700">{t("Pending")}</p>
                 <p className="text-2xl font-black text-amber-700 mt-1">{formatCurrency(staffStats.pending)}</p>
               </div>
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <p className="text-[10px] font-bold uppercase text-emerald-700">Paid</p>
+                <p className="text-[10px] font-bold uppercase text-emerald-700">{t("Paid")}</p>
                 <p className="text-2xl font-black text-emerald-700 mt-1">{formatCurrency(staffStats.paid)}</p>
               </div>
             </div>
 
             {linkedStaff.length > 0 ? (
               <div className="rounded-2xl border border-border p-4 mb-4">
-                <p className="text-xs font-black text-text-primary mb-3">Add Staff Payment</p>
+                <p className="text-xs font-black text-text-primary mb-3">{t("Add Staff Payment")}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <select
                     className="select !rounded-xl"
@@ -687,7 +701,7 @@ export default function MyBillsPage() {
                       });
                     }}
                   >
-                    <option value="">Select staff</option>
+                    <option value="">{t("Select staff")}</option>
                     {linkedStaff.map((staff) => (
                       <option key={staff.id} value={staff.id}>
                         {staff.name} · {staff.category}{staff.agreedMonthlyPay ? ` · ${formatCurrency(staff.agreedMonthlyPay)}/mo` : ""}
@@ -695,23 +709,23 @@ export default function MyBillsPage() {
                     ))}
                   </select>
                   <input type="month" className="input !rounded-xl" value={staffForm.month} onChange={(e) => setStaffForm({ ...staffForm, month: e.target.value })} />
-                  <input type="number" min="1" className="input !rounded-xl" placeholder="Amount" value={staffForm.amount} onChange={(e) => setStaffForm({ ...staffForm, amount: e.target.value })} />
+                  <input type="number" min="1" className="input !rounded-xl" placeholder={t("Amount")} value={staffForm.amount} onChange={(e) => setStaffForm({ ...staffForm, amount: e.target.value })} />
                   <button onClick={createStaffPayment} disabled={savingStaffPayment} className="btn btn-primary !rounded-xl">
-                    Add
+                    {t("Add")}
                   </button>
                 </div>
-                <input className="input !rounded-xl mt-3" placeholder="Note optional, e.g. May maid salary" value={staffForm.note} onChange={(e) => setStaffForm({ ...staffForm, note: e.target.value })} />
+                <input className="input !rounded-xl mt-3" placeholder={t("Note optional, e.g. May maid salary")} value={staffForm.note} onChange={(e) => setStaffForm({ ...staffForm, note: e.target.value })} />
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border p-5 text-center mb-4">
-                <p className="text-sm font-bold text-text-primary">No staff linked to your flat yet</p>
-                <p className="text-xs text-text-secondary mt-1">Ask the committee to link your maid, cook, driver, or other staff from Staff & Daily Help.</p>
+                <p className="text-sm font-bold text-text-primary">{t("No staff linked to your flat yet")}</p>
+                <p className="text-xs text-text-secondary mt-1">{t("Ask the committee to link your maid, cook, driver, or other staff from Staff & Daily Help.")}</p>
               </div>
             )}
 
             <div className="space-y-2">
               {staffPayments.length === 0 ? (
-                <p className="text-xs text-text-secondary py-2">No staff payment records yet.</p>
+                <p className="text-xs text-text-secondary py-2">{t("No staff payment records yet.")}</p>
               ) : staffPayments.map((payment) => (
                 <div key={payment.id} className="rounded-2xl border border-border bg-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
@@ -723,14 +737,14 @@ export default function MyBillsPage() {
                       {payment.staff.category} · {payment.staff.phone} · {payment.month}
                     </p>
                     {payment.paidOn && (
-                      <p className="text-[10px] text-emerald-700 mt-1">Paid on {new Date(payment.paidOn).toLocaleDateString("en-IN")} via {(payment.paidVia || "cash").toUpperCase()}</p>
+                      <p className="text-[10px] text-emerald-700 mt-1">{t("Paid on {date} via {method}").replace("{date}", new Date(payment.paidOn).toLocaleDateString("en-IN")).replace("{method}", (payment.paidVia || "cash").toUpperCase())}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
                     <p className="text-lg font-black text-text-primary">{formatCurrency(payment.amount)}</p>
                     {payment.status === "pending" && (
                       <button onClick={() => markStaffPaymentPaid(payment.id)} disabled={savingStaffPayment} className="btn btn-secondary btn-sm">
-                        Mark Paid
+                        {t("Mark Paid")}
                       </button>
                     )}
                   </div>
@@ -753,7 +767,7 @@ export default function MyBillsPage() {
                     <IndianRupee className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-white/80 text-xs font-medium">{selectedBill.description || "Society Dues"} · {selectedBill.period}</p>
+                    <p className="text-white/80 text-xs font-medium">{selectedBill.description || t("Society Dues")} · {selectedBill.period}</p>
                     <p className="text-2xl font-bold">{formatCurrency(selectedBill.totalAmount || selectedBill.amount + selectedBill.lateFee + selectedBill.gstAmount)}</p>
                   </div>
                 </div>
@@ -761,13 +775,13 @@ export default function MyBillsPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-white/70 text-xs mt-2">Payable to {selectedBill.society?.name || "society"} · Flat {selectedBill.flat.flatNumber}</p>
+              <p className="text-white/70 text-xs mt-2">{t("Payable to {society} · Flat {flat}").replace("{society}", selectedBill.society?.name || t("society")).replace("{flat}", selectedBill.flat.flatNumber)}</p>
             </div>
 
             <div className="p-6">
               {paymentStep === "choose" && (
                 <div className="space-y-3">
-                  <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-4">Choose Payment Method</p>
+                  <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-4">{t("Choose Payment Method")}</p>
 
                   {/* UPI - Primary option */}
                   <button
@@ -785,12 +799,12 @@ export default function MyBillsPage() {
                         <Smartphone className="w-5 h-5 text-primary" />
                       </div>
                       <div className="text-left">
-                        <p className="font-bold text-sm text-text-primary">Pay via UPI</p>
-                        <p className="text-[10px] text-emerald-600 font-medium">₹0 transaction charges</p>
+                        <p className="font-bold text-sm text-text-primary">{t("Pay via UPI")}</p>
+                        <p className="text-[10px] text-emerald-600 font-medium">{t("₹0 transaction charges")}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">RECOMMENDED</span>
+                      <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{t("RECOMMENDED")}</span>
                       <ArrowRight className="w-4 h-4 text-primary" />
                     </div>
                   </button>
@@ -805,8 +819,8 @@ export default function MyBillsPage() {
                         <Copy className="w-5 h-5 text-text-secondary" />
                       </div>
                       <div className="text-left">
-                        <p className="font-bold text-sm text-text-primary">Manual Transfer</p>
-                        <p className="text-[10px] text-text-tertiary">Copy UPI ID & pay from any app</p>
+                        <p className="font-bold text-sm text-text-primary">{t("Manual Transfer")}</p>
+                        <p className="text-[10px] text-text-tertiary">{t("Copy UPI ID & pay from any app")}</p>
                       </div>
                     </div>
                     <ArrowRight className="w-4 h-4 text-text-tertiary group-hover:text-primary" />
@@ -816,16 +830,16 @@ export default function MyBillsPage() {
 
               {paymentStep === "upi" && (
                 <div className="space-y-5">
-                  <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider">Society Payment Details</p>
+                  <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider">{t("Society Payment Details")}</p>
 
                   {/* UPI ID */}
                   <div className="bg-surface/50 rounded-xl p-4 border border-border/40">
-                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">UPI ID</p>
+                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">{t("UPI ID")}</p>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-mono font-bold text-primary">{selectedBill.society?.upiId || "Not configured"}</p>
+                      <p className="text-sm font-mono font-bold text-primary">{selectedBill.society?.upiId || t("Not configured")}</p>
                       {selectedBill.society?.upiId && (
                         <button onClick={() => copyUpiId(selectedBill.society.upiId)} className="btn btn-secondary !rounded-xl !py-1.5 !px-3 text-[10px] font-bold flex items-center gap-1">
-                          <Copy className="w-3 h-3" /> Copy
+                          <Copy className="w-3 h-3" /> {t("Copy")}
                         </button>
                       )}
                     </div>
@@ -833,7 +847,7 @@ export default function MyBillsPage() {
 
                   {/* Amount */}
                   <div className="bg-surface/50 rounded-xl p-4 border border-border/40">
-                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">EXACT AMOUNT</p>
+                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">{t("EXACT AMOUNT")}</p>
                     <p className="text-2xl font-bold text-text-primary">{formatCurrency(selectedBill.totalAmount || selectedBill.amount + selectedBill.lateFee + selectedBill.gstAmount)}</p>
                     <p className="text-[10px] text-text-tertiary mt-1">Ref: MAINT-{selectedBill.period}-{selectedBill.flat.flatNumber}</p>
                   </div>
@@ -844,12 +858,12 @@ export default function MyBillsPage() {
                       onClick={() => openUpiApp(selectedBill)}
                       className="w-full btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
                     >
-                      <Smartphone className="w-4 h-4" /> Open UPI App & Pay
+                      <Smartphone className="w-4 h-4" /> {t("Open UPI App & Pay")}
                     </button>
                   )}
 
                   <button onClick={() => setPaymentStep("confirm")} className="w-full text-center text-xs font-bold text-primary hover:underline py-2">
-                    I&apos;ve already paid → Enter UTR
+                    {t("I've already paid → Enter UTR")}
                   </button>
                 </div>
               )}
@@ -859,21 +873,21 @@ export default function MyBillsPage() {
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-bold text-emerald-800">Confirm Your Payment</p>
-                      <p className="text-xs text-emerald-600 mt-1">Enter the UTR/Transaction ID from your payment app to confirm</p>
+                      <p className="text-sm font-bold text-emerald-800">{t("Confirm Your Payment")}</p>
+                      <p className="text-xs text-emerald-600 mt-1">{t("Enter the UTR/Transaction ID from your payment app to confirm")}</p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">UTR / Transaction Number *</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("UTR / Transaction Number *")}</label>
                     <input
                       className="input !rounded-xl !bg-surface font-mono font-bold text-sm px-4 py-3.5 tracking-wider"
-                      placeholder="e.g. 412345678901"
+                      placeholder={t("e.g. 412345678901")}
                       value={utrNumber}
                       onChange={(e) => setUtrNumber(e.target.value)}
                       autoFocus
                     />
-                    <p className="text-[10px] text-text-tertiary ml-1">Find this in your UPI app → Transaction History → Details</p>
+                    <p className="text-[10px] text-text-tertiary ml-1">{t("Find this in your UPI app → Transaction History → Details")}</p>
                   </div>
 
                   <button
@@ -881,18 +895,18 @@ export default function MyBillsPage() {
                     disabled={submittingUtr || !utrNumber.trim()}
                     className="w-full btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20 disabled:opacity-50"
                   >
-                    {submittingUtr ? "Submitting..." : "Confirm Payment"}
+                    {submittingUtr ? t("Submitting...") : t("Confirm Payment")}
                   </button>
 
                   <button onClick={() => setPaymentStep("upi")} className="w-full text-center text-xs text-text-secondary hover:text-primary py-1">
-                    ← Back to payment details
+                    {t("← Back to payment details")}
                   </button>
                 </div>
               )}
 
               <div className="mt-5 pt-4 border-t border-border/30 flex items-center justify-center gap-2 text-[9px] text-text-tertiary">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                Direct bank transfer · Zero platform fees · Verified by admin
+                {t("Direct bank transfer · Zero platform fees · Verified by admin")}
               </div>
             </div>
           </div>
@@ -905,10 +919,12 @@ export default function MyBillsPage() {
             <div className="p-5 border-b border-border">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Private Rent Invoice</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">{t("Private Rent Invoice")}</p>
                   <h3 className="text-lg font-black text-text-primary mt-1">{selectedRental.tenantName}</h3>
                   <p className="text-xs text-text-secondary mt-1">
-                    Flat {selectedRental.flatNumber} · Default rent {formatCurrency(selectedRental.monthlyRent)}
+                    {t("Flat {flat} · Default rent {rent}")
+                      .replace("{flat}", selectedRental.flatNumber)
+                      .replace("{rent}", formatCurrency(selectedRental.monthlyRent))}
                   </p>
                 </div>
                 <button onClick={() => setSelectedRental(null)} className="p-2 rounded-xl hover:bg-surface text-text-secondary">
@@ -919,11 +935,11 @@ export default function MyBillsPage() {
             <div className="p-6 space-y-4">
               <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
                 <p className="text-xs text-amber-800">
-                  This rent is private owner-to-tenant money. It will not appear in society reports, funds, or Billing & Ledger.
+                  {t("This rent is private owner-to-tenant money. It will not appear in society reports, funds, or Billing & Ledger.")}
                 </p>
               </div>
               <div>
-                <label className="label">Billing Period *</label>
+                <label className="label">{t("Billing Period *")}</label>
                 <input
                   type="month"
                   className="input"
@@ -932,7 +948,7 @@ export default function MyBillsPage() {
                 />
               </div>
               <div>
-                <label className="label">Rent Amount *</label>
+                <label className="label">{t("Rent Amount *")}</label>
                 <input
                   type="number"
                   min="1"
@@ -940,10 +956,10 @@ export default function MyBillsPage() {
                   value={rentForm.amount}
                   onChange={(e) => setRentForm({ ...rentForm, amount: e.target.value })}
                 />
-                <p className="text-[10px] text-text-secondary mt-1">Prefilled from Tenant Management monthly rent. Edit only if rent changed for this month.</p>
+                <p className="text-[10px] text-text-secondary mt-1">{t("Prefilled from Tenant Management monthly rent. Edit only if rent changed for this month.")}</p>
               </div>
               <div>
-                <label className="label">Due Date *</label>
+                <label className="label">{t("Due Date *")}</label>
                 <input
                   type="date"
                   className="input"
@@ -952,10 +968,10 @@ export default function MyBillsPage() {
                 />
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
-                <button onClick={() => setSelectedRental(null)} className="btn btn-secondary">Cancel</button>
+                <button onClick={() => setSelectedRental(null)} className="btn btn-secondary">{t("Cancel")}</button>
                 <button onClick={createRentInvoice} disabled={savingRent} className="btn btn-primary">
                   {savingRent ? <div className="spinner !w-4 !h-4 !border-white/30 !border-t-white" /> : <Receipt className="w-4 h-4" />}
-                  Raise Invoice
+                  {t("Raise Invoice")}
                 </button>
               </div>
             </div>

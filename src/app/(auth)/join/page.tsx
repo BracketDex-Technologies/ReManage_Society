@@ -1,10 +1,12 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import toast from "react-hot-toast";
 import { Building2, Eye, EyeOff, Search } from "lucide-react";
+import { isOptionalTenDigitPhone, isTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 
 const RELATIONSHIP_OPTIONS = [
   { value: "OWNER", label: "Owner" },
@@ -42,6 +44,8 @@ interface SocietyLookup {
 }
 
 export default function JoinPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const router = useRouter();
   const [lookupLoading, setLookupLoading] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -90,7 +94,7 @@ export default function JoinPage() {
 
   const verifyCode = async () => {
     if (!joinCode.trim()) {
-      toast.error("Enter your society join code");
+      toastT.error("Enter your society join code");
       return;
     }
 
@@ -102,13 +106,13 @@ export default function JoinPage() {
       const res = await fetch(`/api/societies/join-code?code=${encodeURIComponent(joinCode)}`);
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Invalid join code");
+        toastT.error(data.error || "Invalid join code");
         return;
       }
       setLookup(data);
-      toast.success("Society found");
+      toastT.success("Society found");
     } catch {
-      toast.error("Could not verify join code");
+      toastT.error("Could not verify join code");
     } finally {
       setLookupLoading(false);
     }
@@ -117,7 +121,15 @@ export default function JoinPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lookup) {
-      toast.error("Verify your join code first");
+      toastT.error("Verify your join code first");
+      return;
+    }
+    if (!isOptionalTenDigitPhone(form.emergencyContact)) {
+      toastT.error("Enter a valid 10-digit emergency contact number");
+      return;
+    }
+    if (!isTenDigitPhone(form.phone)) {
+      toastT.error("Enter a valid 10-digit phone number");
       return;
     }
 
@@ -131,14 +143,14 @@ export default function JoinPage() {
       const data = await res.json();
 
       if (res.ok) {
-        toast.success("Joined society successfully");
+        toastT.success("Joined society successfully");
         router.push("/dashboard");
         router.refresh();
       } else {
-        toast.error(data.error || "Could not join society");
+        toastT.error(data.error || "Could not join society");
       }
     } catch {
-      toast.error("Something went wrong — please try again");
+      toastT.error("Something went wrong — please try again");
     } finally {
       setJoining(false);
     }
@@ -151,16 +163,16 @@ export default function JoinPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4">
             <Building2 className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-text-primary">Join Society</h1>
+          <h1 className="text-2xl font-bold text-text-primary">{t("Join Society")}</h1>
           <p className="text-sm text-text-secondary mt-1">
-            Use the join code shared by your chairman or committee
+            {t("Use the join code shared by your chairman or committee")}
           </p>
         </div>
 
         <div className="card">
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="flex-1">
-              <label htmlFor="joinCode" className="label">Join Code</label>
+              <label htmlFor="joinCode" className="label">{t("Join Code")}</label>
               <input
                 id="joinCode"
                 className="input uppercase"
@@ -180,7 +192,7 @@ export default function JoinPage() {
               ) : (
                 <>
                   <Search className="w-4 h-4" />
-                  Verify
+                  {t("Verify")}
                 </>
               )}
             </button>
@@ -217,7 +229,7 @@ export default function JoinPage() {
                     required
                   >
                     {RELATIONSHIP_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
+                      <option key={option.value} value={option.value}>{t(option.label)}</option>
                     ))}
                   </select>
                 </div>
@@ -327,10 +339,10 @@ export default function JoinPage() {
                   <label htmlFor="emergencyContact" className="label">Emergency Contact</label>
                   <input
                     id="emergencyContact"
-                    type="tel"
+                    {...phoneInputProps}
                     className="input"
                     value={form.emergencyContact}
-                    onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })}
+                    onChange={(e) => setForm({ ...form, emergencyContact: sanitizePhoneInput(e.target.value) })}
                   />
                 </div>
                 <div className="form-group !mb-0">
@@ -373,10 +385,11 @@ export default function JoinPage() {
                   <label htmlFor="phone" className="label">Phone</label>
                   <input
                     id="phone"
-                    type="tel"
+                    {...phoneInputProps}
                     className="input"
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={(e) => setForm({ ...form, phone: sanitizePhoneInput(e.target.value) })}
+                    required
                   />
                 </div>
                 <div className="form-group !mb-0">
@@ -417,7 +430,7 @@ export default function JoinPage() {
                 {joining ? (
                   <div className="spinner !w-5 !h-5 !border-white/30 !border-t-white" />
                 ) : (
-                  "Create Account & Join"
+                  t("Create Account & Join")
                 )}
               </button>
             </form>

@@ -1,8 +1,9 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import toast from "react-hot-toast";
 import { Plus, Upload, Search, Pencil, Trash2, MessageSquare, Download } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -10,6 +11,8 @@ import EmptyState from "@/components/ui/EmptyState";
 import type { FlatType } from "@/types";
 
 export default function MembersPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [members, setMembers] = useState<FlatType[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -36,7 +39,7 @@ export default function MembersPage() {
       setTotalPages(data.pages || 1);
       if (data.wings) setWings(data.wings);
     } catch {
-      toast.error("Failed to load members");
+      toastT.error("Failed to load members");
     } finally {
       setLoading(false);
     }
@@ -54,13 +57,13 @@ export default function MembersPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success(`Flat ${deleteTarget.flatNumber} removed`);
+        toastT.success(`Flat ${deleteTarget.flatNumber} removed`);
         fetchMembers();
       } else {
-        toast.error("Failed to delete member");
+        toastT.error("Failed to delete member");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     }
     setDeleteTarget(null);
   };
@@ -69,7 +72,7 @@ export default function MembersPage() {
     try {
       const res = await fetch(`/api/members?limit=1000`);
       const data = await res.json();
-      if (!data.members || data.members.length === 0) return toast.error("No members to export");
+      if (!data.members || data.members.length === 0) return toastT.error("No members to export");
       
       const headers = ["Flat No.", "Wing", "Owner Name", "Tenant Name", "Contact", "Email", "Vehicle Number", "Status"];
       const csvContent = [
@@ -88,9 +91,9 @@ export default function MembersPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success("Export successful");
+      toastT.success("Export successful");
     } catch {
-      toast.error("Failed to export");
+      toastT.error("Failed to export");
     }
   };
 
@@ -99,8 +102,8 @@ export default function MembersPage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Members & Flats</h1>
-          <p className="text-sm text-text-secondary mt-1">{total} total flats</p>
+          <h1 className="page-title">{t("Members & Flats")}</h1>
+          <p className="text-sm text-text-secondary mt-1">{total} {t("total flats")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={exportCsv} className="btn btn-secondary btn-sm">

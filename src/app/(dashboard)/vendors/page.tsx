@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -13,8 +15,8 @@ import {
   Shield,
   Ticket,
 } from "lucide-react";
-import toast from "react-hot-toast";
 import { formatCurrency } from "@/lib/utils";
+import { isOptionalTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 
 interface Vendor {
   id: string;
@@ -48,6 +50,8 @@ function coverageLabel(days: number | null, dateIso: string | null) {
 }
 
 export default function VendorsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -70,7 +74,7 @@ export default function VendorsPage() {
       const d = await res.json();
       if (d.vendors) setVendors(d.vendors);
     } catch {
-      toast.error("Failed to load vendors");
+      toastT.error("Failed to load vendors");
     } finally {
       setLoading(false);
     }
@@ -81,9 +85,10 @@ export default function VendorsPage() {
   }, []);
 
   const handleAdd = async () => {
-    if (!form.name) return toast.error("Vendor name is required");
+    if (!form.name) return toastT.error("Vendor name is required");
+    if (!isOptionalTenDigitPhone(form.phone)) return toastT.error("Enter a valid 10-digit contact phone");
 
-    const load = toast.loading("Saving vendor...");
+    const load = toastT.loading("Saving vendor...");
     try {
       const res = await fetch("/api/vendors", {
         method: "POST",
@@ -91,7 +96,7 @@ export default function VendorsPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success("Vendor added", { id: load });
+        toastT.success("Vendor added", { id: load });
         setShowForm(false);
         setForm({
           name: "",
@@ -106,10 +111,10 @@ export default function VendorsPage() {
         });
         fetchVendors();
       } else {
-        toast.error("Failed to add", { id: load });
+        toastT.error("Failed to add", { id: load });
       }
     } catch {
-      toast.error("Error", { id: load });
+      toastT.error("Error", { id: load });
     }
   };
 
@@ -128,9 +133,9 @@ export default function VendorsPage() {
         <div className="flex items-center gap-3">
           <Settings className="w-6 h-6 text-primary" />
           <div>
-            <h1 className="page-title">Vendors & AMC</h1>
+            <h1 className="page-title">{t("Vendors & AMC")}</h1>
             <p className="text-sm text-text-secondary mt-0.5">
-              Manage service providers, AMC renewals, and compliance certificates
+              {t("Manage service providers, AMC renewals, and compliance certificates")}
             </p>
           </div>
         </div>
@@ -184,7 +189,7 @@ export default function VendorsPage() {
             </div>
             <div>
               <label className="label">Contact Phone</label>
-              <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <input {...phoneInputProps} className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: sanitizePhoneInput(e.target.value) })} />
             </div>
             <div>
               <label className="label">Email Address</label>

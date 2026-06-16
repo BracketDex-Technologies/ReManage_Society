@@ -1,13 +1,16 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import { ArrowLeft, Upload, Download, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import Papa from "papaparse";
 
 export default function ImportMembersPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -27,7 +30,7 @@ export default function ImportMembersPage() {
         setPreview(data.slice(0, 5));
       },
       error: () => {
-        toast.error("Failed to parse file");
+        toastT.error("Failed to parse file");
       },
     });
   };
@@ -53,13 +56,13 @@ export default function ImportMembersPage() {
 
       if (res.ok) {
         const msg = `${data.imported} flats imported successfully${data.skipped > 0 ? ` (${data.skipped} skipped)` : ""}`;
-        toast.success(msg);
+        toastT.success(msg);
         router.push("/members");
       } else {
-        toast.error(data.error || "Import failed");
+        toastT.error(data.error || "Import failed");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -84,9 +87,9 @@ export default function ImportMembersPage() {
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div>
-          <h1 className="page-title">Bulk Import Members</h1>
+          <h1 className="page-title">{t("Bulk Import Members")}</h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Import flats from CSV or Excel file
+            {t("Import flats from CSV or Excel file")}
           </p>
         </div>
       </div>

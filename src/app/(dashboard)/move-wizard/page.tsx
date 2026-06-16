@@ -1,7 +1,8 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useMemo, useState } from "react";
-import toast from "react-hot-toast";
 import Link from "next/link";
 import {
   ArrowDownLeft,
@@ -43,6 +44,7 @@ type MoveWizardResponse = {
 function readProofFile(
   file: File | null,
   onDone: (payload: { dataUrl: string; fileName: string; fileType: string } | null) => void,
+  toastT: ReturnType<typeof useTranslatedToast>,
 ) {
   if (!file) {
     onDone(null);
@@ -50,11 +52,11 @@ function readProofFile(
   }
   const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
   if (!allowed.includes(file.type)) {
-    toast.error("Upload JPG, PNG, WebP, or PDF only");
+    toastT.error("Upload JPG, PNG, WebP, or PDF only");
     return;
   }
   if (file.size > 3 * 1024 * 1024) {
-    toast.error("File must be under 3 MB");
+    toastT.error("File must be under 3 MB");
     return;
   }
   const reader = new FileReader();
@@ -65,11 +67,13 @@ function readProofFile(
       fileType: file.type,
     });
   };
-  reader.onerror = () => toast.error("Could not read file");
+  reader.onerror = () => toastT.error("Could not read file");
   reader.readAsDataURL(file);
 }
 
 export default function MoveWizardPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { data, loading, refetch, isStale } = useLiveData<MoveWizardResponse>({
     url: "/api/move-wizard",
     interval: 45_000,
@@ -110,14 +114,14 @@ export default function MoveWizardPage() {
       });
       const result = await res.json();
       if (!res.ok) {
-        toast.error(result.error || "Could not start wizard");
+        toastT.error(result.error || "Could not start wizard");
         return;
       }
       setActiveDraftId(result.event.id);
-      toast.success("Move request draft created");
+      toastT.success("Move request draft created");
       refetch();
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setCreating(false);
     }
@@ -132,10 +136,10 @@ export default function MoveWizardPage() {
     });
     const result = await res.json();
     if (!res.ok) {
-      toast.error(result.error || "Update failed");
+      toastT.error(result.error || "Update failed");
       return null;
     }
-    toast.success(result.message || "Saved");
+    toastT.success(result.message || "Saved");
     refetch();
     return result.event as MoveWizardEvent;
   };
@@ -162,7 +166,7 @@ export default function MoveWizardPage() {
           <ClipboardList className="w-6 h-6 text-primary" />
           <div>
             <h1 className="page-title flex items-center gap-2">
-              Move-In / Move-Out Wizard
+              {t("Move-In / Move-Out Wizard")}
               {loading && !data && <div className="spinner !w-4 !h-4" />}
               {isStale && <RefreshCcw className="w-4 h-4 text-primary animate-spin" />}
             </h1>
@@ -263,7 +267,7 @@ export default function MoveWizardPage() {
                   onChange={(e) =>
                     readProofFile(e.target.files?.[0] || null, (proof) =>
                       setForm((current) => ({ ...current, policeVerification: proof })),
-                    )
+                    toastT)
                   }
                 />
                 {form.policeVerification?.fileName && (
@@ -281,7 +285,7 @@ export default function MoveWizardPage() {
                   onChange={(e) =>
                     readProofFile(e.target.files?.[0] || null, (proof) =>
                       setForm((current) => ({ ...current, leaseAgreement: proof })),
-                    )
+                    toastT)
                   }
                 />
                 {form.leaseAgreement?.fileName && (

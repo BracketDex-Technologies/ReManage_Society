@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
 import { Plus, Car, Trash2, Share2, User, Home, ShieldAlert, X, Bike, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/user-context";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 import { ModuleEmptyState, ModulePageHeader, ModuleStatCard } from "@/components/ux/ModulePageKit";
 
@@ -51,6 +52,8 @@ const typeIcons: Record<string, LucideIcon> = {
 const getSlotIcon = (slotType: string) => typeIcons[slotType] || Car;
 
 export default function ParkingPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const router = useRouter();
   const { confirm } = useAppDialog();
   const [slots, setSlots] = useState<ParkingSlot[]>([]);
@@ -80,9 +83,9 @@ export default function ParkingPage() {
         setNextSlotNumber(d.nextSlotNumber || "P-001");
         setStats(d.stats || { total: 0, assigned: 0, available: 0 });
       })
-      .catch(() => toast.error("Failed to load parking data"))
+      .catch(() => toastT.error("Failed to load parking data"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [toastT]);
 
   useEffect(() => {
     fetchSlots();
@@ -91,7 +94,7 @@ export default function ParkingPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (requiresResidentAssignment && !form.occupancyId) {
-      toast.error("Select an active resident/tenant for this resident parking slot");
+      toastT.error("Select an active resident/tenant for this resident parking slot");
       return;
     }
     setSaving(true);
@@ -102,15 +105,15 @@ export default function ParkingPage() {
         body: JSON.stringify({ ...form, slotNumber: form.slotNumber || nextSlotNumber }),
       });
       if (res.ok) {
-        toast.success("Slot created successfully");
+        toastT.success("Slot created successfully");
         setShowForm(false);
         setForm({ slotNumber: "", slotType: "CAR", wing: "", level: "", occupancyId: "", vehicleNo: "" });
         fetchSlots();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed to create slot");
+        toastT.error(d.error || "Failed to create slot");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
     finally { setSaving(false); }
   };
 
@@ -123,18 +126,18 @@ export default function ParkingPage() {
         body: JSON.stringify({ ...assignForm, isAssigned: true }),
       });
       if (res.ok) {
-        toast.success("Parking slot assigned");
+        toastT.success("Parking slot assigned");
         fetchSlots();
       }
-    } catch { toast.error("Failed to assign slot"); }
+    } catch { toastT.error("Failed to assign slot"); }
     setShowAssign(null);
   };
 
   const handleUnassign = async (id: string) => {
     const ok = await confirm({
-      title: "Free Parking Slot",
-      message: "Free this slot and remove the current assignment?",
-      confirmLabel: "Free Slot",
+      title: t("Free Parking Slot"),
+      message: t("Free this slot and remove the current assignment?"),
+      confirmLabel: t("Free Slot"),
       danger: true,
     });
     if (!ok) return;
@@ -144,21 +147,21 @@ export default function ParkingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isAssigned: false }),
       });
-      toast.success("Slot is now available");
+      toastT.success("Slot is now available");
       fetchSlots();
-    } catch { toast.error("Failed to unassign slot"); }
+    } catch { toastT.error("Failed to unassign slot"); }
   };
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: "Delete Parking Slot",
-      message: "Delete this physical parking slot from records?",
-      confirmLabel: "Delete Slot",
+      title: t("Delete Parking Slot"),
+      message: t("Delete this physical parking slot from records?"),
+      confirmLabel: t("Delete Slot"),
       danger: true,
     });
     if (!ok) return;
     await fetch(`/api/parking/${id}`, { method: "DELETE" });
-    toast.success("Slot deleted");
+    toastT.success("Slot deleted");
     fetchSlots();
   };
 
@@ -169,18 +172,18 @@ export default function ParkingPage() {
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-500 px-4 sm:px-6 lg:px-0 pb-20">
       <ModulePageHeader
         icon={Car}
-        title="Parking Registry"
-        description={isAdmin ? "Oversee society allocations, availability, and vehicle links." : "Review your parking space and exchange options."}
-        meta={`${stats.available} free`}
+        title={t("Parking Registry")}
+        description={isAdmin ? t("Oversee society allocations, availability, and vehicle links.") : t("Review your parking space and exchange options.")}
+        meta={`${stats.available} ${t("free")}`}
         tone="blue"
         actions={
           <>
           <button onClick={() => router.push("/parking/marketplace")} className="btn btn-secondary !rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm flex items-center shrink-0">
-            <Share2 className="w-4 h-4 mr-2" /> <span>Exchange</span>
+            <Share2 className="w-4 h-4 mr-2" /> <span>{t("Exchange")}</span>
           </button>
           {isAdmin && (
             <button onClick={() => setShowForm(true)} className="btn btn-primary !rounded-xl px-5 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm shadow-md shadow-primary/10 transition-all hover:scale-[1.01] active:scale-[0.98] shrink-0">
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> <span>Add New Slot</span>
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> <span>{t("Add New Slot")}</span>
             </button>
           )}
           </>
@@ -189,9 +192,9 @@ export default function ParkingPage() {
 
       {/* Stats Board */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-        <ModuleStatCard icon={Home} label="Total" value={stats.total} tone="primary" />
-        <ModuleStatCard icon={User} label="Occupied" value={stats.assigned} tone="blue" />
-        <ModuleStatCard icon={ShieldAlert} label="Available" value={stats.available} tone="emerald" />
+        <ModuleStatCard icon={Home} label={t("Total")} value={stats.total} tone="primary" />
+        <ModuleStatCard icon={User} label={t("Occupied")} value={stats.assigned} tone="blue" />
+        <ModuleStatCard icon={ShieldAlert} label={t("Available")} value={stats.available} tone="emerald" />
       </div>
 
       {/* Member's Personal Section */}
@@ -199,20 +202,20 @@ export default function ParkingPage() {
         <div className="bg-gradient-to-br from-indigo-50/50 to-white p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-indigo-100/50 shadow-sm">
            <div className="flex items-center gap-3 mb-6">
               <div className="w-1 h-5 sm:w-1.5 sm:h-6 bg-primary rounded-full" />
-              <h2 className="text-base sm:text-lg font-bold text-text-primary tracking-tight">My Allocations</h2>
+              <h2 className="text-base sm:text-lg font-bold text-text-primary tracking-tight">{t("My Allocations")}</h2>
            </div>
            
            {mySlots.length === 0 ? (
              <div className="text-center py-10 sm:py-16 bg-white/50 rounded-2xl border border-dashed border-border/60">
-                <p className="text-xs sm:text-sm text-text-secondary font-medium">No assigned parking slots at the moment.</p>
-                <p className="text-[10px] sm:text-xs text-text-tertiary mt-1">Visit management to register your vehicle.</p>
+                <p className="text-xs sm:text-sm text-text-secondary font-medium">{t("No assigned parking slots at the moment.")}</p>
+                <p className="text-[10px] sm:text-xs text-text-tertiary mt-1">{t("Visit management to register your vehicle.")}</p>
              </div>
            ) : (
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                {mySlots.map(slot => (
                  <div key={slot.id} className="bg-white rounded-2xl border border-primary/20 shadow-xl shadow-primary/5 overflow-hidden transition-transform hover:scale-[1.02]">
                     <div className="bg-primary text-white p-4 flex justify-between items-center">
-                       <span className="font-bold tracking-wider uppercase text-[10px] opacity-80">{slot.slotType} slot</span>
+                       <span className="font-bold tracking-wider uppercase text-[10px] opacity-80">{slot.slotType} {t("slot")}</span>
                        <span className="text-lg font-bold">{slot.slotNumber}</span>
                     </div>
                     <div className="p-5 sm:p-6">
@@ -226,12 +229,12 @@ export default function ParkingPage() {
                             );
                           })()}
                           <div className="text-right">
-                             <p className="text-[9px] font-bold text-text-tertiary uppercase mb-0.5">Vehicle</p>
-                             <p className="text-xs sm:text-sm font-bold text-text-primary uppercase">{slot.vehicleNo || slot.currentAssignment?.vehicle?.registrationNumber || "N/A"}</p>
+                             <p className="text-[9px] font-bold text-text-tertiary uppercase mb-0.5">{t("Vehicle")}</p>
+                             <p className="text-xs sm:text-sm font-bold text-text-primary uppercase">{slot.vehicleNo || slot.currentAssignment?.vehicle?.registrationNumber || t("N/A")}</p>
                           </div>
                        </div>
                        <button onClick={() => router.push("/parking/marketplace")} className="w-full btn btn-secondary !rounded-xl py-2 sm:py-2.5 font-bold text-[11px] sm:text-xs flex items-center justify-center gap-2">
-                          <Share2 className="w-4 h-4" /> Share My Space
+                          <Share2 className="w-4 h-4" /> {t("Share My Space")}
                        </button>
                     </div>
                  </div>
@@ -245,14 +248,14 @@ export default function ParkingPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-base sm:text-lg font-bold text-text-primary tracking-tight">
-             {isAdmin ? "Global Inventory" : "Occupancy Map"}
+             {isAdmin ? t("Global Inventory") : t("Occupancy Map")}
           </h3>
           <div className="flex gap-2">
              <div className="flex items-center gap-2 text-[9px] font-bold text-text-tertiary uppercase bg-white border border-border/50 px-2.5 py-1 rounded-full shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Free
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> {t("Free")}
              </div>
              <div className="flex items-center gap-2 text-[9px] font-bold text-text-tertiary uppercase bg-white border border-border/50 px-2.5 py-1 rounded-full shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" /> Full
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" /> {t("Full")}
              </div>
           </div>
         </div>
@@ -260,10 +263,10 @@ export default function ParkingPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="spinner !w-8 !h-8" />
-            <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">Grid syncing...</p>
+            <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">{t("Grid syncing...")}</p>
           </div>
         ) : slots.length === 0 ? (
-          <ModuleEmptyState icon={Car} title="No slots recorded yet" description="Create parking slots to begin managing assignments." tone="blue" />
+          <ModuleEmptyState icon={Car} title={t("No slots recorded yet")} description={t("Create parking slots to begin managing assignments.")} tone="blue" />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
             {slots.map((slot) => {
@@ -287,35 +290,35 @@ export default function ParkingPage() {
                   </div>
                   
                   <p className="text-base font-bold text-text-primary leading-none uppercase">{slot.slotNumber}</p>
-                  {slot.wing && <p className="text-[8px] font-bold text-text-tertiary uppercase mt-1">{slot.wing} Wing</p>}
+                  {slot.wing && <p className="text-[8px] font-bold text-text-tertiary uppercase mt-1">{slot.wing} {t("Wing")}</p>}
                   
                   {slot.isAssigned ? (
                     <div className="mt-4 pt-3 border-t border-border/30">
                       <p className="text-[10px] font-bold text-text-primary leading-tight">
-                        Flat {slot.flat?.flatNumber || slot.currentAssignment?.unitOccupancy?.unit?.flatNumber || "???"}
+                        {t("Flat")} {slot.flat?.flatNumber || slot.currentAssignment?.unitOccupancy?.unit?.flatNumber || "???"}
                       </p>
                       {slot.currentAssignment?.unitOccupancy?.person?.name && (
                         <p className="text-[9px] text-text-secondary mt-1 truncate">{slot.currentAssignment.unitOccupancy.person.name}</p>
                       )}
                       {isAdmin && (
                         <button onClick={() => handleUnassign(slot.id)} className="mt-2.5 w-full py-1 text-[8px] font-bold uppercase text-danger hover:underline">
-                          Retract
+                          {t("Retract")}
                         </button>
                       )}
                     </div>
                   ) : (
                     <div className="mt-4 pt-3 border-t border-emerald-100">
-                      <p className="text-[9px] font-bold text-emerald-600 uppercase mb-3">Available</p>
+                      <p className="text-[9px] font-bold text-emerald-600 uppercase mb-3">{t("Available")}</p>
                       {isAdmin && (
                         <div className="flex gap-1.5">
-                          <button onClick={() => { setShowAssign(slot); setAssignForm({ occupancyId: "", vehicleNo: "" }); }} className="flex-1 py-1 bg-primary text-white text-[9px] font-bold rounded-lg uppercase transition-transform active:scale-95 shadow-sm">Assign</button>
+                          <button onClick={() => { setShowAssign(slot); setAssignForm({ occupancyId: "", vehicleNo: "" }); }} className="flex-1 py-1 bg-primary text-white text-[9px] font-bold rounded-lg uppercase transition-transform active:scale-95 shadow-sm">{t("Assign")}</button>
                           <button onClick={() => handleDelete(slot.id)} className="p-1 px-1.5 text-danger hover:bg-danger/5 rounded-lg border border-transparent hover:border-danger/20"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       )}
                     </div>
                   )}
                   {isMine && (
-                    <div className="absolute top-0 left-0 bg-primary text-white text-[8px] px-2 py-0.5 rounded-br-lg font-bold shadow-sm uppercase">My Box</div>
+                    <div className="absolute top-0 left-0 bg-primary text-white text-[8px] px-2 py-0.5 rounded-br-lg font-bold shadow-sm uppercase">{t("My Box")}</div>
                   )}
                 </div>
               );
@@ -334,8 +337,8 @@ export default function ParkingPage() {
                      <Plus className="w-6 h-6" />
                   </div>
                   <div>
-                     <h3 className="text-xl font-bold text-text-primary tracking-tight">Expand Registry</h3>
-                     <p className="text-xs font-medium text-text-secondary mt-0.5">Define physical parking units</p>
+                     <h3 className="text-xl font-bold text-text-primary tracking-tight">{t("Expand Registry")}</h3>
+                     <p className="text-xs font-medium text-text-secondary mt-0.5">{t("Define physical parking units")}</p>
                   </div>
                </div>
                <button onClick={() => setShowForm(false)} className="p-2 rounded-full hover:bg-surface text-text-tertiary transition-colors"><X className="w-6 h-6" /></button>
@@ -343,35 +346,35 @@ export default function ParkingPage() {
             
             <form onSubmit={handleAdd} className="space-y-6">
               <div className="space-y-2">
-                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Slot Name *</label>
+                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Slot Name *")}</label>
                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={nextSlotNumber} value={form.slotNumber || nextSlotNumber} onChange={(e) => setForm({ ...form, slotNumber: e.target.value.toUpperCase() })} required />
-                 <p className="text-[10px] text-text-secondary ml-1">Suggested automatically from existing active slots. You can still edit it.</p>
+                 <p className="text-[10px] text-text-secondary ml-1">{t("Suggested automatically from existing active slots. You can still edit it.")}</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Type</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Type")}</label>
                   <select className="select !rounded-xl !bg-surface font-bold py-3.5 px-4" value={form.slotType} onChange={(e) => setForm({ ...form, slotType: e.target.value })}>
-                    <option value="CAR">4-Wheeler</option>
-                    <option value="BIKE">2-Wheeler</option>
-                    <option value="EV">EV Point</option>
-                    <option value="VISITOR">Visitor</option>
-                    <option value="STAFF">Staff</option>
+                    <option value="CAR">{t("4-Wheeler")}</option>
+                    <option value="BIKE">{t("2-Wheeler")}</option>
+                    <option value="EV">{t("EV Point")}</option>
+                    <option value="VISITOR">{t("Visitor")}</option>
+                    <option value="STAFF">{t("Staff")}</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                   <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Location / Wing</label>
-                   <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="A, LG-1..." value={form.wing} onChange={(e) => setForm({ ...form, wing: e.target.value })} />
+                   <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Location / Wing")}</label>
+                   <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("A, LG-1...")} value={form.wing} onChange={(e) => setForm({ ...form, wing: e.target.value })} />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                   <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Level / Zone</label>
-                   <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="Basement 1, Podium, Open..." value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} />
+                   <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Level / Zone")}</label>
+                   <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("Basement 1, Podium, Open...")} value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} />
                 </div>
               </div>
 
               <div className="rounded-2xl border border-border bg-surface/40 p-4 space-y-4">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">
-                    Assign To Active Resident {requiresResidentAssignment ? "*" : "(optional)"}
+                    {requiresResidentAssignment ? t("Assign To Active Resident *") : t("Assign To Active Resident (optional)")}
                   </label>
                   <select
                     className="select !rounded-xl !bg-white font-bold text-sm px-4 py-3.5 mt-2"
@@ -379,36 +382,36 @@ export default function ParkingPage() {
                     onChange={(e) => setForm({ ...form, occupancyId: e.target.value })}
                     required={requiresResidentAssignment}
                   >
-                    <option value="">{requiresResidentAssignment ? "Choose active linked flat" : "Keep unassigned"}</option>
+                    <option value="">{requiresResidentAssignment ? t("Choose active linked flat") : t("Keep unassigned")}</option>
                     {assignableOccupancies.map((item) => (
                       <option key={item.occupancyId} value={item.occupancyId}>{item.label}</option>
                     ))}
                   </select>
                   <p className="text-[10px] text-text-secondary mt-2">
-                    Only active owner/co-owner/tenant occupancies are shown here. Vacant or unlinked flats cannot receive resident parking.
+                    {t("Only active owner/co-owner/tenant occupancies are shown here. Vacant or unlinked flats cannot receive resident parking.")}
                   </p>
                 </div>
 
                 {selectedFormOccupancy && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl border border-border bg-white p-3">
                     <div>
-                      <p className="text-[9px] font-bold text-text-tertiary uppercase">Flat</p>
+                      <p className="text-[9px] font-bold text-text-tertiary uppercase">{t("Flat")}</p>
                       <p className="text-xs font-black text-text-primary">{selectedFormOccupancy.flatNumber}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold text-text-tertiary uppercase">Occupant</p>
+                      <p className="text-[9px] font-bold text-text-tertiary uppercase">{t("Occupant")}</p>
                       <p className="text-xs font-black text-text-primary">{selectedFormOccupancy.name}</p>
                       <p className="text-[10px] text-text-secondary">{selectedFormOccupancy.relationshipType.replaceAll("_", " ")}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold text-text-tertiary uppercase">Owner</p>
-                      <p className="text-xs font-black text-text-primary">{selectedFormOccupancy.ownerName || "Not linked"}</p>
+                      <p className="text-[9px] font-bold text-text-tertiary uppercase">{t("Owner")}</p>
+                      <p className="text-xs font-black text-text-primary">{selectedFormOccupancy.ownerName || t("Not linked")}</p>
                     </div>
                   </div>
                 )}
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Vehicle Number</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Vehicle Number")}</label>
                   <input
                     className="input !rounded-xl !bg-white font-bold text-sm px-4 py-3.5 uppercase tracking-wide font-mono mt-2"
                     placeholder="MH-XX-XX-0000"
@@ -419,9 +422,9 @@ export default function ParkingPage() {
               </div>
 
               <div className="flex gap-3 pt-6">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">Cancel</button>
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">{t("Cancel")}</button>
                 <button type="submit" disabled={saving || (requiresResidentAssignment && !form.occupancyId)} className="flex-[2] btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20">
-                   {saving ? "Creating..." : "Confirm Unit"}
+                   {saving ? t("Creating...") : t("Confirm Unit")}
                 </button>
               </div>
             </form>
@@ -438,49 +441,49 @@ export default function ParkingPage() {
                   <User className="w-6 h-6" />
                </div>
                <div>
-                  <h3 className="text-xl font-bold text-text-primary tracking-tight">Assign Slot {showAssign.slotNumber}</h3>
-                  <p className="text-xs font-medium text-text-secondary mt-0.5">Link a member and their vehicle</p>
+                  <h3 className="text-xl font-bold text-text-primary tracking-tight">{t("Assign Slot")} {showAssign.slotNumber}</h3>
+                  <p className="text-xs font-medium text-text-secondary mt-0.5">{t("Link a member and their vehicle")}</p>
                </div>
             </div>
             
             <div className="space-y-6">
               <div className="space-y-2">
-                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Active Resident / Occupancy *</label>
+                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Active Resident / Occupancy *")}</label>
                  <select className="select !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" value={assignForm.occupancyId} onChange={(e) => setAssignForm({ ...assignForm, occupancyId: e.target.value })}>
-                   <option value="">Choose active flat owner / tenant</option>
+                   <option value="">{t("Choose active flat owner / tenant")}</option>
                    {assignableOccupancies.map((item) => (
                      <option key={item.occupancyId} value={item.occupancyId}>{item.label}</option>
                    ))}
                  </select>
                  {assignableOccupancies.length === 0 && (
-                   <p className="text-xs text-danger-text mt-2">Create/link residents first. Parking can only be assigned to active occupancies.</p>
+                   <p className="text-xs text-danger-text mt-2">{t("Create/link residents first. Parking can only be assigned to active occupancies.")}</p>
                  )}
               </div>
               {selectedAssignOccupancy && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl border border-border bg-surface/50 p-3">
                   <div>
-                    <p className="text-[9px] font-bold text-text-tertiary uppercase">Flat</p>
+                    <p className="text-[9px] font-bold text-text-tertiary uppercase">{t("Flat")}</p>
                     <p className="text-xs font-black text-text-primary">{selectedAssignOccupancy.flatNumber}</p>
                   </div>
                   <div>
-                    <p className="text-[9px] font-bold text-text-tertiary uppercase">Occupant</p>
+                    <p className="text-[9px] font-bold text-text-tertiary uppercase">{t("Occupant")}</p>
                     <p className="text-xs font-black text-text-primary">{selectedAssignOccupancy.name}</p>
                     <p className="text-[10px] text-text-secondary">{selectedAssignOccupancy.relationshipType.replaceAll("_", " ")}</p>
                   </div>
                   <div>
-                    <p className="text-[9px] font-bold text-text-tertiary uppercase">Owner</p>
-                    <p className="text-xs font-black text-text-primary">{selectedAssignOccupancy.ownerName || "Not linked"}</p>
+                    <p className="text-[9px] font-bold text-text-tertiary uppercase">{t("Owner")}</p>
+                    <p className="text-xs font-black text-text-primary">{selectedAssignOccupancy.ownerName || t("Not linked")}</p>
                   </div>
                 </div>
               )}
               <div className="space-y-2">
-                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Vehicle Details</label>
+                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Vehicle Details")}</label>
                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5 uppercase tracking-wide font-mono" placeholder="MH-XX-XX-0000" value={assignForm.vehicleNo} onChange={(e) => setAssignForm({ ...assignForm, vehicleNo: e.target.value })} />
               </div>
 
               <div className="flex gap-3 pt-6">
-                <button onClick={() => setShowAssign(null)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">Back</button>
-                <button onClick={handleAssign} disabled={!assignForm.occupancyId} className="flex-[2] btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20">Finalize Link</button>
+                <button onClick={() => setShowAssign(null)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">{t("Back")}</button>
+                <button onClick={handleAssign} disabled={!assignForm.occupancyId} className="flex-[2] btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20">{t("Finalize Link")}</button>
               </div>
             </div>
           </div>

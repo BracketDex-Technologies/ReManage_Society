@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
-import { Plus, Users, Clock, Phone, Search, X, CheckCircle, LogOut as LogOutIcon, Briefcase } from "lucide-react";
-
+import { Plus, Users, Clock, Phone, Search, X, CheckCircle, Briefcase } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useUser } from "@/lib/user-context";
+import { isTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 
 interface StaffMember {
   id: string;
@@ -34,6 +35,8 @@ const categoryStyles: Record<string, { bg: string; text: string; label: string }
 };
 
 export default function StaffPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { user, loaded } = useUser();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [flats, setFlats] = useState<Flat[]>([]);
@@ -61,14 +64,14 @@ export default function StaffPage() {
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));
-          throw new Error(body.error || `Failed to load staff (${r.status})`);
+          throw new Error(body.error || t("Failed to load staff"));
         }
         return r.json();
       })
       .then((d) => setStaff(Array.isArray(d) ? d : []))
-      .catch((err: Error) => toast.error(err.message || "Failed to load staff"))
+      .catch((err: Error) => toastT.error(err.message || "Failed to load staff"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [toastT, t]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -93,6 +96,10 @@ export default function StaffPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isTenDigitPhone(form.phone)) {
+      toastT.error("Enter a valid 10-digit phone number");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/staff", {
@@ -101,16 +108,16 @@ export default function StaffPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success("Staff member registered");
+        toastT.success("Staff member registered");
         setShowForm(false);
         setForm({ name: "", phone: "", category: "maid", flatIds: [], agreedMonthlyPay: "" });
         fetchStaff();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed to register staff");
+        toastT.error(d.error || "Failed to register staff");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setSaving(false);
     }
@@ -126,14 +133,14 @@ export default function StaffPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(
+        toastT.success(
           data.action === "checkin"
-            ? `${data.staff.name} checked IN ✅`
-            : `${data.staff.name} checked OUT 👋`
+            ? `${data.staff.name} ${t("checked IN")} ✅`
+            : `${data.staff.name} ${t("checked OUT")} 👋`
         );
       }
     } catch {
-      toast.error("Failed to record attendance");
+      toastT.error("Failed to record attendance");
     } finally {
       setMarking(null);
     }
@@ -167,10 +174,10 @@ export default function StaffPage() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">
-              Staff & Daily Help
+              {t("Staff & Daily Help")}
             </h1>
             <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">
-              Register & track domestic staff attendance
+              {t("Register & track domestic staff attendance")}
             </p>
           </div>
         </div>
@@ -179,7 +186,7 @@ export default function StaffPage() {
           disabled={noFlatLinked && isResident}
           className="btn btn-primary !rounded-xl px-5 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm shadow-md shadow-primary/10 transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center disabled:opacity-50"
         >
-          <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> Register Staff
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> {t("Register Staff")}
         </button>
       </div>
 
@@ -197,7 +204,7 @@ export default function StaffPage() {
               </div>
               <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.val}</p>
             </div>
-            <p className="text-[9px] sm:text-[10px] font-bold text-text-tertiary mt-4 tracking-[0.1em] uppercase">{s.label}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-text-tertiary mt-4 tracking-[0.1em] uppercase">{t(s.label)}</p>
           </div>
         ))}
       </div>
@@ -205,13 +212,13 @@ export default function StaffPage() {
       {/* Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <h3 className="text-base sm:text-lg font-bold text-text-primary flex items-center gap-2">
-          <Clock className="w-5 h-5 text-text-tertiary" /> Staff Directory
+          <Clock className="w-5 h-5 text-text-tertiary" /> {t("Staff Directory")}
         </h3>
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
           <input
             className="input !rounded-xl !bg-surface/50 !border-border/60 !pl-11 pr-4 py-2.5 text-xs sm:text-sm font-semibold w-full"
-            placeholder="Search staff..."
+            placeholder={t("Search staff...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -222,18 +229,18 @@ export default function StaffPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className="spinner !w-8 !h-8" />
-          <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">Loading staff...</p>
+          <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">{t("Loading staff...")}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="card text-center py-24 bg-surface/30 border-dashed border-2">
           <Briefcase className="w-10 h-10 text-text-tertiary mx-auto mb-4 opacity-20" />
           <p className="text-text-primary font-bold">
-            {noFlatLinked ? "No flat linked to your account" : "No staff registered yet"}
+            {noFlatLinked ? t("No flat linked to your account") : t("No staff registered yet")}
           </p>
           <p className="text-xs text-text-secondary mt-1">
             {noFlatLinked
-              ? "Ask your society admin to link your flat, then register maids, cooks, or drivers here."
-              : "Register maids, cooks, drivers to start tracking attendance"}
+              ? t("Ask your society admin to link your flat, then register maids, cooks, or drivers here.")
+              : t("Register maids, cooks, drivers to start tracking attendance")}
           </p>
         </div>
       ) : (
@@ -250,7 +257,7 @@ export default function StaffPage() {
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h4 className="text-base font-bold text-text-primary tracking-tight">{s.name}</h4>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>
-                        {style.label}
+                        {t(style.label)}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
@@ -270,7 +277,7 @@ export default function StaffPage() {
                     )}
                     {s.entryCode && (
                       <p className="text-[10px] font-mono font-bold text-primary mt-2 bg-primary/5 px-2 py-1 rounded-lg inline-block">
-                        Gate Code: {s.entryCode}
+                        {t("Gate Code:")} {s.entryCode}
                       </p>
                     )}
                   </div>
@@ -282,10 +289,10 @@ export default function StaffPage() {
                     className="flex-1 btn btn-primary !rounded-xl !py-2.5 text-[10px] sm:text-xs font-bold flex items-center justify-center gap-2"
                   >
                     {marking === s.id ? (
-                      "Recording..."
+                      t("Recording...")
                     ) : (
                       <>
-                        <CheckCircle className="w-3.5 h-3.5" /> Check In / Out
+                        <CheckCircle className="w-3.5 h-3.5" /> {t("Check In / Out")}
                       </>
                     )}
                   </button>
@@ -306,8 +313,8 @@ export default function StaffPage() {
                   <Briefcase className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-text-primary tracking-tight">Register Staff</h3>
-                  <p className="text-xs font-medium text-text-secondary mt-0.5">Add domestic help or society staff</p>
+                  <h3 className="text-xl font-bold text-text-primary tracking-tight">{t("Register Staff")}</h3>
+                  <p className="text-xs font-medium text-text-secondary mt-0.5">{t("Add domestic help or society staff")}</p>
                 </div>
               </div>
               <button onClick={() => setShowForm(false)} className="p-2 rounded-full hover:bg-surface text-text-tertiary"><X className="w-6 h-6" /></button>
@@ -316,44 +323,44 @@ export default function StaffPage() {
             <form onSubmit={handleSubmit} className="space-y-6 pb-20 sm:pb-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Name *</label>
-                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="Staff name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Name *")}</label>
+                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("Staff name")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Phone *</label>
-                  <input className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder="+91 00000 00000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Phone *")}</label>
+                  <input {...phoneInputProps} className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5" placeholder={t("10-digit phone")} value={form.phone} onChange={(e) => setForm({ ...form, phone: sanitizePhoneInput(e.target.value) })} required />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Category *</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Category *")}</label>
                 <select className="select !rounded-xl !bg-surface font-bold text-sm py-3.5 px-4 w-full" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                  <option value="maid">Maid</option>
-                  <option value="cook">Cook</option>
-                  <option value="driver">Driver</option>
-                  <option value="nanny">Nanny</option>
-                  <option value="gardener">Gardener</option>
-                  <option value="watchman">Watchman</option>
-                  <option value="other">Other</option>
+                  <option value="maid">{t("Maid")}</option>
+                  <option value="cook">{t("Cook")}</option>
+                  <option value="driver">{t("Driver")}</option>
+                  <option value="nanny">{t("Nanny")}</option>
+                  <option value="gardener">{t("Gardener")}</option>
+                  <option value="watchman">{t("Watchman")}</option>
+                  <option value="other">{t("Other")}</option>
                 </select>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Pre-agreed Monthly Amount</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Pre-agreed Monthly Amount")}</label>
                 <input
                   type="number"
                   min="0"
                   className="input !rounded-xl !bg-surface font-bold text-sm px-4 py-3.5"
-                  placeholder="e.g. 2500"
+                  placeholder={t("e.g. 2500")}
                   value={form.agreedMonthlyPay}
                   onChange={(e) => setForm({ ...form, agreedMonthlyPay: e.target.value })}
                 />
-                <p className="text-[10px] text-text-secondary ml-1">Used to prefill private staff payments in My Bills. This is not society payroll.</p>
+                <p className="text-[10px] text-text-secondary ml-1">{t("Used to prefill private staff payments in My Bills. This is not society payroll.")}</p>
               </div>
 
               {flats.length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">Linked Flats</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("Linked Flats")}</label>
                   <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-3 bg-surface/50 rounded-xl border border-border/40">
                     {flats.map((f) => (
                       <button
@@ -374,9 +381,9 @@ export default function StaffPage() {
               )}
 
               <div className="flex gap-3 pt-6 sticky bottom-0 bg-white sm:static">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">Cancel</button>
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn btn-secondary !rounded-xl py-4 font-bold text-sm">{t("Cancel")}</button>
                 <button type="submit" disabled={saving} className="flex-[2] btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20">
-                  {saving ? "Registering..." : "Register Staff"}
+                  {saving ? t("Registering...") : t("Register Staff")}
                 </button>
               </div>
             </form>

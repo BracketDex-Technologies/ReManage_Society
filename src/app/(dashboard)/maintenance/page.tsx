@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { ChevronLeft, ChevronRight, Search, FileText, Bell, Zap, RefreshCcw, Save, Settings2, Trash2, MessageCircle, Link2, Copy, Send, Gauge } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { formatCurrency } from "@/lib/utils";
@@ -12,6 +13,8 @@ import { LIVE_FAST_INTERVAL_MS } from "@/lib/live-refresh";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 
 export default function MaintenancePage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { confirm } = useAppDialog();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -155,11 +158,11 @@ export default function MaintenancePage() {
   const generateBills = async () => {
     const amount = parseFloat(invoiceForm.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error("Enter a valid invoice amount");
+      toastT.error("Enter a valid invoice amount");
       return;
     }
     if (!invoiceForm.flatIds.length) {
-      toast.error("Select at least one billable unit");
+      toastT.error("Select at least one billable unit");
       return;
     }
     setGenerating(true);
@@ -179,15 +182,17 @@ export default function MaintenancePage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`${data.generated} invoices raised for ${periodLabel}`);
+        toastT.success(t("{count} invoices raised for {period}")
+          .replace("{count}", String(data.generated))
+          .replace("{period}", periodLabel));
         setShowInvoiceModal(false);
         setInvoiceForm((current) => ({ ...current, flatIds: [] }));
         refetch();
       } else {
-        toast.error(data.error || "Failed to generate bills");
+        toastT.error(data.error || "Failed to generate bills");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setGenerating(false);
     }
@@ -203,12 +208,12 @@ export default function MaintenancePage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error || "Failed to save billing setup");
+        toastT.error(data.error || "Failed to save billing setup");
         return;
       }
-      toast.success("Billing setup saved");
+      toastT.success("Billing setup saved");
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setSavingConfig(false);
     }
@@ -220,13 +225,13 @@ export default function MaintenancePage() {
       const res = await fetch("/api/maintenance/late-fees", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to apply late fees");
+        toastT.error(data.error || "Failed to apply late fees");
         return;
       }
-      toast.success(data.message || "Late fees applied");
+      toastT.success(data.message || t("Late fees applied"));
       refetch();
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setApplyingLateFees(false);
     }
@@ -237,11 +242,11 @@ export default function MaintenancePage() {
     const paidAmount = parseFloat(payForm.paidAmount) || 0;
     const totalDue = markPaidBill.totalAmount || markPaidBill.amount + markPaidBill.lateFee + (markPaidBill.gstAmount || 0);
     if (totalDue <= 0) {
-      toast.error("Edit invoice amount before recording payment");
+      toastT.error("Edit invoice amount before recording payment");
       return;
     }
     if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
-      toast.error("Enter payment amount greater than zero");
+      toastT.error("Enter payment amount greater than zero");
       return;
     }
     const isPartial = paidAmount < totalDue;
@@ -268,14 +273,14 @@ export default function MaintenancePage() {
         }),
       });
       if (res.ok) {
-        toast.success(`Flat ${markPaidBill.flat.flatNumber} updated`);
+        toastT.success(t("Flat {flat} updated").replace("{flat}", markPaidBill.flat.flatNumber));
         refetch();
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to update");
+        toastT.error(data.error || "Failed to update");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     }
     setMarkPaidBill(null);
   };
@@ -292,7 +297,7 @@ export default function MaintenancePage() {
     if (!editInvoiceBill) return;
     const amount = parseFloat(editInvoiceForm.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error("Enter invoice amount greater than zero");
+      toastT.error("Enter invoice amount greater than zero");
       return;
     }
 
@@ -308,14 +313,14 @@ export default function MaintenancePage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Invoice updated for Flat ${editInvoiceBill.flat.flatNumber}`);
+        toastT.success(t("Invoice updated for Flat {flat}").replace("{flat}", editInvoiceBill.flat.flatNumber));
         setEditInvoiceBill(null);
         refetch();
       } else {
-        toast.error(data.error || "Failed to update invoice");
+        toastT.error(data.error || "Failed to update invoice");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     }
   };
 
@@ -323,9 +328,12 @@ export default function MaintenancePage() {
     if (bill.status !== "pending") return;
     const total = bill.totalAmount || bill.amount + bill.lateFee + (bill.gstAmount || 0);
     const confirmed = await confirm({
-      title: "Delete Invoice",
-      message: `Delete ${bill.description || "society dues"} invoice for Flat ${bill.flat.flatNumber} (${formatCurrency(total)})? This is allowed only before payment.`,
-      confirmLabel: "Delete Invoice",
+      title: t("Delete Invoice"),
+      message: t("Delete {description} invoice for Flat {flat} ({amount})? This is allowed only before payment.")
+        .replace("{description}", bill.description || t("society dues"))
+        .replace("{flat}", bill.flat.flatNumber)
+        .replace("{amount}", formatCurrency(total)),
+      confirmLabel: t("Delete Invoice"),
       danger: true,
     });
     if (!confirmed) return;
@@ -334,13 +342,13 @@ export default function MaintenancePage() {
       const res = await fetch(`/api/maintenance/bills/${bill.id}`, { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Invoice deleted");
+        toastT.success("Invoice deleted");
         refetch();
       } else {
-        toast.error(data.error || "Failed to delete invoice");
+        toastT.error(data.error || "Failed to delete invoice");
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     }
   };
 
@@ -374,13 +382,13 @@ export default function MaintenancePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to create payment link");
+        toastT.error(data.error || "Failed to create payment link");
         return;
       }
 
       if (sentVia === "whatsapp") {
         window.open(data.whatsAppUrl, "_blank", "noopener,noreferrer");
-        toast.success(`WhatsApp opened for Flat ${bill.flat.flatNumber}`);
+        toastT.success(t("WhatsApp opened for Flat {flat}").replace("{flat}", bill.flat.flatNumber));
       } else {
         setPayLinkModal({
           flatNumber: data.flatNumber,
@@ -391,7 +399,7 @@ export default function MaintenancePage() {
         });
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setCreatingPayLink(null);
     }
@@ -407,10 +415,10 @@ export default function MaintenancePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Failed to prepare payment links");
+        toastT.error(data.error || "Failed to prepare payment links");
         return;
       }
-      toast.success(`${data.count} pay links ready — open WhatsApp for each defaulter`);
+      toastT.success(t("{count} pay links ready — open WhatsApp for each defaulter").replace("{count}", String(data.count)));
       if (data.reminders?.length > 0) {
         setPayLinkModal({
           flatNumber: `${data.count} flats`,
@@ -421,7 +429,7 @@ export default function MaintenancePage() {
         });
       }
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setSendingBulkReminders(false);
     }
@@ -431,7 +439,7 @@ export default function MaintenancePage() {
     try {
       const res = await fetch(`/api/maintenance/bills?period=${period}`);
       const data = await res.json();
-      if (!data.bills || data.bills.length === 0) return toast.error("No bills to export");
+      if (!data.bills || data.bills.length === 0) return toastT.error("No bills to export");
       
       const headers = ["Flat No.", "Billed To", "Payer Role", "Amount", "Paid Amount", "Status", "Due Date", "Paid Date", "Payment Method", "Receipt No", "Note"];
       const csvContent = [headers.join(","), ...data.bills.map((b: BillWithFlat) => [b.flat.flatNumber, b.billingRecipient?.payerName || b.flat.ownerName, b.billingRecipient?.payerRole || "Resident", b.amount, b.paidAmount || 0, b.status, new Date(b.dueDate).toISOString().split('T')[0], b.paidAt ? new Date(b.paidAt).toISOString().split('T')[0] : "", b.paidVia || "", b.receiptNumber || "", b.receiptNote || ""].map(v => `"${v}"`).join(","))].join("\n");
@@ -441,8 +449,8 @@ export default function MaintenancePage() {
       link.setAttribute("href", url);
       link.setAttribute("download", `maintenance_bills_${period}.csv`);
       link.click();
-      toast.success("Export successful");
-    } catch { toast.error("Failed to export"); }
+      toastT.success("Export successful");
+    } catch { toastT.error("Failed to export"); }
   };
 
   return (
@@ -451,7 +459,7 @@ export default function MaintenancePage() {
       <div className="page-header">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="page-title flex items-center gap-2">
-            Maintenance
+            {t("Maintenance")}
             {loading && !data && <div className="spinner !w-4 !h-4" />}
             {isStale && <RefreshCcw className="w-4 h-4 text-primary animate-spin" />}
           </h1>
@@ -466,7 +474,7 @@ export default function MaintenancePage() {
           </div>
           <Link href="/maintenance/meter-readings" className="btn btn-secondary btn-sm flex items-center gap-2">
             <Gauge className="w-4 h-4" />
-            Import meter readings
+            {t("Import meter readings")}
           </Link>
         </div>
       </div>
@@ -476,35 +484,35 @@ export default function MaintenancePage() {
           <div className="flex items-center gap-3">
             <Settings2 className="w-5 h-5 text-primary" />
             <div>
-              <h2 className="font-semibold text-text-primary">Billing Setup</h2>
-              <p className="text-xs text-text-secondary mt-0.5">Default society dues used when raising monthly invoices.</p>
+              <h2 className="font-semibold text-text-primary">{t("Billing Setup")}</h2>
+              <p className="text-xs text-text-secondary mt-0.5">{t("Default society dues used when raising monthly invoices.")}</p>
             </div>
           </div>
           <button onClick={saveBillingConfig} disabled={savingConfig} className="btn btn-primary btn-sm">
             {savingConfig ? <div className="spinner !w-4 !h-4 !border-white/30 !border-t-white" /> : <Save className="w-4 h-4" />}
-            Save Setup
+            {t("Save Setup")}
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="label">Monthly Maintenance Default (₹)</label>
+            <label className="label">{t("Monthly Maintenance Default (₹)")}</label>
             <input type="number" className="input" value={billingConfig.maintenanceAmt} onChange={(e) => setBillingConfig({ ...billingConfig, maintenanceAmt: e.target.value })} />
           </div>
           <div>
-            <label className="label">Default Due Day</label>
+            <label className="label">{t("Default Due Day")}</label>
             <select className="select" value={billingConfig.dueDayOfMonth} onChange={(e) => setBillingConfig({ ...billingConfig, dueDayOfMonth: e.target.value })}>
               {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                <option key={day} value={day}>{day}th of every month</option>
+                <option key={day} value={day}>{t("{day}th of every month").replace("{day}", String(day))}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="label">Late Fee (₹)</label>
+            <label className="label">{t("Late Fee (₹)")}</label>
             <input type="number" className="input" value={billingConfig.lateFee} onChange={(e) => setBillingConfig({ ...billingConfig, lateFee: e.target.value })} />
           </div>
         </div>
         <div className="mt-5 pt-5 border-t border-border">
-          <p className="text-sm font-semibold text-text-primary mb-3">Default Prevention (The Enforcer)</p>
+          <p className="text-sm font-semibold text-text-primary mb-3">{t("Default Prevention (The Enforcer)")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex items-center gap-3 rounded-xl border border-border p-3 cursor-pointer">
               <input
@@ -513,12 +521,12 @@ export default function MaintenancePage() {
                 onChange={(e) => setBillingConfig({ ...billingConfig, duesEnforcementEnabled: e.target.checked })}
               />
               <span>
-                <span className="text-sm font-medium text-text-primary block">Block amenity & guest parking for defaulters</span>
-                <span className="text-xs text-text-secondary">Residents with long-overdue dues cannot book clubhouse or request guest parking.</span>
+                <span className="text-sm font-medium text-text-primary block">{t("Block amenity & guest parking for defaulters")}</span>
+                <span className="text-xs text-text-secondary">{t("Residents with long-overdue dues cannot book clubhouse or request guest parking.")}</span>
               </span>
             </label>
             <div>
-              <label className="label">Overdue threshold (days)</label>
+              <label className="label">{t("Overdue threshold (days)")}</label>
               <input
                 type="number"
                 min={1}
@@ -533,9 +541,9 @@ export default function MaintenancePage() {
         <div className="flex flex-wrap items-center gap-2 mt-4">
           <button onClick={applyLateFees} disabled={applyingLateFees} className="btn btn-secondary btn-sm">
             <Bell className="w-4 h-4" />
-            {applyingLateFees ? "Applying..." : "Apply Late Fees"}
+            {applyingLateFees ? t("Applying...") : t("Apply Late Fees")}
           </button>
-          <p className="text-xs text-text-secondary">Applies once to overdue pending or partial invoices.</p>
+          <p className="text-xs text-text-secondary">{t("Applies once to overdue pending or partial invoices.")}</p>
         </div>
       </div>
 
@@ -543,30 +551,30 @@ export default function MaintenancePage() {
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="stat-card border-l-4 border-l-success">
-            <p className="text-sm font-medium text-text-secondary">Paid ({summary.paid})</p>
+            <p className="text-sm font-medium text-text-secondary">{t("Paid ({count})").replace("{count}", String(summary.paid))}</p>
             <p className="text-xl font-bold text-success-text mt-1">{formatCurrency(summary.collectedAmount)}</p>
           </div>
           <div className="stat-card border-l-4 border-l-danger">
-            <p className="text-sm font-medium text-text-secondary">Pending ({summary.pending})</p>
+            <p className="text-sm font-medium text-text-secondary">{t("Pending ({count})").replace("{count}", String(summary.pending))}</p>
             <p className="text-xl font-bold text-danger-text mt-1">{formatCurrency(summary.pendingAmount)}</p>
           </div>
           <div className="stat-card border-l-4 border-l-primary">
-            <p className="text-sm font-medium text-text-secondary">Total Billed</p>
+            <p className="text-sm font-medium text-text-secondary">{t("Total Billed")}</p>
             <p className="text-xl font-bold text-primary mt-1">{formatCurrency(summary.collectedAmount + summary.pendingAmount)}</p>
           </div>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={exportCsv} className="btn btn-secondary btn-sm"><FileText className="w-4 h-4" /> Export CSV</button>
+        <button onClick={exportCsv} className="btn btn-secondary btn-sm"><FileText className="w-4 h-4" /> {t("Export CSV")}</button>
         {summary && summary.total === 0 && (
           <button onClick={() => setShowInvoiceModal(true)} disabled={generating} className="btn btn-primary btn-sm">
-            <Zap className="w-4 h-4" /> Raise invoices for {periodLabel}
+            <Zap className="w-4 h-4" /> {t("Raise invoices for {period}").replace("{period}", periodLabel)}
           </button>
         )}
         {summary && summary.total > 0 && (
           <button onClick={() => setShowInvoiceModal(true)} disabled={generating} className="btn btn-primary btn-sm">
-            <Zap className="w-4 h-4" /> Raise another invoice
+            <Zap className="w-4 h-4" /> {t("Raise another invoice")}
           </button>
         )}
         {summary && summary.total > 0 && (
@@ -577,13 +585,15 @@ export default function MaintenancePage() {
                 const res = await fetch("/api/system/sync-bills", { method: "POST" });
                 const data = await res.json();
                 if (res.ok) {
-                  toast.success(data.message + " (" + data.newlyCreated + " bills added)");
+                  toastT.success(t("{message} ({count} bills added)")
+                    .replace("{message}", data.message)
+                    .replace("{count}", String(data.newlyCreated)));
                   refetch();
                 } else {
-                  toast.error(data.error || "Failed to sync");
+                  toastT.error(data.error || "Failed to sync");
                 }
               } catch {
-                toast.error("Something went wrong");
+                toastT.error("Something went wrong");
               } finally {
                 setGenerating(false);
               }
@@ -591,7 +601,7 @@ export default function MaintenancePage() {
             disabled={generating} 
             className="btn btn-secondary btn-sm"
           >
-            <RefreshCcw className={`w-4 h-4 ${generating ? "animate-spin" : ""}`} /> Sync missing members
+            <RefreshCcw className={`w-4 h-4 ${generating ? "animate-spin" : ""}`} /> {t("Sync missing members")}
           </button>
         )}
         {summary && summary.pending > 0 && (
@@ -600,12 +610,12 @@ export default function MaintenancePage() {
               onClick={sendBulkPaymentLinks}
               disabled={sendingBulkReminders}
               className="btn btn-primary btn-sm"
-              title="Generate one-click pay links for all pending bills"
+              title={t("Generate one-click pay links for all pending bills")}
             >
               {sendingBulkReminders ? <div className="spinner !w-4 !h-4" /> : <Send className="w-4 h-4" />}
-              Pay links ({summary.pending})
+              {t("Pay links ({count})").replace("{count}", String(summary.pending))}
             </button>
-            <Link href="/reminders" className="btn btn-secondary btn-sm"><Bell className="w-4 h-4" /> Send reminders</Link>
+            <Link href="/reminders" className="btn btn-secondary btn-sm"><Bell className="w-4 h-4" /> {t("Send reminders")}</Link>
           </>
         )}
       </div>
@@ -613,11 +623,11 @@ export default function MaintenancePage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
-          <input type="text" className="input pl-9" placeholder="Search flat or owner..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input type="text" className="input pl-9" placeholder={t("Search flat or owner...")} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-1 bg-white border border-border rounded-lg p-0.5">
           {["all", "paid", "partial", "pending"].map((s) => (
-            <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${statusFilter === s ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"}`}>{s.charAt(0).toUpperCase() + s.slice(1)}</button>
+            <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${statusFilter === s ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"}`}>{t(s.charAt(0).toUpperCase() + s.slice(1))}</button>
           ))}
         </div>
       </div>
@@ -625,19 +635,19 @@ export default function MaintenancePage() {
       {loading && !data ? (
         <div className="flex justify-center py-12"><div className="spinner" /></div>
       ) : bills.length === 0 ? (
-        <div className="card text-center py-12 text-text-secondary">No records found.</div>
+        <div className="card text-center py-12 text-text-secondary">{t("No records found.")}</div>
       ) : (
         <div className="table-wrapper">
           <table className="table">
             <thead>
               <tr>
-                <th>Flat No.</th>
-                <th>Billed To</th>
-                <th>Total Amt</th>
-                <th className="hidden md:table-cell">Paid Amt</th>
-                <th>Status</th>
-                <th className="hidden sm:table-cell">Due Date</th>
-                <th className="text-right">Actions</th>
+                <th>{t("Flat No.")}</th>
+                <th>{t("Billed To")}</th>
+                <th>{t("Total Amt")}</th>
+                <th className="hidden md:table-cell">{t("Paid Amt")}</th>
+                <th>{t("Status")}</th>
+                <th className="hidden sm:table-cell">{t("Due Date")}</th>
+                <th className="text-right">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -645,10 +655,10 @@ export default function MaintenancePage() {
                 <tr key={bill.id}>
                   <td className="font-medium">{bill.flat.flatNumber}</td>
                   <td className="min-w-[180px]">
-                    <p className="font-semibold truncate">{bill.billingRecipient?.payerName || bill.flat.ownerName || "Linked resident"}</p>
-                    <p className="text-[10px] text-text-secondary">{bill.billingRecipient?.payerRole || "Resident"}</p>
+                    <p className="font-semibold truncate">{bill.billingRecipient?.payerName || bill.flat.ownerName || t("Linked resident")}</p>
+                    <p className="text-[10px] text-text-secondary">{bill.billingRecipient?.payerRole || t("Resident")}</p>
                     <p className="text-[10px] text-text-secondary mt-0.5">
-                      {bill.description || "Society Dues"} · {(bill.billType || "maintenance").replace("_", " ")} · {(bill.billingCycle || "monthly").replace("_", " ")}
+                      {bill.description || t("Society Dues")} · {(bill.billType || "maintenance").replace("_", " ")} · {(bill.billingCycle || "monthly").replace("_", " ")}
                     </p>
                   </td>
                   <td className="font-medium">{formatCurrency(bill.totalAmount || bill.amount + bill.lateFee + (bill.gstAmount || 0))}</td>
@@ -667,7 +677,7 @@ export default function MaintenancePage() {
                             onClick={() => createPayLink(bill, "whatsapp")}
                             disabled={creatingPayLink === bill.id}
                             className="btn btn-primary btn-sm !py-1 !px-2 text-xs"
-                            title="Send WhatsApp pay link"
+                            title={t("Send WhatsApp pay link")}
                           >
                             {creatingPayLink === bill.id ? <div className="spinner !w-3 !h-3" /> : <MessageCircle className="w-3 h-3" />}
                           </button>
@@ -675,25 +685,25 @@ export default function MaintenancePage() {
                             onClick={() => createPayLink(bill, "copy")}
                             disabled={creatingPayLink === bill.id}
                             className="btn btn-secondary btn-sm !py-1 !px-2 text-xs"
-                            title="Copy pay link"
+                            title={t("Copy pay link")}
                           >
                             <Link2 className="w-3 h-3" />
                           </button>
-                          <button onClick={() => openEditInvoice(bill)} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs">Edit Invoice</button>
-                          <button onClick={() => openMarkPaid(bill)} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs">Record Offline</button>
-                          <button onClick={() => deleteInvoice(bill)} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs text-danger" title="Delete pending invoice">
-                            <Trash2 className="w-3 h-3" /> Delete
+                          <button onClick={() => openEditInvoice(bill)} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs">{t("Edit Invoice")}</button>
+                          <button onClick={() => openMarkPaid(bill)} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs">{t("Record Offline")}</button>
+                          <button onClick={() => deleteInvoice(bill)} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs text-danger" title={t("Delete pending invoice")}>
+                            <Trash2 className="w-3 h-3" /> {t("Delete")}
                           </button>
                         </>
                       ) : bill.status === "partial" ? (
                         <>
-                          <button onClick={() => openMarkPaid(bill)} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs" title="Edit Payment">Edit</button>
-                          <Link href={`/receipts/${bill.id}`} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs" title="View Receipt">
+                          <button onClick={() => openMarkPaid(bill)} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs" title={t("Edit Payment")}>{t("Edit")}</button>
+                          <Link href={`/receipts/${bill.id}`} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs" title={t("View Receipt")}>
                             <FileText className="w-3 h-3" />
                           </Link>
                         </>
                       ) : (
-                        <Link href={`/receipts/${bill.id}`} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs" title="View Receipt">
+                        <Link href={`/receipts/${bill.id}`} className="btn btn-secondary btn-sm !py-1 !px-2 text-xs" title={t("View Receipt")}>
                           <FileText className="w-3 h-3" />
                         </Link>
                       )}
@@ -710,28 +720,28 @@ export default function MaintenancePage() {
         <div className="modal-overlay" onClick={() => setShowInvoiceModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="mb-5">
-              <h3 className="text-lg font-semibold">Raise Maintenance Invoices</h3>
+              <h3 className="text-lg font-semibold">{t("Raise Maintenance Invoices")}</h3>
               <p className="text-sm text-text-secondary mt-1">
-                Select active units and the system will bill the owner or tenant based on occupancy billing responsibility for {periodLabel}.
+                {t("Select active units and the system will bill the owner or tenant based on occupancy billing responsibility for {period}.").replace("{period}", periodLabel)}
               </p>
             </div>
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="label mb-0">Billable Units *</label>
+                  <label className="label mb-0">{t("Billable Units *")}</label>
                   {availableFlats.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setInvoiceForm((current) => ({ ...current, flatIds: availableFlats.map((flat) => flat.id) }))}
                       className="text-xs font-bold text-primary hover:underline"
                     >
-                      Select all available
+                      {t("Select all available")}
                     </button>
                   )}
                 </div>
                 {availableFlats.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border p-4 text-sm text-text-secondary">
-                    All linked flats already have an invoice for {periodLabel}.
+                    {t("All linked flats already have an invoice for {period}.").replace("{period}", periodLabel)}
                   </div>
                 ) : (
                   <div className="max-h-56 overflow-y-auto rounded-xl border border-border divide-y divide-border">
@@ -754,17 +764,19 @@ export default function MaintenancePage() {
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-text-primary">{flat.flatNumber}</p>
                             <p className="text-xs text-text-primary truncate">
-                              Bill to {flat.payerName || flat.ownerName} ({flat.payerRole || flat.role})
+                              {t("Bill to {name} ({role})")
+                                .replace("{name}", flat.payerName || flat.ownerName)
+                                .replace("{role}", flat.payerRole || flat.role)}
                             </p>
                             {flat.tenantName && (
                               <p className="text-[10px] text-text-secondary truncate">
-                                Tenant: {flat.tenantName}
-                                {flat.privateMonthlyRent ? ` · Private rent ${formatCurrency(flat.privateMonthlyRent)}/month` : ""}
+                                {t("Tenant:")} {flat.tenantName}
+                                {flat.privateMonthlyRent ? ` · ${t("Private rent")} ${formatCurrency(flat.privateMonthlyRent)}/${t("month")}` : ""}
                               </p>
                             )}
                             {flat.linkedOwnerName && (
                               <p className="text-[10px] text-text-secondary truncate">
-                                Owner: {flat.linkedOwnerName}
+                                {t("Owner:")} {flat.linkedOwnerName}
                                 {flat.linkedOwnerPhone ? ` · ${flat.linkedOwnerPhone}` : ""}
                               </p>
                             )}
@@ -778,52 +790,52 @@ export default function MaintenancePage() {
               <div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                   <div>
-                    <label className="label">Invoice Type</label>
+                    <label className="label">{t("Invoice Type")}</label>
                     <select
                       className="select"
                       value={invoiceForm.billType}
                       onChange={(e) => {
-                        const label = e.target.options[e.target.selectedIndex]?.text || "Society Dues";
+                        const label = e.target.options[e.target.selectedIndex]?.text || t("Society Dues");
                         const nextCycle = e.target.value === "annual" ? "yearly" : e.target.value === "maintenance" ? "monthly" : invoiceForm.billingCycle;
                         setInvoiceForm({ ...invoiceForm, billType: e.target.value, billingCycle: nextCycle, description: label });
                       }}
                     >
-                      <option value="maintenance">Monthly Maintenance</option>
-                      <option value="annual">Annual Society Charges</option>
-                      <option value="sinking">Sinking Fund</option>
-                      <option value="repair">Repair Contribution</option>
-                      <option value="parking">Parking Charges</option>
-                      <option value="other">Other Society Dues</option>
+                      <option value="maintenance">{t("Monthly Maintenance")}</option>
+                      <option value="annual">{t("Annual Society Charges")}</option>
+                      <option value="sinking">{t("Sinking Fund")}</option>
+                      <option value="repair">{t("Repair Contribution")}</option>
+                      <option value="parking">{t("Parking Charges")}</option>
+                      <option value="other">{t("Other Society Dues")}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="label">Billing Cycle</label>
+                    <label className="label">{t("Billing Cycle")}</label>
                     <select className="select" value={invoiceForm.billingCycle} onChange={(e) => setInvoiceForm({ ...invoiceForm, billingCycle: e.target.value })}>
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                      <option value="one_time">One-time</option>
+                      <option value="monthly">{t("Monthly")}</option>
+                      <option value="yearly">{t("Yearly")}</option>
+                      <option value="one_time">{t("One-time")}</option>
                     </select>
                   </div>
                 </div>
                 <div className="mb-3">
-                  <label className="label">Invoice Title</label>
+                  <label className="label">{t("Invoice Title")}</label>
                   <input className="input" value={invoiceForm.description} onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })} />
                 </div>
-                <label className="label">Invoice Amount *</label>
+                <label className="label">{t("Invoice Amount *")}</label>
                 <input
                   type="number"
                   className="input"
                   autoFocus
-                  placeholder="e.g. 2500"
+                  placeholder={t("e.g. 2500")}
                   value={invoiceForm.amount}
                   onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })}
                 />
                 <p className="text-xs text-text-secondary mt-1">
-                  This is society income/dues. Tenant private rent is shown above only for context and is not billed by the society.
+                  {t("This is society income/dues. Tenant private rent is shown above only for context and is not billed by the society.")}
                 </p>
               </div>
               <div>
-                <label className="label">Due Date *</label>
+                <label className="label">{t("Due Date *")}</label>
                 <input
                   type="date"
                   className="input"
@@ -833,10 +845,10 @@ export default function MaintenancePage() {
               </div>
             </div>
             <div className="flex gap-2 mt-8">
-              <button onClick={() => setShowInvoiceModal(false)} className="btn btn-secondary flex-1">Cancel</button>
+              <button onClick={() => setShowInvoiceModal(false)} className="btn btn-secondary flex-1">{t("Cancel")}</button>
               <button onClick={generateBills} disabled={generating || availableFlats.length === 0} className="btn btn-primary flex-[2]">
                 {generating ? <div className="spinner !w-4 !h-4 !border-white/30 !border-t-white" /> : <Zap className="w-4 h-4" />}
-                Raise Invoices
+                {t("Raise Invoices")}
               </button>
             </div>
           </div>
@@ -847,14 +859,14 @@ export default function MaintenancePage() {
         <div className="modal-overlay" onClick={() => setEditInvoiceBill(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="mb-5">
-              <h3 className="text-lg font-semibold">Edit Invoice</h3>
+              <h3 className="text-lg font-semibold">{t("Edit Invoice")}</h3>
               <p className="text-sm text-text-secondary mt-1">
-                Flat {editInvoiceBill.flat.flatNumber} · {editInvoiceBill.period}
+                {t("Flat")} {editInvoiceBill.flat.flatNumber} · {editInvoiceBill.period}
               </p>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="label">Invoice Amount *</label>
+                <label className="label">{t("Invoice Amount *")}</label>
                 <input
                   type="number"
                   className="input"
@@ -864,7 +876,7 @@ export default function MaintenancePage() {
                 />
               </div>
               <div>
-                <label className="label">Due Date *</label>
+                <label className="label">{t("Due Date *")}</label>
                 <input
                   type="date"
                   className="input"
@@ -874,8 +886,8 @@ export default function MaintenancePage() {
               </div>
             </div>
             <div className="flex gap-2 mt-8">
-              <button onClick={() => setEditInvoiceBill(null)} className="btn btn-secondary flex-1">Cancel</button>
-              <button onClick={saveInvoiceEdit} className="btn btn-primary flex-[2]">Save Invoice</button>
+              <button onClick={() => setEditInvoiceBill(null)} className="btn btn-secondary flex-1">{t("Cancel")}</button>
+              <button onClick={saveInvoiceEdit} className="btn btn-primary flex-[2]">{t("Save Invoice")}</button>
             </div>
           </div>
         </div>
@@ -886,17 +898,17 @@ export default function MaintenancePage() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">
-                {markPaidBill.status === "pending" ? "Collect Payment" : "Update Payment"}
+                {markPaidBill.status === "pending" ? t("Collect Payment") : t("Update Payment")}
               </h3>
-              <p className="text-sm font-bold text-primary">Flat {markPaidBill.flat.flatNumber}</p>
+              <p className="text-sm font-bold text-primary">{t("Flat")} {markPaidBill.flat.flatNumber}</p>
             </div>
             
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between mb-1">
-                  <label className="label mb-0">Amount Collected *</label>
+                  <label className="label mb-0">{t("Amount Collected *")}</label>
                   <span className="text-[10px] text-text-secondary uppercase tracking-wider font-semibold">
-                    Total Due: {formatCurrency(markPaidBill.totalAmount || markPaidBill.amount + markPaidBill.lateFee + (markPaidBill.gstAmount || 0))}
+                    {t("Total Due:")} {formatCurrency(markPaidBill.totalAmount || markPaidBill.amount + markPaidBill.lateFee + (markPaidBill.gstAmount || 0))}
                   </span>
                 </div>
                 <input 
@@ -910,23 +922,23 @@ export default function MaintenancePage() {
               </div>
 
               <div>
-                <label className="label">Payment Method *</label>
+                <label className="label">{t("Payment Method *")}</label>
                 <select className="select" value={payForm.paidVia} onChange={(e) => setPayForm({ ...payForm, paidVia: e.target.value })}>
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="neft">NEFT / Bank Transfer</option>
-                  <option value="cheque">Cheque</option>
+                  <option value="cash">{t("Cash")}</option>
+                  <option value="upi">{t("UPI")}</option>
+                  <option value="neft">{t("NEFT / Bank Transfer")}</option>
+                  <option value="cheque">{t("Cheque")}</option>
                 </select>
               </div>
 
               <div>
-                <label className="label">Payment Date *</label>
+                <label className="label">{t("Payment Date *")}</label>
                 <input type="date" className="input" value={payForm.paidAt} onChange={(e) => setPayForm({ ...payForm, paidAt: e.target.value })} />
               </div>
 
               <div>
-                <label className="label">Receipt Note / Reference</label>
-                <input className="input" placeholder="e.g. UPI Ref Id or Cheque #" value={payForm.receiptNote} onChange={(e) => setPayForm({ ...payForm, receiptNote: e.target.value })} />
+                <label className="label">{t("Receipt Note / Reference")}</label>
+                <input className="input" placeholder={t("e.g. UPI Ref Id or Cheque #")} value={payForm.receiptNote} onChange={(e) => setPayForm({ ...payForm, receiptNote: e.target.value })} />
               </div>
             </div>
 
@@ -935,18 +947,18 @@ export default function MaintenancePage() {
                 onClick={handleMarkPaid} 
                 className="btn btn-primary w-full"
               >
-                {markPaidBill.status === "pending" ? "Save Collection" : "Update Records"}
+                {markPaidBill.status === "pending" ? t("Save Collection") : t("Update Records")}
               </button>
               
               <div className="flex gap-2">
-                <button onClick={() => setMarkPaidBill(null)} className="btn btn-secondary flex-1">Cancel</button>
+                <button onClick={() => setMarkPaidBill(null)} className="btn btn-secondary flex-1">{t("Cancel")}</button>
                 {markPaidBill.status !== "pending" && (
                   <button 
                     onClick={async () => {
                       const ok = await confirm({
-                        title: "Revert Payment",
-                        message: "Revert this payment? This will mark the invoice as pending again.",
-                        confirmLabel: "Revert Payment",
+                        title: t("Revert Payment"),
+                        message: t("Revert this payment? This will mark the invoice as pending again."),
+                        confirmLabel: t("Revert Payment"),
                         danger: true,
                       });
                       if (!ok) return;
@@ -957,15 +969,15 @@ export default function MaintenancePage() {
                           body: JSON.stringify({ status: "pending" }),
                         });
                         if (res.ok) {
-                          toast.success("Payment reverted to pending");
+                          toastT.success("Payment reverted to pending");
                           refetch();
                           setMarkPaidBill(null);
                         }
-                      } catch { toast.error("Failed to revert"); }
+                      } catch { toastT.error("Failed to revert"); }
                     }} 
                     className="btn btn-danger flex-1"
                   >
-                    Reset to Pending
+                    {t("Reset to Pending")}
                   </button>
                 )}
               </div>
@@ -980,46 +992,46 @@ export default function MaintenancePage() {
             <div className="mb-5">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Link2 className="w-5 h-5 text-primary" />
-                One-Click Pay Link
+                {t("One-Click Pay Link")}
               </h3>
               <p className="text-sm text-text-secondary mt-1">
-                Flat {payLinkModal.flatNumber} · Residents can pay via UPI without logging in.
+                {t("Flat")} {payLinkModal.flatNumber} · {t("Residents can pay via UPI without logging in.")}
               </p>
             </div>
 
             <div className="space-y-4">
               <div className="bg-surface/50 rounded-xl p-4 border border-border/40">
-                <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">Payment link</p>
+                <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">{t("Payment link")}</p>
                 <p className="text-xs font-mono break-all text-primary">{payLinkModal.payUrl}</p>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(payLinkModal.payUrl);
-                    toast.success("Link copied!");
+                    toastT.success("Link copied!");
                   }}
                   className="btn btn-secondary btn-sm mt-3"
                 >
-                  <Copy className="w-3 h-3" /> Copy link
+                  <Copy className="w-3 h-3" /> {t("Copy link")}
                 </button>
               </div>
 
               <div className="bg-surface/50 rounded-xl p-4 border border-border/40">
-                <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">WhatsApp message preview</p>
+                <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">{t("WhatsApp message preview")}</p>
                 <pre className="text-xs whitespace-pre-wrap text-text-secondary font-sans max-h-40 overflow-y-auto">{payLinkModal.message}</pre>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 mt-8">
-              <button onClick={() => setPayLinkModal(null)} className="btn btn-secondary flex-1">Close</button>
+              <button onClick={() => setPayLinkModal(null)} className="btn btn-secondary flex-1">{t("Close")}</button>
               <button
                 onClick={() => window.open(payLinkModal.whatsAppUrl, "_blank", "noopener,noreferrer")}
                 className="btn btn-primary flex-[2] flex items-center justify-center gap-2"
               >
-                <MessageCircle className="w-4 h-4" /> Send on WhatsApp
+                <MessageCircle className="w-4 h-4" /> {t("Send on WhatsApp")}
               </button>
             </div>
             {!payLinkModal.payerPhone && (
               <p className="text-[10px] text-text-tertiary mt-3 text-center">
-                No phone on file — WhatsApp will open without a pre-filled contact.
+                {t("No phone on file — WhatsApp will open without a pre-filled contact.")}
               </p>
             )}
           </div>

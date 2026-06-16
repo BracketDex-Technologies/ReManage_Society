@@ -39,11 +39,11 @@ export default function LanguageSelector({ compact = false }: { compact?: boolea
         aria-label={t("Language")}
         value={language}
         onChange={(event) => setLanguage(event.target.value as typeof language)}
-        className="h-8 cursor-pointer rounded-lg bg-transparent text-xs font-black uppercase tracking-wider text-text-primary outline-none"
+        className="h-8 min-w-[6.5rem] cursor-pointer rounded-lg bg-transparent text-sm font-bold text-text-primary outline-none"
       >
         {LANGUAGE_OPTIONS.map((option) => (
           <option key={option.code} value={option.code}>
-            {option.shortLabel}
+            {option.label}
           </option>
         ))}
       </select>

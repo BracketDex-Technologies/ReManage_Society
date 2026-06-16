@@ -67,7 +67,9 @@
     "db:rls:apply": "node scripts/apply-tenant-rls.mjs",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:test-chairmen": "tsx scripts/seed-test-chairmen.ts",
-    "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts"
+    "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
+    "i18n:sync": "tsx scripts/sync-message-keys.ts",
+    "i18n:repair": "tsx scripts/repair-translations.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -99,6 +101,7 @@
     "lucide-react": "^1.0.1",
     "next": "16.2.1",
     "next-auth": "^5.0.0-beta.30",
+    "next-intl": "^4.13.0",
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",
     "pg": "^8.20.0",

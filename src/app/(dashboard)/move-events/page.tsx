@@ -1,7 +1,8 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
-import toast from "react-hot-toast";
 import { Plus, ArrowUpRight, ArrowDownLeft, CheckCircle, Clock, Home, X, ClipboardList } from "lucide-react";
 
 interface MoveEvent {
@@ -33,6 +34,8 @@ interface Flat {
 }
 
 export default function MoveEventsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [events, setEvents] = useState<MoveEvent[]>([]);
   const [flats, setFlats] = useState<Flat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +51,7 @@ export default function MoveEventsPage() {
     fetch("/api/move-events")
       .then((r) => r.json())
       .then((d) => setEvents(Array.isArray(d) ? d : []))
-      .catch(() => toast.error("Failed to load events"))
+      .catch(() => toastT.error("Failed to load events"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -70,15 +73,15 @@ export default function MoveEventsPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success(`${form.type === "move_in" ? "Move-in" : "Move-out"} process started`);
+        toastT.success(`${form.type === "move_in" ? "Move-in" : "Move-out"} process started`);
         setShowForm(false);
         setForm({ flatId: "", type: "move_in", residentName: "", residentType: "owner", notes: "" });
         fetchEvents();
       } else {
         const d = await res.json();
-        toast.error(d.error || "Failed");
+        toastT.error(d.error || "Failed");
       }
-    } catch { toast.error("Something went wrong"); }
+    } catch { toastT.error("Something went wrong"); }
     finally { setSaving(false); }
   };
 
@@ -96,7 +99,7 @@ export default function MoveEventsPage() {
         body: JSON.stringify({ eventId, checklistIndex: index, status: newStatus }),
       });
       if (res.ok) {
-        toast.success(newStatus === "completed" ? "Item completed ✓" : "Item unchecked");
+        toastT.success(newStatus === "completed" ? "Item completed ✓" : "Item unchecked");
         fetchEvents();
         // Refresh selected event
         const updated = await res.json();
@@ -104,7 +107,7 @@ export default function MoveEventsPage() {
           setSelectedEvent({ ...selectedEvent, checklist: updated.checklist, status: updated.status });
         }
       }
-    } catch { toast.error("Update failed"); }
+    } catch { toastT.error("Update failed"); }
     finally { setUpdatingItem(null); }
   };
 
@@ -117,13 +120,13 @@ export default function MoveEventsPage() {
       });
       const result = await res.json();
       if (!res.ok) {
-        toast.error(result.error || "Action failed");
+        toastT.error(result.error || "Action failed");
         return;
       }
-      toast.success(result.message || "Updated");
+      toastT.success(result.message || "Updated");
       fetchEvents();
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     }
   };
 
@@ -142,8 +145,8 @@ export default function MoveEventsPage() {
             <ClipboardList className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">Move In / Move Out</h1>
-            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">Checklist-driven handover workflows</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight leading-none sm:leading-normal">{t("Move In / Move Out")}</h1>
+            <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium">{t("Checklist-driven handover workflows")}</p>
           </div>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary !rounded-xl px-5 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm shadow-md shadow-primary/10 flex items-center justify-center">
@@ -331,10 +334,10 @@ export default function MoveEventsPage() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-5 pb-20 sm:pb-0">
               <div className="flex gap-2">
-                {["move_in", "move_out"].map((t) => (
-                  <button key={t} type="button" onClick={() => setForm({ ...form, type: t })} className={`flex-1 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${form.type === t ? (t === "move_in" ? "bg-emerald-600 text-white" : "bg-red-600 text-white") : "bg-surface text-text-secondary"}`}>
-                    {t === "move_in" ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
-                    {t === "move_in" ? "Move In" : "Move Out"}
+                {["move_in", "move_out"].map((moveType) => (
+                  <button key={moveType} type="button" onClick={() => setForm({ ...form, type: moveType })} className={`flex-1 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${form.type === moveType ? (moveType === "move_in" ? "bg-emerald-600 text-white" : "bg-red-600 text-white") : "bg-surface text-text-secondary"}`}>
+                    {moveType === "move_in" ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                    {moveType === "move_in" ? t("Move In") : t("Move Out")}
                   </button>
                 ))}
               </div>

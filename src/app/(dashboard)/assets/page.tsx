@@ -1,8 +1,9 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState } from "react";
 import { HardDrive, Plus, Wrench, AlertTriangle } from "lucide-react";
-import toast from "react-hot-toast";
 import { formatCurrency } from "@/lib/utils";
 
 interface Asset { id: string; name: string; category: string; location: string | null; purchaseDate: string | null; purchaseAmount: number | null; currentValue: number | null; warrantyEnd: string | null; vendor: string | null; serialNumber: string | null; condition: string; lastMaintenanceAt: string | null; nextMaintenanceAt: string | null; maintenanceCycle: number | null; notes: string | null; isActive: boolean; }
@@ -10,21 +11,23 @@ const CATS = ["generator", "elevator", "pump", "gym_equipment", "cctv", "furnitu
 const CONDS = [{ v: "excellent", l: "Excellent", c: "text-success" }, { v: "good", l: "Good", c: "text-primary" }, { v: "fair", l: "Fair", c: "text-warning" }, { v: "poor", l: "Poor", c: "text-danger" }, { v: "out_of_order", l: "Out of Order", c: "text-danger" }];
 
 export default function AssetsPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", category: "generator", location: "", purchaseDate: "", purchaseAmount: "", currentValue: "", warrantyEnd: "", vendor: "", serialNumber: "", condition: "good", maintenanceCycle: "", notes: "" });
 
-  const load = async () => { setLoading(true); try { const r = await fetch("/api/assets"); const d = await r.json(); if (Array.isArray(d)) setAssets(d); } catch { toast.error("Failed"); } finally { setLoading(false); } };
+  const load = async () => { setLoading(true); try { const r = await fetch("/api/assets"); const d = await r.json(); if (Array.isArray(d)) setAssets(d); } catch { toastT.error("Failed"); } finally { setLoading(false); } };
   useEffect(() => { load(); }, []);
 
   const handleAdd = async () => {
-    if (!form.name) return toast.error("Name required");
-    const t = toast.loading("Saving..."); try {
+    if (!form.name) return toastT.error("Name required");
+    const toastId = toastT.loading("Saving..."); try {
       const r = await fetch("/api/assets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      if (r.ok) { toast.success("Added!", { id: t }); setShowForm(false); setForm({ name: "", category: "generator", location: "", purchaseDate: "", purchaseAmount: "", currentValue: "", warrantyEnd: "", vendor: "", serialNumber: "", condition: "good", maintenanceCycle: "", notes: "" }); load(); }
-      else toast.error("Failed", { id: t });
-    } catch { toast.error("Error", { id: t }); }
+      if (r.ok) { toastT.success("Added!", { id: toastId }); setShowForm(false); setForm({ name: "", category: "generator", location: "", purchaseDate: "", purchaseAmount: "", currentValue: "", warrantyEnd: "", vendor: "", serialNumber: "", condition: "good", maintenanceCycle: "", notes: "" }); load(); }
+      else toastT.error("Failed", { id: toastId });
+    } catch { toastT.error("Error", { id: toastId }); }
   };
 
   const needsMaint = assets.filter(a => a.nextMaintenanceAt && new Date(a.nextMaintenanceAt) <= new Date());
@@ -33,7 +36,7 @@ export default function AssetsPage() {
   return (
     <div className="space-y-6">
       <div className="page-header flex justify-between items-center">
-        <div className="flex items-center gap-3"><HardDrive className="w-6 h-6 text-primary" /><div><h1 className="page-title">Asset Register</h1><p className="text-sm text-text-secondary mt-0.5">Track society equipment and maintenance schedules</p></div></div>
+        <div className="flex items-center gap-3"><HardDrive className="w-6 h-6 text-primary" /><div><h1 className="page-title">{t("Asset Register")}</h1><p className="text-sm text-text-secondary mt-0.5">{t("Track society equipment and maintenance schedules")}</p></div></div>
         <button onClick={() => setShowForm(!showForm)} className="btn btn-primary btn-sm flex items-center gap-2">{showForm ? "Cancel" : <><Plus className="w-4 h-4" /> Add Asset</>}</button>
       </div>
 

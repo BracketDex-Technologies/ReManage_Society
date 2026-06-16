@@ -1,7 +1,8 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useState } from "react";
-import toast from "react-hot-toast";
 import Link from "next/link";
 import {
   FileBadge,
@@ -42,6 +43,8 @@ type NocResponse = {
 };
 
 export default function NocPage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const [purpose, setPurpose] = useState("general");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -66,18 +69,18 @@ export default function NocPage() {
       });
       const result = await res.json();
       if (res.status === 402) {
-        toast.error(result.message || "Clear outstanding dues first");
+        toastT.error(result.message || "Clear outstanding dues first");
         refetch();
         return;
       }
       if (!res.ok) {
-        toast.error(result.error || "Could not generate NOC");
+        toastT.error(result.error || "Could not generate NOC");
         return;
       }
-      toast.success(result.message || "NOC ready");
+      toastT.success(result.message || "NOC ready");
       refetch();
     } catch {
-      toast.error("Something went wrong");
+      toastT.error("Something went wrong");
     } finally {
       setSubmitting(false);
     }
@@ -99,7 +102,7 @@ export default function NocPage() {
           <FileBadge className="w-6 h-6 text-primary" />
           <div>
             <h1 className="page-title flex items-center gap-2">
-              Society NOC
+              {t("Society NOC")}
               {loading && !data && <div className="spinner !w-4 !h-4" />}
               {isStale && <RefreshCcw className="w-4 h-4 text-primary animate-spin" />}
             </h1>

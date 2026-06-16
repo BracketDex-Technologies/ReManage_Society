@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { ShoppingBag, Plus, Tag, X, Package, Image as ImageIcon, Trash2, Handshake, CheckCircle, XCircle } from "lucide-react";
-import toast from "react-hot-toast";
+import { useI18n } from "@/lib/i18n";
+import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { formatCurrency } from "@/lib/utils";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 import { ModuleEmptyState, ModulePageHeader, ModuleSectionTitle } from "@/components/ux/ModulePageKit";
+import { isOptionalTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 
 interface Listing {
   id: string;
@@ -58,6 +60,8 @@ const CONDITIONS = [
 ];
 
 export default function MarketplacePage() {
+  const { t } = useI18n();
+  const toastT = useTranslatedToast();
   const { prompt } = useAppDialog();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +80,7 @@ export default function MarketplacePage() {
       const d = await res.json();
       if (Array.isArray(d)) setListings(d);
     } catch {
-      toast.error("Failed to load listings");
+      toastT.error("Failed to load listings");
     } finally {
       setLoading(false);
     }
@@ -85,8 +89,9 @@ export default function MarketplacePage() {
   useEffect(() => { fetchListings(); }, []);
 
   const handlePost = async () => {
-    if (!form.title) return toast.error("Title is required");
-    const load = toast.loading("Posting listing...");
+    if (!form.title) return toastT.error("Title is required");
+    if (!isOptionalTenDigitPhone(form.contactPhone)) return toastT.error("Enter a valid 10-digit contact phone");
+    const load = toastT.loading("Posting listing...");
     try {
       const res = await fetch("/api/marketplace", {
         method: "POST",
@@ -94,15 +99,15 @@ export default function MarketplacePage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        toast.success("Listed successfully!", { id: load });
+        toastT.success("Listed successfully!", { id: load });
         setShowForm(false);
         setForm({ title: "", description: "", price: "", category: "general", condition: "good", contactPhone: "", flatNumber: "", imageCount: "0", imageUrls: [] });
         fetchListings();
       } else {
-        toast.error("Failed to post", { id: load });
+        toastT.error("Failed to post", { id: load });
       }
     } catch {
-      toast.error("Error", { id: load });
+      toastT.error("Error", { id: load });
     }
   };
 
@@ -118,11 +123,11 @@ export default function MarketplacePage() {
   const handlePhotoChange = (index: number, file?: File) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+      toastT.error("Please select an image file");
       return;
     }
     if (file.size > 1_500_000) {
-      toast.error("Photo must be under 1.5 MB");
+      toastT.error("Photo must be under 1.5 MB");
       return;
     }
     const reader = new FileReader();
@@ -146,17 +151,17 @@ export default function MarketplacePage() {
 
   const handleRequestBuy = async (listing: Listing) => {
     const message = await prompt({
-      title: "Request to Buy",
-      message: `Send a short message to the seller for "${listing.title}".`,
-      label: "Message to Seller",
-      defaultValue: "I am interested. Please contact me.",
-      placeholder: "Write your message...",
-      confirmLabel: "Send Request",
+      title: t("Request to Buy"),
+      message: `${t("Send a short message to the seller for")} "${listing.title}".`,
+      label: t("Message to Seller"),
+      defaultValue: t("I am interested. Please contact me."),
+      placeholder: t("Write your message..."),
+      confirmLabel: t("Send Request"),
       multiline: true,
       required: true,
     });
     if (message === null) return;
-    const load = toast.loading("Sending buy request...");
+    const load = toastT.loading("Sending buy request...");
     try {
       const res = await fetch(`/api/marketplace/${listing.id}`, {
         method: "POST",
@@ -165,18 +170,18 @@ export default function MarketplacePage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Buy request sent to seller", { id: load });
+        toastT.success("Buy request sent to seller", { id: load });
         fetchListings();
       } else {
-        toast.error(data.error || "Failed to send request", { id: load });
+        toastT.error(data.error || "Failed to send request", { id: load });
       }
     } catch {
-      toast.error("Failed to send request", { id: load });
+      toastT.error("Failed to send request", { id: load });
     }
   };
 
   const handleInterestDecision = async (listingId: string, interestId: string, decision: "accept_interest" | "reject_interest") => {
-    const load = toast.loading(decision === "accept_interest" ? "Accepting request..." : "Rejecting request...");
+    const load = toastT.loading(decision === "accept_interest" ? "Accepting request..." : "Rejecting request...");
     try {
       const res = await fetch(`/api/marketplace/${listingId}`, {
         method: "PATCH",
@@ -185,13 +190,13 @@ export default function MarketplacePage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(decision === "accept_interest" ? "Request accepted" : "Request rejected", { id: load });
+        toastT.success(decision === "accept_interest" ? "Request accepted" : "Request rejected", { id: load });
         fetchListings();
       } else {
-        toast.error(data.error || "Failed to update request", { id: load });
+        toastT.error(data.error || "Failed to update request", { id: load });
       }
     } catch {
-      toast.error("Failed to update request", { id: load });
+      toastT.error("Failed to update request", { id: load });
     }
   };
 
@@ -204,13 +209,13 @@ export default function MarketplacePage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Marked as sold");
+        toastT.success("Marked as sold");
         fetchListings();
       } else {
-        toast.error(data.error || "Failed to mark sold");
+        toastT.error(data.error || "Failed to mark sold");
       }
     } catch {
-      toast.error("Failed to update");
+      toastT.error("Failed to update");
     }
   };
 
@@ -220,70 +225,70 @@ export default function MarketplacePage() {
     <div className="space-y-6">
       <ModulePageHeader
         icon={ShoppingBag}
-        title="Community Marketplace"
-        description="Buy, sell, exchange, and manage neighbour-to-neighbour requests."
-        meta={`${listings.length} listings`}
+        title={t("Community Marketplace")}
+        description={t("Buy, sell, exchange, and manage neighbour-to-neighbour requests.")}
+        meta={`${listings.length} ${t("listings")}`}
         tone="violet"
         actions={
           <button onClick={() => setShowForm(!showForm)} className="btn btn-primary btn-sm flex items-center gap-2 !rounded-xl px-5 py-2.5 font-bold">
-            {showForm ? <><X className="w-4 h-4" /> Cancel</> : <><Plus className="w-4 h-4" /> Post Listing</>}
+            {showForm ? <><X className="w-4 h-4" /> {t("Cancel")}</> : <><Plus className="w-4 h-4" /> {t("Post Listing")}</>}
           </button>
         }
       />
 
       {showForm && (
         <div className="card animate-in fade-in zoom-in-95 duration-200">
-          <h3 className="font-semibold text-sm mb-4">Post an Item</h3>
+          <h3 className="font-semibold text-sm mb-4">{t("Post an Item")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="label">Title *</label>
-              <input className="input" placeholder="e.g. L-shaped Sofa Set" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+              <label className="label">{t("Title *")}</label>
+              <input className="input" placeholder={t("e.g. L-shaped Sofa Set")} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             </div>
             <div className="md:col-span-2">
-              <label className="label">Description</label>
-              <textarea className="input min-h-[80px]" placeholder="Describe the item, its condition, and why you're selling..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+              <label className="label">{t("Description")}</label>
+              <textarea className="input min-h-[80px]" placeholder={t("Describe the item, its condition, and why you're selling...")} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
             </div>
             <div>
-              <label className="label">Price (₹)</label>
-              <input type="number" className="input" placeholder="Leave empty for Free / Exchange" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
+              <label className="label">{t("Price (₹)")}</label>
+              <input type="number" className="input" placeholder={t("Leave empty for Free / Exchange")} value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
             </div>
             <div>
-              <label className="label">Category</label>
+              <label className="label">{t("Category")}</label>
               <select className="select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-                {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {CATEGORIES.map(c => <option key={c.value} value={c.value}>{t(c.label)}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Condition</label>
+              <label className="label">{t("Condition")}</label>
               <select className="select" value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value })}>
-                {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {CONDITIONS.map(c => <option key={c.value} value={c.value}>{t(c.label)}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Contact Phone</label>
-              <input className="input" placeholder="Optional" value={form.contactPhone} onChange={e => setForm({ ...form, contactPhone: e.target.value })} />
+              <label className="label">{t("Contact Phone")}</label>
+              <input {...phoneInputProps} className="input" placeholder={t("Optional")} value={form.contactPhone} onChange={e => setForm({ ...form, contactPhone: sanitizePhoneInput(e.target.value) })} />
             </div>
             <div>
-              <label className="label">Flat Number</label>
-              <input className="input" placeholder="e.g. A-101" value={form.flatNumber} onChange={e => setForm({ ...form, flatNumber: e.target.value })} />
+              <label className="label">{t("Flat Number")}</label>
+              <input className="input" placeholder={t("e.g. A-101")} value={form.flatNumber} onChange={e => setForm({ ...form, flatNumber: e.target.value })} />
             </div>
             <div className="md:col-span-2">
-              <label className="label">Number of Photos</label>
+              <label className="label">{t("Number of Photos")}</label>
               <select className="select" value={form.imageCount} onChange={(e) => updatePhotoCount(e.target.value)}>
                 {[0, 1, 2, 3, 4, 5].map((count) => (
-                  <option key={count} value={count}>{count === 0 ? "No photos" : `${count} photo${count > 1 ? "s" : ""}`}</option>
+                  <option key={count} value={count}>{count === 0 ? t("No photos") : count > 1 ? `${count} ${t("photos")}` : `${count} ${t("photo")}`}</option>
                 ))}
               </select>
-              <p className="text-xs text-text-secondary mt-1">Select how many photos you want to add, then upload that many item photos.</p>
+              <p className="text-xs text-text-secondary mt-1">{t("Select how many photos you want to add, then upload that many item photos.")}</p>
             </div>
             {Number(form.imageCount) > 0 && (
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {Array.from({ length: Number(form.imageCount) }).map((_, index) => (
                   <div key={index} className="rounded-xl border border-border bg-surface p-3">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Photo {index + 1}</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">{t("Photo")} {index + 1}</label>
                     {form.imageUrls[index] ? (
                       <div className="mt-2 relative overflow-hidden rounded-xl border border-border bg-white">
-                        <img src={form.imageUrls[index]} alt={`Listing photo ${index + 1}`} className="h-28 w-full object-cover" />
+                        <img src={form.imageUrls[index]} alt={`${t("Listing photo")} ${index + 1}`} className="h-28 w-full object-cover" />
                         <button type="button" onClick={() => removePhoto(index)} className="absolute right-2 top-2 rounded-lg bg-white/90 p-1.5 text-danger shadow-sm">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -291,7 +296,7 @@ export default function MarketplacePage() {
                     ) : (
                       <label className="mt-2 flex h-28 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-white text-xs font-bold text-text-secondary">
                         <ImageIcon className="mb-2 h-5 w-5" />
-                        Add Photo
+                        {t("Add Photo")}
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoChange(index, e.target.files?.[0])} />
                       </label>
                     )}
@@ -301,21 +306,21 @@ export default function MarketplacePage() {
             )}
           </div>
           <div className="mt-6 flex justify-end gap-2">
-            <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={handlePost} className="btn btn-primary">Post Listing</button>
+            <button onClick={() => setShowForm(false)} className="btn btn-secondary">{t("Cancel")}</button>
+            <button onClick={handlePost} className="btn btn-primary">{t("Post Listing")}</button>
           </div>
         </div>
       )}
 
-      <ModuleSectionTitle title="Browse Listings" description={`${filtered.length} matching item${filtered.length === 1 ? "" : "s"}`} />
+      <ModuleSectionTitle title={t("Browse Listings")} description={`${filtered.length} ${filtered.length === 1 ? t("matching item") : t("matching items")}`} />
 
       <div className="flex flex-wrap gap-2 rounded-[1.5rem] border border-border/60 bg-white p-3 shadow-sm dark:bg-[#1E1E1E]">
         <button onClick={() => setFilter("all")} className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${filter === "all" ? "bg-primary text-white" : "bg-surface border border-border text-text-secondary hover:bg-primary/10"}`}>
-          All
+          {t("All")}
         </button>
         {CATEGORIES.map(c => (
           <button key={c.value} onClick={() => setFilter(c.value)} className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${filter === c.value ? "bg-primary text-white" : "bg-surface border border-border text-text-secondary hover:bg-primary/10"}`}>
-            {c.label}
+            {t(c.label)}
           </button>
         ))}
       </div>
@@ -325,8 +330,8 @@ export default function MarketplacePage() {
       ) : filtered.length === 0 ? (
         <ModuleEmptyState
           icon={Package}
-          title="No listings found"
-          description="Post an item or switch categories to browse more neighbour listings."
+          title={t("No listings found")}
+          description={t("Post an item or switch categories to browse more neighbour listings.")}
           tone="violet"
         />
       ) : (
@@ -335,7 +340,7 @@ export default function MarketplacePage() {
             <div key={l.id} className="card overflow-hidden hover:shadow-lg transition-shadow">
               {l.status === "reserved" && (
                 <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
-                  Reserved after seller approval
+                  {t("Reserved after seller approval")}
                 </div>
               )}
               {l.images?.[0]?.url && (
@@ -345,9 +350,9 @@ export default function MarketplacePage() {
                 <div>
                   <h3 className="font-semibold text-base">{l.title}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs uppercase font-medium bg-surface px-2 py-0.5 rounded-md border border-border">{l.category}</span>
+                    <span className="text-xs uppercase font-medium bg-surface px-2 py-0.5 rounded-md border border-border">{t(CATEGORIES.find(c => c.value === l.category)?.label || l.category)}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${l.condition === "new" ? "bg-success/10 text-success" : l.condition === "like_new" ? "bg-primary/10 text-primary" : "bg-surface border border-border text-text-secondary"}`}>
-                      {CONDITIONS.find(c => c.value === l.condition)?.label || l.condition}
+                      {t(CONDITIONS.find(c => c.value === l.condition)?.label || l.condition)}
                     </span>
                   </div>
                 </div>
@@ -357,30 +362,30 @@ export default function MarketplacePage() {
               {l.images && l.images.length > 1 && (
                 <div className="mb-3 flex gap-2 overflow-x-auto">
                   {l.images.slice(1).map((image, index) => (
-                    <img key={image.id || index} src={image.url} alt={`${l.title} photo ${index + 2}`} className="h-14 w-14 shrink-0 rounded-lg object-cover border border-border" />
+                    <img key={image.id || index} src={image.url} alt={`${l.title} ${t("photo")} ${index + 2}`} className="h-14 w-14 shrink-0 rounded-lg object-cover border border-border" />
                   ))}
                 </div>
               )}
               {l.isMine && (
                 <div className="mb-3 rounded-xl border border-border bg-surface p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Buy Requests</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">{t("Buy Requests")}</p>
                     <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-text-secondary ring-1 ring-border">
                       {l.interests?.filter((interest) => interest.status !== "rejected").length || 0}
                     </span>
                   </div>
                   {!l.interests?.length ? (
-                    <p className="mt-2 text-xs text-text-secondary">No buyer requests yet.</p>
+                    <p className="mt-2 text-xs text-text-secondary">{t("No buyer requests yet.")}</p>
                   ) : (
                     <div className="mt-2 space-y-2">
                       {l.interests.map((interest) => (
                         <div key={interest.id} className="rounded-lg bg-white p-2 ring-1 ring-border">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-text-primary truncate">{interest.person?.name || "Interested buyer"}</p>
+                              <p className="text-xs font-bold text-text-primary truncate">{interest.person?.name || t("Interested buyer")}</p>
                               <p className="text-[10px] text-text-secondary truncate">
-                                {interest.person?.phone || interest.person?.users?.[0]?.email || "Contact hidden"}
-                                {interest.person?.users?.[0]?.flat?.flatNumber ? ` · Flat ${interest.person.users[0].flat.flatNumber}` : ""}
+                                {interest.person?.phone || interest.person?.users?.[0]?.email || t("Contact hidden")}
+                                {interest.person?.users?.[0]?.flat?.flatNumber ? ` · ${t("Flat")} ${interest.person.users[0].flat.flatNumber}` : ""}
                               </p>
                               {interest.message && <p className="mt-1 text-[10px] text-text-secondary line-clamp-2">{interest.message}</p>}
                             </div>
@@ -389,16 +394,16 @@ export default function MarketplacePage() {
                               interest.status === "rejected" ? "bg-red-50 text-red-700" :
                               "bg-blue-50 text-blue-700"
                             }`}>
-                              {interest.status}
+                              {t(interest.status)}
                             </span>
                           </div>
                           {interest.status === "interested" && l.status !== "sold" && (
                             <div className="mt-2 grid grid-cols-2 gap-2">
                               <button onClick={() => handleInterestDecision(l.id, interest.id, "accept_interest")} className="rounded-lg bg-emerald-600 px-2 py-2 text-[10px] font-bold text-white flex items-center justify-center gap-1">
-                                <CheckCircle className="h-3.5 w-3.5" /> Accept
+                                <CheckCircle className="h-3.5 w-3.5" /> {t("Accept")}
                               </button>
                               <button onClick={() => handleInterestDecision(l.id, interest.id, "reject_interest")} className="rounded-lg bg-red-50 px-2 py-2 text-[10px] font-bold text-red-700 flex items-center justify-center gap-1">
-                                <XCircle className="h-3.5 w-3.5" /> Reject
+                                <XCircle className="h-3.5 w-3.5" /> {t("Reject")}
                               </button>
                             </div>
                           )}
@@ -410,22 +415,22 @@ export default function MarketplacePage() {
               )}
               <div className="flex justify-between items-end mt-auto pt-3 border-t border-border">
                 <div>
-                  <p className="text-lg font-bold text-primary">{l.price ? formatCurrency(l.price) : "Free"}</p>
-                  {l.flatNumber && <p className="text-xs text-text-secondary">Flat: {l.flatNumber}</p>}
+                  <p className="text-lg font-bold text-primary">{l.price ? formatCurrency(l.price) : t("Free")}</p>
+                  {l.flatNumber && <p className="text-xs text-text-secondary">{t("Flat:")} {l.flatNumber}</p>}
                 </div>
                 {l.isMine ? (
-                  <button onClick={() => handleMarkSold(l.id)} className="text-xs text-success hover:underline font-medium">Mark Sold</button>
+                  <button onClick={() => handleMarkSold(l.id)} className="text-xs text-success hover:underline font-medium">{t("Mark Sold")}</button>
                 ) : l.myInterestStatus ? (
                   <span className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase ${
                     l.myInterestStatus === "accepted" ? "bg-emerald-50 text-emerald-700" :
                     l.myInterestStatus === "rejected" ? "bg-red-50 text-red-700" :
                     "bg-blue-50 text-blue-700"
                   }`}>
-                    {l.myInterestStatus === "interested" ? "Requested" : l.myInterestStatus}
+                    {l.myInterestStatus === "interested" ? t("Requested") : t(l.myInterestStatus)}
                   </span>
                 ) : (
                   <button onClick={() => handleRequestBuy(l)} className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white flex items-center gap-1.5">
-                    <Handshake className="h-3.5 w-3.5" /> Request Buy
+                    <Handshake className="h-3.5 w-3.5" /> {t("Request Buy")}
                   </button>
                 )}
               </div>
