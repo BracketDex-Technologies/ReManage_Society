@@ -7,7 +7,8 @@ import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { Plus, Pin, PinOff, Trash2, Megaphone, Bell, Calendar, User, Info, AlertTriangle, MessageCircle, X, ShieldCheck, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
-import { ModuleEmptyState, ModulePageHeader } from "@/components/ux/ModulePageKit";
+import { ModuleEmptyState, ModulePageHeader, ModuleSectionTitle } from "@/components/ux/ModulePageKit";
+import { isNoticeArchived } from "@/lib/history-utils";
 import {
   createNotice,
   deleteNotice as deleteNoticeApi,
@@ -39,8 +40,17 @@ export default function NoticesPage() {
     category: "general",
     isPinned: false,
   });
+  const [boardTab, setBoardTab] = useState<"active" | "archive">("active");
 
   const isAdmin = user?.role === "chairman" || user?.role === "secretary" || user?.role === "treasurer";
+
+  const activeNotices = notices
+    .filter((notice) => !isNoticeArchived(notice))
+    .sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1));
+  const archivedNotices = notices
+    .filter((notice) => isNoticeArchived(notice))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const visibleNotices = boardTab === "active" ? activeNotices : archivedNotices;
 
   const fetchNotices = useCallback(() => {
     setLoading(true);
@@ -99,7 +109,7 @@ export default function NoticesPage() {
         icon={Megaphone}
         title={t("Broadcast Board")}
         description={t("Official announcements, maintenance updates, and society-wide alerts.")}
-        meta={`${notices.length} ${t("active")}`}
+        meta={`${activeNotices.length} ${t("active")} · ${archivedNotices.length} ${t("archived")}`}
         tone="primary"
         actions={isAdmin && (
           <button onClick={() => setShowForm(true)} className="btn btn-primary px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold shadow-md shadow-primary/10 flex items-center transition-all hover:scale-[1.01] active:scale-[0.98]">
@@ -110,26 +120,44 @@ export default function NoticesPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
         <div className="lg:col-span-3 space-y-4">
+          <div className="flex gap-2">
+            {(["active", "archive"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setBoardTab(tab)}
+                className={`rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                  boardTab === tab ? "bg-primary text-white" : "bg-white border border-border/60 text-text-tertiary"
+                }`}
+              >
+                {tab === "active" ? t("Current board") : t("Archive")}
+              </button>
+            ))}
+          </div>
            {loading ? (
              <div className="flex flex-col items-center justify-center py-20 gap-4">
                <div className="spinner !w-8 !h-8" />
                <p className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">{t("Syncing board...")}</p>
              </div>
-           ) : notices.length === 0 ? (
+           ) : visibleNotices.length === 0 ? (
              <ModuleEmptyState
                icon={Megaphone}
-               title={t("No active notices")}
-               description={t("Official society updates will appear here.")}
+               title={boardTab === "active" ? t("No active notices") : t("No archived notices")}
+               description={
+                 boardTab === "active"
+                   ? t("Official society updates will appear here.")
+                   : t("Notices older than 30 days or past expiry date are kept here.")
+               }
                tone="primary"
              />
            ) : (
              <div className="space-y-4">
-                {notices.sort((a,b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1)).map((n) => {
+                {visibleNotices.map((n) => {
                    const style = categoryStyles[n.category] || categoryStyles.general;
                    const Icon = style.icon;
                    
                    return (
-                     <div key={n.id} className={`bg-white rounded-[1.25rem] border ${n.isPinned ? 'border-primary/10 bg-primary/5 border-l-4 border-l-primary' : 'border-border/60'} p-5 sm:p-6 transition-all hover:shadow-md hover:border-primary/20 group relative overflow-hidden`}>
+                     <div key={n.id} className={`bg-white rounded-[1.25rem] border ${n.isPinned ? 'border-primary/10 bg-primary/5 border-l-4 border-l-primary' : boardTab === "archive" ? 'border-border/60 bg-surface/50 opacity-90 history-card' : 'border-border/60'} p-5 sm:p-6 transition-all hover:shadow-md hover:border-primary/20 group relative overflow-hidden`}>
                         <div className="flex items-start gap-4 sm:gap-5">
                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${style.bg} flex items-center justify-center ${style.text} shrink-0`}>
                               <Icon className="w-5 h-5 sm:w-6 sm:h-6" />

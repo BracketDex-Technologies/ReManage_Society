@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { Receipt, Download, AlertTriangle, IndianRupee, Wallet, Smartphone, Copy, CheckCircle, X, ArrowRight, Home, UserRound, HandCoins } from "lucide-react";
+import { Receipt, Download, AlertTriangle, IndianRupee, Wallet, Smartphone, Copy, X, Home, UserRound, HandCoins } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useTranslatedToast } from "@/lib/use-translated-toast";
 import Link from "next/link";
 import PageState from "@/components/ux/PageState";
 import { LIVE_FAST_INTERVAL_MS } from "@/lib/live-refresh";
+import { generateMaintenanceUpiLink, getBillTotal, sortBillsByPriority } from "@/components/billing/billing-helpers";
+import { ModuleSectionTitle } from "@/components/ux/ModulePageKit";
+import { groupByYear } from "@/lib/history-utils";
 
 interface MyBill {
   id: string;
@@ -121,7 +124,6 @@ export default function MyBillsPage() {
   const [payingBillId, setPayingBillId] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedBill, setSelectedBill] = useState<MyBill | null>(null);
-  const [paymentStep, setPaymentStep] = useState<"choose" | "upi" | "confirm">("choose");
   const [utrNumber, setUtrNumber] = useState("");
   const [submittingUtr, setSubmittingUtr] = useState(false);
   const [selectedRental, setSelectedRental] = useState<OwnerRental | null>(null);
@@ -179,10 +181,14 @@ export default function MyBillsPage() {
 
   const handlePayClick = (bill: MyBill) => {
     setSelectedBill(bill);
-    setPaymentStep("choose");
     setUtrNumber("");
     setShowPaymentModal(true);
   };
+
+  const sortedBills = sortBillsByPriority(bills);
+  const pendingBills = sortedBills.filter((bill) => bill.status === "pending" || bill.status === "partial");
+  const paidBills = sortedBills.filter((bill) => bill.status === "paid");
+  const paidBillsByYear = groupByYear(paidBills, (bill) => bill.paidAt || bill.dueDate);
 
   const defaultDueDate = () => {
     const now = new Date();
@@ -324,20 +330,116 @@ export default function MyBillsPage() {
     }
   };
 
-  // Generate UPI deep link URI
+  const renderBillCard = (bill: MyBill) => {
+    const total = getBillTotal(bill);
+    const isOverdue = new Date(bill.dueDate) < new Date() && bill.status === "pending";
+    const invoiceTitle = bill.description || t("Society Dues");
+    const billType = (bill.billType || "maintenance").replace("_", " ");
+    const billingCycle = (bill.billingCycle || "monthly").replace("_", " ");
+
+    return (
+      <div
+        key={bill.id}
+        className={`bg-white rounded-[1.25rem] border p-5 sm:p-6 transition-all hover:shadow-md ${
+          isOverdue
+            ? "border-l-4 border-l-red-400"
+            : bill.status === "paid"
+              ? "border-l-4 border-l-emerald-400"
+              : "border-border/60"
+        }`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-1">
+            <div
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                bill.status === "paid"
+                  ? "bg-emerald-500/5 text-emerald-600"
+                  : isOverdue
+                    ? "bg-red-500/5 text-red-600"
+                    : "bg-primary/5 text-primary"
+              }`}
+            >
+              <Receipt className="w-6 h-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-base font-bold text-text-primary">{invoiceTitle}</h4>
+                <StatusBadge status={bill.status} />
+                {isOverdue && (
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                    <AlertTriangle className="w-3 h-3" /> {t("OVERDUE")}
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-primary font-bold uppercase tracking-wider mt-1">
+                {t("Society invoice · Payable to {society} · {billType} · {billingCycle} · {period}")
+                  .replace("{society}", bill.society?.name || t("society"))
+                  .replace("{billType}", billType)
+                  .replace("{billingCycle}", billingCycle)
+                  .replace("{period}", bill.period)}
+              </p>
+              <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+                <span className="text-xs text-text-secondary">
+                  {t("Due:")} {new Date(bill.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                </span>
+                {bill.lateFee > 0 && (
+                  <span className="text-xs text-danger font-medium">
+                    + {t("Late:")} {formatCurrency(bill.lateFee)}
+                  </span>
+                )}
+              </div>
+              {bill.paidAt && (
+                <p className="text-[10px] text-emerald-600 mt-1">
+                  {t("Paid {amount} via {method} on {date}")
+                    .replace("{amount}", formatCurrency(bill.paidAmount || total))
+                    .replace("{method}", bill.paidVia?.toUpperCase() || "")
+                    .replace("{date}", new Date(bill.paidAt).toLocaleDateString("en-IN"))}
+                  {bill.receiptNumber && ` · ${t("Receipt")} #${bill.receiptNumber}`}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-left sm:text-right">
+              <p className="text-lg sm:text-xl font-bold text-text-primary">{formatCurrency(total)}</p>
+              <p className="text-[10px] text-text-secondary">{t("Society dues")}</p>
+            </div>
+            {bill.status === "pending" || bill.status === "partial" ? (
+              <button
+                onClick={() => handlePayClick(bill)}
+                disabled={payingBillId === bill.id}
+                className="btn btn-primary !rounded-xl !py-2.5 !px-5 text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/10"
+              >
+                <IndianRupee className="w-3.5 h-3.5" /> {t("Pay Now")}
+              </button>
+            ) : bill.receiptNumber ? (
+              <Link
+                href={`/receipts/${bill.id}`}
+                className="btn btn-secondary !rounded-xl !py-2.5 !px-4 text-xs font-bold flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" /> {t("Receipt")}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const generateUpiLink = (bill: MyBill): string => {
-    const amount = (bill.totalAmount || bill.amount + bill.lateFee + bill.gstAmount).toFixed(2);
-    const upiId = bill.society?.upiId || "";
-    const payeeName = encodeURIComponent(bill.society?.name || "Society");
-    const transactionRef = encodeURIComponent(`MAINT-${bill.period}-${bill.flat.flatNumber}`);
-    const transactionNote = encodeURIComponent(`Maintenance ${bill.period} - Flat ${bill.flat.flatNumber}`);
-    return `upi://pay?pa=${upiId}&pn=${payeeName}&tr=${transactionRef}&tn=${transactionNote}&am=${amount}&cu=INR`;
+    return generateMaintenanceUpiLink({
+      upiId: bill.society?.upiId || "",
+      societyName: bill.society?.name || "Society",
+      amount: getBillTotal(bill),
+      period: bill.period,
+      flatNumber: bill.flat.flatNumber,
+    });
   };
 
   const openUpiApp = (bill: MyBill) => {
+    if (!bill.society?.upiId) return;
     const upiLink = generateUpiLink(bill);
     window.location.href = upiLink;
-    setPaymentStep("confirm");
   };
 
   const copyUpiId = (upiId: string) => {
@@ -412,6 +514,27 @@ export default function MyBillsPage() {
         </div>
       </div>
 
+      {/* Pending banner */}
+      {pendingBills.length > 0 && (
+        <div className="rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-red-600">{t("Amount due")}</p>
+            <p className="text-2xl sm:text-3xl font-black text-red-700 mt-1">{formatCurrency(stats.totalPending)}</p>
+            <p className="text-xs text-red-700/80 mt-1">
+              {pendingBills.length === 1
+                ? t("1 bill waiting for payment")
+                : t("{count} bills waiting for payment").replace("{count}", String(pendingBills.length))}
+            </p>
+          </div>
+          <button
+            onClick={() => handlePayClick(pendingBills[0])}
+            className="btn btn-primary !rounded-xl !py-3 !px-6 font-bold shadow-lg shadow-primary/20"
+          >
+            <IndianRupee className="w-4 h-4" /> {t("Pay oldest due first")}
+          </button>
+        </div>
+      )}
+
       {/* Bills List */}
       {bills.length === 0 ? (
         <div className="card text-center py-24 bg-surface/30 border-dashed border-2">
@@ -420,77 +543,28 @@ export default function MyBillsPage() {
           <p className="text-xs text-text-secondary mt-1">{t("Bills appear here once generated by your society admin")}</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {bills.map((bill) => {
-            const total = bill.totalAmount || bill.amount + bill.lateFee + bill.gstAmount;
-            const isOverdue = new Date(bill.dueDate) < new Date() && bill.status === "pending";
-            const invoiceTitle = bill.description || t("Society Dues");
-            const billType = (bill.billType || "maintenance").replace("_", " ");
-            const billingCycle = (bill.billingCycle || "monthly").replace("_", " ");
-            return (
-              <div key={bill.id} className={`bg-white rounded-[1.25rem] border p-5 sm:p-6 transition-all hover:shadow-md ${isOverdue ? "border-l-4 border-l-red-400" : bill.status === "paid" ? "border-l-4 border-l-emerald-400" : "border-border/60"}`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${bill.status === "paid" ? "bg-emerald-500/5 text-emerald-600" : isOverdue ? "bg-red-500/5 text-red-600" : "bg-primary/5 text-primary"}`}>
-                      <Receipt className="w-6 h-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="text-base font-bold text-text-primary">{invoiceTitle}</h4>
-                        <StatusBadge status={bill.status} />
-                        {isOverdue && (
-                          <span className="flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                            <AlertTriangle className="w-3 h-3" /> {t("OVERDUE")}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-primary font-bold uppercase tracking-wider mt-1">
-                        {t("Society invoice · Payable to {society} · {billType} · {billingCycle} · {period}")
-                          .replace("{society}", bill.society?.name || t("society"))
-                          .replace("{billType}", billType)
-                          .replace("{billingCycle}", billingCycle)
-                          .replace("{period}", bill.period)}
-                      </p>
-                      <div className="flex items-center gap-4 mt-1.5 flex-wrap">
-                        <span className="text-xs text-text-secondary">{t("Base:")} {formatCurrency(bill.amount)}</span>
-                        {bill.lateFee > 0 && <span className="text-xs text-danger font-medium">+ {t("Late:")} {formatCurrency(bill.lateFee)}</span>}
-                        {bill.gstAmount > 0 && <span className="text-xs text-text-secondary">+ {t("GST:")} {formatCurrency(bill.gstAmount)}</span>}
-                        <span className="text-xs text-text-tertiary">{t("Due:")} {new Date(bill.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
-                      </div>
-                      {bill.paidAt && (
-                        <p className="text-[10px] text-emerald-600 mt-1">
-                          {t("Paid {amount} via {method} on {date}")
-                            .replace("{amount}", formatCurrency(bill.paidAmount || total))
-                            .replace("{method}", bill.paidVia?.toUpperCase() || "")
-                            .replace("{date}", new Date(bill.paidAt).toLocaleDateString("en-IN"))}
-                          {bill.receiptNumber && ` · ${t("Receipt")} #${bill.receiptNumber}`}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-left sm:text-right">
-                      <p className="text-lg sm:text-xl font-bold text-text-primary">{formatCurrency(total)}</p>
-                      <p className="text-[10px] text-text-secondary">{t("Society dues")}</p>
-                    </div>
-                    {(bill.status === "pending" || bill.status === "partial") ? (
-                      <button
-                        onClick={() => handlePayClick(bill)}
-                        disabled={payingBillId === bill.id}
-                        className="btn btn-primary !rounded-xl !py-2.5 !px-5 text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/10"
-                      >
-                        <IndianRupee className="w-3.5 h-3.5" /> {t("Pay Now")}
-                      </button>
-                    ) : bill.receiptNumber ? (
-                      <Link href={`/receipts/${bill.id}`} className="btn btn-secondary !rounded-xl !py-2.5 !px-4 text-xs font-bold flex items-center gap-1.5">
-                        <Download className="w-3.5 h-3.5" /> {t("Receipt")}
-                      </Link>
-                    ) : null}
+        <div className="space-y-6">
+          {pendingBills.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-black uppercase tracking-wider text-text-secondary">{t("Due now")}</h2>
+              {pendingBills.map((bill) => renderBillCard(bill))}
+            </div>
+          )}
+          {paidBills.length > 0 && (
+            <div className="space-y-6">
+              {paidBillsByYear.map(({ year, items }) => (
+                <div key={year} className="space-y-3">
+                  <ModuleSectionTitle
+                    title={year === "Unknown" ? t("Payment history") : t("Payment history · {year}").replace("{year}", year)}
+                    description={t("{count} paid invoice(s)").replace("{count}", String(items.length))}
+                  />
+                  <div className="space-y-3 opacity-95">
+                    {items.map((bill) => renderBillCard(bill))}
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -768,7 +842,7 @@ export default function MyBillsPage() {
                   </div>
                   <div>
                     <p className="text-white/80 text-xs font-medium">{selectedBill.description || t("Society Dues")} · {selectedBill.period}</p>
-                    <p className="text-2xl font-bold">{formatCurrency(selectedBill.totalAmount || selectedBill.amount + selectedBill.lateFee + selectedBill.gstAmount)}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(getBillTotal(selectedBill))}</p>
                   </div>
                 </div>
                 <button onClick={() => setShowPaymentModal(false)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
@@ -779,115 +853,55 @@ export default function MyBillsPage() {
             </div>
 
             <div className="p-6">
-              {paymentStep === "choose" && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-4">{t("Choose Payment Method")}</p>
-
-                  {/* UPI - Primary option */}
-                  <button
-                    onClick={() => {
-                      if (selectedBill.society?.upiId) {
-                        openUpiApp(selectedBill);
-                      } else {
-                        setPaymentStep("upi");
-                      }
-                    }}
-                    className="w-full flex items-center justify-between p-4 border-2 border-primary/20 bg-primary/5 rounded-2xl hover:border-primary/40 transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                        <Smartphone className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-bold text-sm text-text-primary">{t("Pay via UPI")}</p>
-                        <p className="text-[10px] text-emerald-600 font-medium">{t("₹0 transaction charges")}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{t("RECOMMENDED")}</span>
-                      <ArrowRight className="w-4 h-4 text-primary" />
-                    </div>
-                  </button>
-
-                  {/* Manual UPI */}
-                  <button
-                    onClick={() => setPaymentStep("upi")}
-                    className="w-full flex items-center justify-between p-4 border border-border/60 rounded-2xl hover:border-primary/30 transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-surface rounded-xl flex items-center justify-center">
-                        <Copy className="w-5 h-5 text-text-secondary" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-bold text-sm text-text-primary">{t("Manual Transfer")}</p>
-                        <p className="text-[10px] text-text-tertiary">{t("Copy UPI ID & pay from any app")}</p>
-                      </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-text-tertiary group-hover:text-primary" />
-                  </button>
-                </div>
-              )}
-
-              {paymentStep === "upi" && (
-                <div className="space-y-5">
-                  <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider">{t("Society Payment Details")}</p>
-
-                  {/* UPI ID */}
-                  <div className="bg-surface/50 rounded-xl p-4 border border-border/40">
-                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">{t("UPI ID")}</p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-mono font-bold text-primary">{selectedBill.society?.upiId || t("Not configured")}</p>
-                      {selectedBill.society?.upiId && (
-                        <button onClick={() => copyUpiId(selectedBill.society.upiId)} className="btn btn-secondary !rounded-xl !py-1.5 !px-3 text-[10px] font-bold flex items-center gap-1">
-                          <Copy className="w-3 h-3" /> {t("Copy")}
-                        </button>
-                      )}
-                    </div>
+              <div className="space-y-5">
+                  <div className="bg-surface/50 rounded-xl p-4 border border-border/40 text-center">
+                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider">{t("Pay exactly")}</p>
+                    <p className="text-3xl font-black text-text-primary mt-1">{formatCurrency(getBillTotal(selectedBill))}</p>
+                    <p className="text-[10px] text-text-tertiary mt-1">
+                      Ref: MAINT-{selectedBill.period}-{selectedBill.flat.flatNumber}
+                    </p>
                   </div>
 
-                  {/* Amount */}
-                  <div className="bg-surface/50 rounded-xl p-4 border border-border/40">
-                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">{t("EXACT AMOUNT")}</p>
-                    <p className="text-2xl font-bold text-text-primary">{formatCurrency(selectedBill.totalAmount || selectedBill.amount + selectedBill.lateFee + selectedBill.gstAmount)}</p>
-                    <p className="text-[10px] text-text-tertiary mt-1">Ref: MAINT-{selectedBill.period}-{selectedBill.flat.flatNumber}</p>
-                  </div>
-
-                  {/* Open UPI app button */}
-                  {selectedBill.society?.upiId && (
-                    <button
-                      onClick={() => openUpiApp(selectedBill)}
-                      className="w-full btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
-                    >
-                      <Smartphone className="w-4 h-4" /> {t("Open UPI App & Pay")}
-                    </button>
+                  {selectedBill.society?.upiId ? (
+                    <>
+                      <button
+                        onClick={() => openUpiApp(selectedBill)}
+                        className="w-full btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+                      >
+                        <Smartphone className="w-4 h-4" /> {t("Open UPI App & Pay")}
+                      </button>
+                      <div className="bg-surface/50 rounded-xl p-4 border border-border/40">
+                        <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-2">{t("Or copy UPI ID")}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-mono font-bold text-primary truncate">{selectedBill.society.upiId}</p>
+                          <button
+                            onClick={() => copyUpiId(selectedBill.society.upiId)}
+                            className="btn btn-secondary !rounded-xl !py-1.5 !px-3 text-[10px] font-bold flex items-center gap-1 shrink-0"
+                          >
+                            <Copy className="w-3 h-3" /> {t("Copy")}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                      {t("Society UPI ID is not configured. Pay offline and enter the transaction reference below.")}
+                    </div>
                   )}
 
-                  <button onClick={() => setPaymentStep("confirm")} className="w-full text-center text-xs font-bold text-primary hover:underline py-2">
-                    {t("I've already paid → Enter UTR")}
-                  </button>
-                </div>
-              )}
-
-              {paymentStep === "confirm" && (
-                <div className="space-y-5">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold text-emerald-800">{t("Confirm Your Payment")}</p>
-                      <p className="text-xs text-emerald-600 mt-1">{t("Enter the UTR/Transaction ID from your payment app to confirm")}</p>
-                    </div>
-                  </div>
-
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">{t("UTR / Transaction Number *")}</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary ml-1">
+                      {t("UTR / Transaction Number *")}
+                    </label>
                     <input
                       className="input !rounded-xl !bg-surface font-mono font-bold text-sm px-4 py-3.5 tracking-wider"
-                      placeholder={t("e.g. 412345678901")}
+                      placeholder={t("Enter after paying in your UPI app")}
                       value={utrNumber}
                       onChange={(e) => setUtrNumber(e.target.value)}
-                      autoFocus
                     />
-                    <p className="text-[10px] text-text-tertiary ml-1">{t("Find this in your UPI app → Transaction History → Details")}</p>
+                    <p className="text-[10px] text-text-tertiary ml-1">
+                      {t("Find this in PhonePe / GPay / Paytm → Transaction History")}
+                    </p>
                   </div>
 
                   <button
@@ -895,14 +909,9 @@ export default function MyBillsPage() {
                     disabled={submittingUtr || !utrNumber.trim()}
                     className="w-full btn btn-primary !rounded-xl py-4 font-bold text-sm shadow-xl shadow-primary/20 disabled:opacity-50"
                   >
-                    {submittingUtr ? t("Submitting...") : t("Confirm Payment")}
+                    {submittingUtr ? t("Submitting...") : t("I've paid — Confirm")}
                   </button>
-
-                  <button onClick={() => setPaymentStep("upi")} className="w-full text-center text-xs text-text-secondary hover:text-primary py-1">
-                    {t("← Back to payment details")}
-                  </button>
-                </div>
-              )}
+              </div>
 
               <div className="mt-5 pt-4 border-t border-border/30 flex items-center justify-center gap-2 text-[9px] text-text-tertiary">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />

@@ -24,6 +24,7 @@ async function legacyGET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "all";
     const flatNumber = searchParams.get("flat");
+    const history = searchParams.get("history") === "all";
 
     const where: Record<string, unknown> = { societyId: session!.societyId };
     if (status !== "all") where.status = status;
@@ -37,7 +38,7 @@ async function legacyGET(request: NextRequest) {
     const visitors = await prisma.visitor.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: history ? 100 : 50,
       include: {
         flat: { select: { flatNumber: true, wing: true, ownerName: true } },
       },

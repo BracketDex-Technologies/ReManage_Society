@@ -11,6 +11,8 @@ import Link from "next/link";
 import { useLiveQuery } from "@/lib/use-live-data";
 import { LIVE_FAST_INTERVAL_MS } from "@/lib/live-refresh";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
+import { buildDefaultDueDate } from "@/components/billing/billing-helpers";
+import { currentPeriod } from "@/lib/history-utils";
 
 export default function MaintenancePage() {
   const { t } = useI18n();
@@ -108,6 +110,108 @@ export default function MaintenancePage() {
   const bills = data?.bills || [];
   const summary = data?.summary || null;
   const availableFlats = invoiceData?.availableFlats || [];
+  const unbilledCount = availableFlats.length;
+  const defaultBillAmount =
+    parseFloat(invoiceForm.amount || billingConfig.maintenanceAmt || "") ||
+    invoiceData?.defaultInvoiceAmount ||
+    0;
+
+  const openInvoiceModal = () => {
+    const amount =
+      invoiceData?.defaultInvoiceAmount ||
+      parseFloat(billingConfig.maintenanceAmt || "") ||
+      0;
+    setInvoiceForm((current) => ({
+      ...current,
+      amount: amount > 0 ? String(amount) : current.amount,
+      dueDate: buildDefaultDueDate(
+        period,
+        invoiceData?.defaultDueDayOfMonth || Number(billingConfig.dueDayOfMonth) || 10,
+      ),
+      flatIds: availableFlats.map((flat) => flat.id),
+    }));
+    setShowInvoiceModal(true);
+  };
+
+  const raiseInvoices = async (flatIds: string[]) => {
+    const amount = parseFloat(invoiceForm.amount || billingConfig.maintenanceAmt || "");
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toastT.error("Enter a valid invoice amount in Billing Setup or the raise form");
+      return false;
+    }
+    if (!flatIds.length) {
+      toastT.error("No flats selected to bill");
+      return false;
+    }
+
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/maintenance/bills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          period,
+          amount,
+          dueDate: invoiceForm.dueDate,
+          flatIds,
+          billType: invoiceForm.billType,
+          billingCycle: invoiceForm.billingCycle,
+          description: invoiceForm.description,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toastT.success(
+          t("{count} invoices raised for {period}")
+            .replace("{count}", String(data.generated))
+            .replace("{period}", periodLabel),
+        );
+        setShowInvoiceModal(false);
+        setInvoiceForm((current) => ({ ...current, flatIds: [] }));
+        refetch();
+        return true;
+      }
+      toastT.error(data.error || "Failed to generate bills");
+      return false;
+    } catch {
+      toastT.error("Something went wrong");
+      return false;
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const quickBillAllFlats = async () => {
+    if (unbilledCount === 0) {
+      toastT.error(t("All flats are already billed for this period"));
+      return;
+    }
+    if (defaultBillAmount <= 0) {
+      toastT.error(t("Set monthly maintenance amount in Billing Setup first"));
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: t("Bill all flats?"),
+      message: t("Raise {count} invoices of {amount} each for {period}?")
+        .replace("{count}", String(unbilledCount))
+        .replace("{amount}", formatCurrency(defaultBillAmount))
+        .replace("{period}", periodLabel),
+      confirmLabel: t("Raise Invoices"),
+    });
+    if (!confirmed) return;
+
+    setInvoiceForm((current) => ({
+      ...current,
+      amount: String(defaultBillAmount),
+      dueDate: buildDefaultDueDate(
+        period,
+        invoiceData?.defaultDueDayOfMonth || Number(billingConfig.dueDayOfMonth) || 10,
+      ),
+      flatIds: availableFlats.map((flat) => flat.id),
+    }));
+    await raiseInvoices(availableFlats.map((flat) => flat.id));
+  };
 
   useEffect(() => {
     if (!showInvoiceModal) return;
@@ -156,46 +260,7 @@ export default function MaintenancePage() {
   })();
 
   const generateBills = async () => {
-    const amount = parseFloat(invoiceForm.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      toastT.error("Enter a valid invoice amount");
-      return;
-    }
-    if (!invoiceForm.flatIds.length) {
-      toastT.error("Select at least one billable unit");
-      return;
-    }
-    setGenerating(true);
-    try {
-      const res = await fetch("/api/maintenance/bills", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          period,
-          amount,
-          dueDate: invoiceForm.dueDate,
-          flatIds: invoiceForm.flatIds,
-          billType: invoiceForm.billType,
-          billingCycle: invoiceForm.billingCycle,
-          description: invoiceForm.description,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toastT.success(t("{count} invoices raised for {period}")
-          .replace("{count}", String(data.generated))
-          .replace("{period}", periodLabel));
-        setShowInvoiceModal(false);
-        setInvoiceForm((current) => ({ ...current, flatIds: [] }));
-        refetch();
-      } else {
-        toastT.error(data.error || "Failed to generate bills");
-      }
-    } catch {
-      toastT.error("Something went wrong");
-    } finally {
-      setGenerating(false);
-    }
+    await raiseInvoices(invoiceForm.flatIds);
   };
 
   const saveBillingConfig = async () => {
@@ -479,6 +544,47 @@ export default function MaintenancePage() {
         </div>
       </div>
 
+      {period !== currentPeriod() && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {t("Viewing billing history for {period}. Use the arrows to browse other months.").replace("{period}", periodLabel)}
+        </div>
+      )}
+
+      <div className="card mb-6 border-primary/20 bg-primary/5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">{t("Quick billing")}</p>
+            <h2 className="text-lg font-bold text-text-primary mt-1">
+              {unbilledCount > 0
+                ? t("{count} flats ready to bill for {period}")
+                    .replace("{count}", String(unbilledCount))
+                    .replace("{period}", periodLabel)
+                : t("All flats billed for {period}").replace("{period}", periodLabel)}
+            </h2>
+            <p className="text-sm text-text-secondary mt-1">
+              {defaultBillAmount > 0
+                ? t("Default amount {amount} · Due on day {day}")
+                    .replace("{amount}", formatCurrency(defaultBillAmount))
+                    .replace("{day}", billingConfig.dueDayOfMonth || "10")
+                : t("Set monthly maintenance amount below before raising bills.")}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={quickBillAllFlats}
+              disabled={generating || unbilledCount === 0 || defaultBillAmount <= 0}
+              className="btn btn-primary"
+            >
+              {generating ? <div className="spinner !w-4 !h-4 !border-white/30 !border-t-white" /> : <Zap className="w-4 h-4" />}
+              {t("Bill all {count} flats").replace("{count}", String(unbilledCount))}
+            </button>
+            <button onClick={openInvoiceModal} disabled={generating || unbilledCount === 0} className="btn btn-secondary">
+              {t("Custom invoice")}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="card mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
@@ -568,12 +674,12 @@ export default function MaintenancePage() {
       <div className="flex flex-wrap gap-2 mb-4">
         <button onClick={exportCsv} className="btn btn-secondary btn-sm"><FileText className="w-4 h-4" /> {t("Export CSV")}</button>
         {summary && summary.total === 0 && (
-          <button onClick={() => setShowInvoiceModal(true)} disabled={generating} className="btn btn-primary btn-sm">
+          <button onClick={openInvoiceModal} disabled={generating} className="btn btn-primary btn-sm">
             <Zap className="w-4 h-4" /> {t("Raise invoices for {period}").replace("{period}", periodLabel)}
           </button>
         )}
         {summary && summary.total > 0 && (
-          <button onClick={() => setShowInvoiceModal(true)} disabled={generating} className="btn btn-primary btn-sm">
+          <button onClick={openInvoiceModal} disabled={generating} className="btn btn-primary btn-sm">
             <Zap className="w-4 h-4" /> {t("Raise another invoice")}
           </button>
         )}

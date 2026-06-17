@@ -15,7 +15,7 @@ export default function EventsPage() {
   const [events,setEvents]=useState<SEvent[]>([]); const [loading,setLoading]=useState(true); const [showNew,setShowNew]=useState(false); const [saving,setSaving]=useState(false);
   const [form,setForm]=useState({title:"",description:"",startDate:"",endDate:"",venue:"",category:"general",maxAttendees:""});
 
-  const fetch_ = useCallback(()=>{ setLoading(true); fetch("/api/events?upcoming=true").then(r=>r.json()).then(d=>setEvents(Array.isArray(d)?d:[])).catch(()=>toastT.error("Failed")).finally(()=>setLoading(false)); },[toastT]);
+  const fetch_ = useCallback(()=>{ setLoading(true); fetch("/api/events").then(r=>r.json()).then(d=>setEvents(Array.isArray(d)?d:[])).catch(()=>toastT.error("Failed")).finally(()=>setLoading(false)); },[toastT]);
   useEffect(()=>{fetch_()},[fetch_]);
 
   const create = async(e:React.FormEvent)=>{ e.preventDefault(); setSaving(true); try{ const r=await fetch("/api/events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)}); if(r.ok){toastT.success("Event created!");setShowNew(false);setForm({title:"",description:"",startDate:"",endDate:"",venue:"",category:"general",maxAttendees:""});fetch_();}else{const d=await r.json();toastT.error(d.error||"Failed")} }catch{toastT.error("Error")} finally{setSaving(false)} };
@@ -25,8 +25,8 @@ export default function EventsPage() {
   const fmt = (d:string) => new Date(d).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"});
   const fmtTime = (d:string) => new Date(d).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
 
-  const upcoming = events.filter(e=>new Date(e.startDate)>=new Date());
-  const past = events.filter(e=>new Date(e.startDate)<new Date());
+  const upcoming = events.filter(e=>new Date(e.startDate)>=new Date()).sort((a,b)=>new Date(a.startDate).getTime()-new Date(b.startDate).getTime());
+  const past = events.filter(e=>new Date(e.startDate)<new Date()).sort((a,b)=>new Date(b.startDate).getTime()-new Date(a.startDate).getTime());
 
   const categoryLabel = (cat: string) => t(cat.charAt(0).toUpperCase() + cat.slice(1));
 

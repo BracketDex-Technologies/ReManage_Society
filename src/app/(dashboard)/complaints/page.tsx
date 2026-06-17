@@ -22,7 +22,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { canRaiseComplaint, isCommitteeRole } from "@/lib/roles";
-import { ModuleEmptyState, ModulePageHeader, ModuleStatCard } from "@/components/ux/ModulePageKit";
+import { ModuleEmptyState, ModulePageHeader, ModuleSectionTitle, ModuleStatCard } from "@/components/ux/ModulePageKit";
+import { isComplaintHistory } from "@/lib/history-utils";
 import { StarRating } from "@/components/complaints/StarRating";
 import { ComplaintProgress } from "@/components/complaints/ComplaintProgress";
 import {
@@ -256,6 +257,26 @@ export default function ComplaintsPage() {
   const filtered =
     statusFilter === "all" ? complaints : complaints.filter((c) => c.status === statusFilter);
 
+  const complaintGroups =
+    statusFilter === "all"
+      ? [
+          {
+            key: "active",
+            title: t("Active tickets"),
+            description: t("Open and in-progress complaints needing action."),
+            items: filtered.filter((c) => !isComplaintHistory(c.status)),
+            muted: false,
+          },
+          {
+            key: "history",
+            title: t("Resolution history"),
+            description: t("Resolved and closed complaints with ratings."),
+            items: filtered.filter((c) => isComplaintHistory(c.status)),
+            muted: true,
+          },
+        ].filter((group) => group.items.length > 0)
+      : [{ key: "filtered", title: "", description: "", items: filtered, muted: false }];
+
   const filterLabel = (s: string) => {
     if (s === "all") return t("All");
     return t(statusConfig[s]?.label ?? s);
@@ -420,8 +441,16 @@ export default function ComplaintsPage() {
             tone="emerald"
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filtered.map((c) => {
+          <div className="space-y-8">
+            {complaintGroups.map((group) => (
+              <div key={group.key} className="space-y-4">
+                {group.title ? (
+                  <ModuleSectionTitle title={group.title} description={group.description} />
+                ) : null}
+                <div
+                  className={`grid grid-cols-1 gap-4 ${group.muted ? "[&>div]:bg-surface/50 [&>div]:opacity-90" : ""}`}
+                >
+            {group.items.map((c) => {
               const cat = categoryConfig[c.category as ComplaintCategory] ?? categoryConfig.general;
               const CatIcon = cat.icon;
 
@@ -548,6 +577,9 @@ export default function ComplaintsPage() {
                 </div>
               );
             })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

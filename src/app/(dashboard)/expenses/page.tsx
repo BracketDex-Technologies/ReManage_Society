@@ -21,6 +21,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import type { ExpenseType } from "@/types";
 import { useLiveData } from "@/lib/use-live-data";
 import { EXPENSE_CATEGORY_GROUPS, expenseCategoryLabel } from "@/lib/finance-categories";
+import { ModuleSectionTitle } from "@/components/ux/ModulePageKit";
+import { currentPeriod, distinctMonthsFromDates } from "@/lib/history-utils";
 
 type ExpensesResponse = {
   expenses: ExpenseType[];
@@ -37,6 +39,7 @@ export default function ExpensesPage() {
   const [saving, setSaving] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [expenseMonth, setExpenseMonth] = useState<string>("all");
   const [form, setForm] = useState({
     title: "",
     amount: "",
@@ -77,6 +80,25 @@ export default function ExpensesPage() {
     acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
     return acc;
   }, {});
+
+  const expensePaidMonth = (paidOn: Date | string) => {
+    const date = typeof paidOn === "string" ? new Date(paidOn) : paidOn;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  };
+
+  const ledgerExpenses = [...approvedExpenses, ...rejectedExpenses];
+  const availableMonths = distinctMonthsFromDates(
+    ledgerExpenses.map((expense) =>
+      typeof expense.paidOn === "string" ? expense.paidOn : expense.paidOn.toISOString(),
+    ),
+  );
+  const thisMonth = currentPeriod();
+  const currentMonthLedger = ledgerExpenses.filter((expense) => expensePaidMonth(expense.paidOn) === thisMonth);
+  const pastLedger = ledgerExpenses.filter((expense) => expensePaidMonth(expense.paidOn) !== thisMonth);
+  const filteredLedger =
+    expenseMonth === "all"
+      ? ledgerExpenses
+      : ledgerExpenses.filter((expense) => expensePaidMonth(expense.paidOn) === expenseMonth);
 
   const resetForm = () => {
     setForm({
@@ -368,6 +390,18 @@ export default function ExpensesPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="select btn-sm !rounded-xl !py-2"
+            value={expenseMonth}
+            onChange={(e) => setExpenseMonth(e.target.value)}
+          >
+            <option value="all">{t("All months")}</option>
+            {availableMonths.map((month) => (
+              <option key={month} value={month}>
+                {new Date(`${month}-01`).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+              </option>
+            ))}
+          </select>
           <button onClick={exportCsv} className="btn btn-secondary btn-sm">
             <Download className="w-4 h-4" /> {t("Export CSV")}
           </button>
@@ -593,7 +627,7 @@ export default function ExpensesPage() {
         </div>
       ) : approvedExpenses.length === 0 && pendingExpenses.length === 0 && rejectedExpenses.length === 0 ? (
         <div className="card text-center py-12 text-text-secondary">{t("No records found.")}</div>
-      ) : (
+      ) : expenseMonth !== "all" ? (
         <div className="table-wrapper">
           <table className="table">
             <thead>
@@ -608,9 +642,64 @@ export default function ExpensesPage() {
               </tr>
             </thead>
             <tbody>
-              {[...approvedExpenses, ...rejectedExpenses].map((e) => renderExpenseRow(e, false))}
+              {filteredLedger.map((e) => renderExpenseRow(e, false))}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {currentMonthLedger.length > 0 && (
+            <div className="space-y-3">
+              <ModuleSectionTitle
+                title={t("This month")}
+                description={t("Approved and rejected expenses for the current billing month.")}
+              />
+              <div className="table-wrapper">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>{t("Date")}</th>
+                      <th>{t("Description")}</th>
+                      <th>{t("Paid To")}</th>
+                      <th>{t("Category")}</th>
+                      <th>{t("Status")}</th>
+                      <th>{t("Bill Proof")}</th>
+                      <th className="text-right">{t("Amount")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentMonthLedger.map((e) => renderExpenseRow(e, false))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {pastLedger.length > 0 && (
+            <div className="space-y-3 opacity-95">
+              <ModuleSectionTitle
+                title={t("Expense history")}
+                description={t("Older approved and rejected records kept for audit.")}
+              />
+              <div className="table-wrapper">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>{t("Date")}</th>
+                      <th>{t("Description")}</th>
+                      <th>{t("Paid To")}</th>
+                      <th>{t("Category")}</th>
+                      <th>{t("Status")}</th>
+                      <th>{t("Bill Proof")}</th>
+                      <th className="text-right">{t("Amount")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pastLedger.map((e) => renderExpenseRow(e, false))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

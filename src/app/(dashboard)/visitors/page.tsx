@@ -12,6 +12,7 @@ import {
   Plus, UserCheck, LogOut as LogOutIcon, Clock, Users, ShieldCheck,
   Phone, Car, Search, X, KeyRound, CheckCircle2, XCircle, Bell, Copy,
 } from "lucide-react";
+import { HistoryScopeToggle } from "@/components/ux/HistoryKit";
 
 interface Visitor {
   id: string;
@@ -62,6 +63,7 @@ function VisitorsContent() {
   const { user } = useUser();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "inside" | "expected">("all");
+  const [showHistory, setShowHistory] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -75,7 +77,7 @@ function VisitorsContent() {
 
   const fetchVisitors = useCallback((isBackground = false) => {
     if (!isBackground) setLoading(true);
-    fetch("/api/visitors/preapprove")
+    fetch(`/api/visitors/preapprove${showHistory ? "?history=all" : ""}`)
       .then((r) => r.json())
       .then((d) => {
         setVisitors(d.visitors || []);
@@ -87,7 +89,7 @@ function VisitorsContent() {
       .finally(() => {
         if (!isBackground) setLoading(false);
       });
-  }, [toastT]);
+  }, [toastT, showHistory]);
 
   useEffect(() => {
     fetchVisitors();
@@ -281,9 +283,17 @@ function VisitorsContent() {
             </button>
           ))}
         </div>
-        <div className="relative w-full sm:w-64">
+        <div className="flex flex-wrap items-center gap-2">
+          <HistoryScopeToggle
+            showHistory={showHistory}
+            onToggle={() => setShowHistory((value) => !value)}
+            historyLabel={t("Full History")}
+            recentLabel={t("Recent")}
+          />
+          <div className="relative w-full sm:w-64">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
           <input className="input !rounded-xl !bg-surface/50 !pl-11 pr-4 py-2.5 text-xs font-semibold w-full" placeholder={t("Search...")} value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
         </div>
       </div>
 

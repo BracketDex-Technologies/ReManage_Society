@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, BarChart3, TrendingUp, PieChart, IndianRupee, AlertTriangle, Landmark, Archive } from "lucide-react";
+import { Download, BarChart3, TrendingUp, PieChart, IndianRupee, AlertTriangle, Landmark, Archive, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { formatCurrency } from "@/lib/utils";
 import { BarChart, DonutChart, LineChart } from "@/components/ui/Charts";
 import { expenseCategoryLabel } from "@/lib/finance-categories";
+import { PeriodNavigator } from "@/components/ux/HistoryKit";
+import { currentPeriod } from "@/lib/history-utils";
 
 interface MonthlyReport {
   summary: {
@@ -100,16 +102,14 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [exportingAuditor, setExportingAuditor] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [auditorFiscalYear, setAuditorFiscalYear] = useState(() => {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
     return month >= 4 ? `${year}-${String(year + 1).slice(-2)}` : `${year - 1}-${String(year).slice(-2)}`;
   });
-  const [period] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [period, setPeriod] = useState(currentPeriod);
 
   const periodLabel = (() => {
     const [y, m] = period.split("-").map(Number);
@@ -194,6 +194,60 @@ export default function ReportsPage() {
     }
   };
 
+  const exportPdf = async () => {
+    let payload: { type: "monthly" | "annual" | "financial"; period: string; data: unknown } | null = null;
+
+    if (tab === "monthly" && monthly) {
+      payload = { type: "monthly", period, data: monthly };
+    } else if (tab === "annual" && annual) {
+      payload = { type: "annual", period: period.split("-")[0], data: annual };
+    } else if (tab === "financial" && financial) {
+      payload = { type: "financial", period, data: financial };
+    }
+
+    if (!payload) {
+      toastT.error(t("Load a report before exporting PDF"));
+      return;
+    }
+
+    setExportingPdf(true);
+    try {
+      const res = await fetch("/api/reports/export-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toastT.error(typeof data?.error === "string" ? data.error : t("Could not generate PDF"));
+        return;
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match = /filename="([^"]+)"/.exec(disposition);
+      const fileName =
+        match?.[1] ||
+        (payload.type === "annual"
+          ? `annual-report-${payload.period}.pdf`
+          : payload.type === "financial"
+            ? `financial-report-${payload.period}.pdf`
+            : `monthly-report-${payload.period}.pdf`);
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toastT.success(t("PDF downloaded"));
+    } catch {
+      toastT.error(t("Something went wrong"));
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -207,6 +261,30 @@ export default function ReportsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {(tab === "monthly" || tab === "financial") && (
+            <PeriodNavigator period={period} onChange={setPeriod} />
+          )}
+          {tab === "annual" && (
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-white px-1">
+              <button
+                type="button"
+                onClick={() => setPeriod(`${Number(period.split("-")[0]) - 1}-01`)}
+                className="rounded p-1.5 hover:bg-surface"
+                aria-label={t("Previous year")}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="min-w-[80px] px-2 text-center text-sm font-medium">{period.split("-")[0]}</span>
+              <button
+                type="button"
+                onClick={() => setPeriod(`${Number(period.split("-")[0]) + 1}-01`)}
+                className="rounded p-1.5 hover:bg-surface"
+                aria-label={t("Next year")}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <Link href="/reports/reconciliation" className="btn btn-primary btn-sm">
             <Landmark className="w-4 h-4" /> {t("Bank Reconciliation")}
           </Link>
@@ -248,8 +326,19 @@ export default function ReportsPage() {
               )}
             </button>
           </div>
-          <button className="btn btn-secondary btn-sm">
-            <Download className="w-4 h-4" /> {t("Export PDF")}
+          <button
+            type="button"
+            onClick={exportPdf}
+            disabled={exportingPdf || loading || Boolean(loadError)}
+            className="btn btn-secondary btn-sm"
+          >
+            {exportingPdf ? (
+              <div className="spinner !w-4 !h-4" />
+            ) : (
+              <>
+                <Download className="w-4 h-4" /> {t("Export PDF")}
+              </>
+            )}
           </button>
         </div>
       </div>
