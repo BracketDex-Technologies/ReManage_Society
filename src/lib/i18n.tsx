@@ -91,11 +91,16 @@ export function useI18n() {
   const { locale, setLocale } = useLocaleContext();
   const tCommon = useTranslations("common");
 
-  return {
-    language: locale,
-    setLanguage: setLocale,
-    t: (key: string) => tCommon(key),
-  };
+  const t = useCallback((key: string) => tCommon(key), [tCommon]);
+
+  return useMemo(
+    () => ({
+      language: locale,
+      setLanguage: setLocale,
+      t,
+    }),
+    [locale, setLocale, t],
+  );
 }
 
 export function translateStaticText(key: string, language: AppLanguage) {
