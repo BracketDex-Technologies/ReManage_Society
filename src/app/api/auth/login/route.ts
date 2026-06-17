@@ -112,12 +112,13 @@ export async function POST(request: NextRequest) {
           select: { subscriptionEnd: true },
         });
         if (society?.subscriptionEnd && new Date(society.subscriptionEnd) < new Date()) {
-          await createSession(user);
+          const sessionToken = await createSession(user, { persistCookie: false });
           if (wantsRedirect) {
             return NextResponse.redirect(new URL("/expired", request.url), 303);
           }
           return Response.json({
             user: { id: user.id, name: user.name, email: user.email, role: user.role, societyId: user.societyId },
+            sessionToken,
             expired: true,
           });
         }
@@ -127,14 +128,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await createSession(user);
+    const sessionToken = await createSession(user, { persistCookie: false });
 
     if (wantsRedirect) {
       const landingRoute = getDefaultRoute(user.role);
-      return NextResponse.redirect(new URL(landingRoute, request.url), 303);
+      const redirectUrl = new URL("/auth/complete", request.url);
+      redirectUrl.searchParams.set("next", landingRoute);
+      redirectUrl.searchParams.set("token", sessionToken);
+      return NextResponse.redirect(redirectUrl, 303);
     }
 
     return Response.json({
+      sessionToken,
       user: {
         id: user.id,
         name: user.name,

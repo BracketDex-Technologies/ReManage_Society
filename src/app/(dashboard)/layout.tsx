@@ -8,6 +8,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import MobileBackButton from "@/components/layout/MobileBackButton";
 import MobileRuntime from "@/components/mobile/MobileRuntime";
 import GuardRedirect from "@/components/layout/GuardRedirect";
+import TabSessionGate from "@/components/layout/TabSessionGate";
 import FlatLinkBanner from "@/components/ux/FlatLinkBanner";
 import { usePushNotifications } from "@/lib/use-push";
 import { UserProvider, useUser } from "@/lib/user-context";
@@ -69,7 +70,9 @@ export default function DashboardLayout({
 }) {
   return (
     <UserProvider>
-      <DashboardShell>{children}</DashboardShell>
+      <TabSessionGate>
+        <DashboardShell>{children}</DashboardShell>
+      </TabSessionGate>
     </UserProvider>
   );
 }

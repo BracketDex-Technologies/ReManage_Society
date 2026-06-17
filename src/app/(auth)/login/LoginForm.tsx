@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { setTabSessionToken } from "@/lib/client-session";
+import { getDefaultRoute } from "@/lib/role-access";
 
 interface LoginFormProps {
   keycloakEnabled: boolean;
@@ -14,7 +16,9 @@ interface LoginFormProps {
 
 export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
 
@@ -42,6 +46,46 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
     toast.error(messages[error] || t("signInError", { error }));
   }, [searchParams, t]);
 
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    const form = event.currentTarget;
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || t("invalidCredentials"));
+        return;
+      }
+
+      if (data.expired) {
+        if (data.sessionToken) setTabSessionToken(data.sessionToken);
+        router.push("/expired");
+        return;
+      }
+
+      if (!data.sessionToken) {
+        toast.error(t("serverError"));
+        return;
+      }
+
+      setTabSessionToken(data.sessionToken);
+      router.push(getDefaultRoute(data.user?.role || "member"));
+    } catch {
+      toast.error(t("serverError"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface px-4">
       <div className="w-full max-w-md">
@@ -60,12 +104,7 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
 
         <div className="card">
           <h2 className="text-lg font-semibold text-text-primary mb-6">{t("signInTitle")}</h2>
-          <form
-            method="POST"
-            action="/api/auth/login"
-            encType="application/x-www-form-urlencoded"
-          >
-            <input type="hidden" name="redirect" value="1" />
+          <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="email" className="label">{t("emailLabel")}</label>
               <input
@@ -103,8 +142,8 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary w-full btn-lg mt-2">
-              {t("signIn")}
+            <button type="submit" disabled={submitting} className="btn btn-primary w-full btn-lg mt-2">
+              {submitting ? t("signIn") + "..." : t("signIn")}
             </button>
           </form>
 

@@ -12,6 +12,7 @@ import NotificationCenter from "@/components/ui/NotificationCenter";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import LanguageSelector from "@/components/ui/LanguageSelector";
 import toast from "react-hot-toast";
+import { logoutCurrentTab } from "@/lib/client-session";
 import { useI18n } from "@/lib/i18n";
 
 interface HeaderProps {
@@ -79,7 +80,7 @@ export default function Header({
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await logoutCurrentTab();
     } catch { /* ignore */ }
     clearRecentActions();
     router.push("/login");

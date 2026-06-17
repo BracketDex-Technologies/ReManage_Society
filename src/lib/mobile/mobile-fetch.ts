@@ -7,6 +7,7 @@ import {
   setCachedApi,
   type QueuePriority,
 } from "@/lib/mobile/offline-db";
+import { getAuthHeaders } from "@/lib/client-session";
 
 interface MobileFetchOptions extends RequestInit {
   cacheKey?: string;
@@ -59,7 +60,7 @@ export async function mobileFetchJson<T>(url: string, options: MobileFetchOption
   const ttlMs = options.ttlMs ?? 5 * 60_000;
   const cached = await getCachedApi<T>(cacheKey);
   const online = typeof navigator === "undefined" ? true : navigator.onLine;
-  const headers = normalizeHeaders(options.headers);
+  const headers = normalizeHeaders(getAuthHeaders(options.headers));
   const startedAt = performance.now();
 
   if (cached?.etag) {

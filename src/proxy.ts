@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decryptSession } from "@/lib/session";
+import { getBearerTokenFromRequest, getSessionFromRequest } from "@/lib/auth-request";
 import { canAccess, getDefaultRoute, isWatchmanRole } from "@/lib/role-access";
 import { apiRateLimit } from "@/lib/rate-limit";
 
@@ -16,6 +17,7 @@ const publicPaths = [
   "/login",
   "/register",
   "/join",
+  "/auth/complete",
   "/api/auth/login",      // JSON + HTML form login
   "/api/auth/register",
   "/api/auth/join",
@@ -67,15 +69,17 @@ export async function proxy(request: NextRequest) {
     return withSecurityHeaders(NextResponse.next());
   }
 
-  // Check session
-  const session = request.cookies.get("session")?.value;
-  const payload = await decryptSession(session);
+  // Check session (Bearer header for tab-scoped sessions, cookie for legacy flows)
+  const cookieToken = request.cookies.get("session")?.value;
+  const payload = await getSessionFromRequest(request, cookieToken);
+  const isApiRoute = pathname.startsWith("/api/");
 
   if (!payload) {
-    if (pathname.startsWith("/api/")) {
+    if (isApiRoute) {
       return withSecurityHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
     }
-    return withSecurityHeaders(NextResponse.redirect(new URL("/login", request.url)));
+    // Dashboard pages authenticate client-side via tab sessionStorage
+    return withSecurityHeaders(NextResponse.next());
   }
 
   // If logged in and visiting auth pages, redirect to role-appropriate page
@@ -85,35 +89,29 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Role-Based Access Control ─────────────────────────
-  // Check if the user's role can access this route
   const userRole = payload.role || "member";
 
-  // Skip RBAC for the root redirect page
   if (pathname === "/") {
     const defaultRoute = getDefaultRoute(userRole);
     return withSecurityHeaders(NextResponse.redirect(new URL(defaultRoute, request.url)));
   }
 
-  // Enforce role-based access on dashboard routes (not API or public)
+  // Enforce RBAC on API routes only — HTML pages use client TabSessionGate
   if (
+    isApiRoute &&
     !canAccess(userRole, pathname, {
       societyId: payload.societyId,
       subject: payload.userId,
       mfaVerified: payload.mfaVerified,
     })
   ) {
-    if (pathname.startsWith("/api/")) {
-      return withSecurityHeaders(NextResponse.json(
-        { error: "Access denied. Your role does not have permission for this resource." },
-        { status: 403 }
-      ));
-    }
-    // Redirect to their appropriate landing page
-    const defaultRoute = getDefaultRoute(userRole);
-    return withSecurityHeaders(NextResponse.redirect(new URL(defaultRoute, request.url)));
+    return withSecurityHeaders(NextResponse.json(
+      { error: "Access denied. Your role does not have permission for this resource." },
+      { status: 403 }
+    ));
   }
 
-  if (pathname.startsWith("/api/")) {
+  if (isApiRoute) {
     try {
       if (!(await apiRateLimit(payload.userId))) {
         return withSecurityHeaders(NextResponse.json(
@@ -126,13 +124,14 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Watchman trying to access /dashboard → redirect to /visitors
-  if (isWatchmanRole(userRole) && pathname === "/dashboard") {
+  // Watchman trying to access /dashboard → redirect to /visitors (cookie-based legacy only)
+  if (isWatchmanRole(userRole) && pathname === "/dashboard" && cookieToken && !getBearerTokenFromRequest(request)) {
     return withSecurityHeaders(NextResponse.redirect(new URL("/visitors", request.url)));
   }
 
   // Heartbeat for session tracking — ONLY on page navigations (not API calls), with 60s throttle
-  if (session && !pathname.startsWith("/api/")) {
+  const session = cookieToken;
+  if (session && !isApiRoute) {
     const lastBeat = request.cookies.get("_hb")?.value;
     const now = Date.now();
     if (!lastBeat || now - parseInt(lastBeat) > 60_000) {

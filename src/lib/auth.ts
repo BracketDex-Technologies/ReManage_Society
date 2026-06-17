@@ -8,15 +8,18 @@ export type { SessionPayload };
 export const encrypt = encryptSession;
 export const decrypt = decryptSession;
 
-export async function createSession(user: {
-  id: string;
-  societyId: string | null;
-  role: string;
-  name: string;
-  email: string;
-  flatId?: string | null;
-  accessToken?: string;
-}) {
+export async function createSession(
+  user: {
+    id: string;
+    societyId: string | null;
+    role: string;
+    name: string;
+    email: string;
+    flatId?: string | null;
+    accessToken?: string;
+  },
+  options: { persistCookie?: boolean } = {},
+): Promise<string> {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const sessionToken = await encryptSession({
     userId: user.id,
@@ -66,26 +69,36 @@ export async function createSession(user: {
     console.error("Failed to save UserSession (non-fatal):", err);
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set("session", sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    expires: expiresAt,
-    sameSite: "lax",
-    path: "/",
-  });
+  if (options.persistCookie !== false) {
+    const cookieStore = await cookies();
+    cookieStore.set("session", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      expires: expiresAt,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+
+  return sessionToken;
 }
 
 export async function getSession(): Promise<SessionPayload | null> {
+  const h = await headers();
+  const authHeader = h.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return decryptSession(authHeader.slice(7).trim());
+  }
+
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
   if (!session) return null;
   return decryptSession(session);
 }
 
-export async function deleteSession() {
+export async function deleteSession(tokenOverride?: string | null) {
   const cookieStore = await cookies();
-  const session = cookieStore.get("session")?.value;
+  const session = tokenOverride || cookieStore.get("session")?.value;
   if (session) {
     try {
       await prisma.userSession.delete({
@@ -95,7 +108,9 @@ export async function deleteSession() {
       // Ignored if session not in DB
     }
   }
-  cookieStore.delete("session");
+  if (!tokenOverride) {
+    cookieStore.delete("session");
+  }
 }
 
 export async function getSessionUser() {

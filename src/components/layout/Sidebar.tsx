@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useUser } from "@/lib/user-context";
 import { usePersonaNav } from "@/lib/navigation/use-persona-nav";
+import { logoutCurrentTab } from "@/lib/client-session";
 import { getNavIcon } from "@/lib/navigation/nav-icons";
 import { getPersonaLabel } from "@/lib/navigation/persona-labels";
 
@@ -56,7 +57,7 @@ export default function Sidebar({
   );
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await logoutCurrentTab();
     router.push("/login");
   };
 

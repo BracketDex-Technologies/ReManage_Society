@@ -1,8 +1,15 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
+import { defaultSlaHours } from "@society/community-core";
 import { logCreated } from "@/lib/activity-log";
 import { broadcastNotification } from "@/lib/notifications";
+import {
+  buildComplaintWhereClause,
+  filterComplaintsByScope,
+  resolveComplaintListScope,
+  assertComplaintFlatAccess,
+} from "@/lib/complaints/list-scope";
 import {
   buildDeprecationHeaders,
   isNestShimEnabled,
@@ -16,6 +23,28 @@ const LEGACY_ROUTE = "/api/complaints";
 const NEST_LIST = "/api/v1/community/helpdesk/list";
 const NEST_CREATE = "/api/v1/community/helpdesk/create";
 
+type ComplaintRow = {
+  status: string;
+  satisfactionRating: number | null;
+};
+
+function buildComplaintStats(complaints: ComplaintRow[]) {
+  const rated = complaints.filter((c) => c.satisfactionRating);
+  const avgRating =
+    rated.length > 0
+      ? Math.round((rated.reduce((sum, c) => sum + (c.satisfactionRating ?? 0), 0) / rated.length) * 10) / 10
+      : null;
+
+  return {
+    open: complaints.filter((c) => c.status === "open").length,
+    inProgress: complaints.filter((c) => c.status === "in_progress").length,
+    resolved: complaints.filter((c) => c.status === "resolved" || c.status === "closed").length,
+    pendingRating: complaints.filter((c) => c.status === "resolved" && !c.satisfactionRating).length,
+    avgRating,
+    total: complaints.length,
+  };
+}
+
 async function legacyGET() {
   const session = await getSession();
   if (!session?.societyId) {
@@ -23,6 +52,7 @@ async function legacyGET() {
   }
 
   if (isNestShimEnabled()) {
+    const scope = await resolveComplaintListScope(session);
     const proxied = await proxyNestJson<unknown[]>({
       path: NEST_LIST,
       session,
@@ -30,8 +60,19 @@ async function legacyGET() {
     });
 
     if (proxied.ok) {
+      const raw = Array.isArray(proxied.data) ? proxied.data : [];
+      const complaints = filterComplaintsByScope(
+        raw as Array<{ flatNumber: string; raisedBy: string }>,
+        scope,
+      );
+
       return jsonWithHeaders(
-        { complaints: proxied.data },
+        {
+          complaints,
+          stats: buildComplaintStats(complaints as unknown as ComplaintRow[]),
+          societyId: session.societyId,
+          ...(scope.kind === "none" ? { noFlatLinked: true } : {}),
+        },
         {
           status: 200,
           extraHeaders: {
@@ -43,8 +84,11 @@ async function legacyGET() {
     }
   }
 
+  const where = await buildComplaintWhereClause(session);
+  const scope = await resolveComplaintListScope(session);
+
   const complaints = await prisma.complaint.findMany({
-    where: { societyId: session!.societyId },
+    where,
     orderBy: { createdAt: "desc" },
   });
 
@@ -53,12 +97,7 @@ async function legacyGET() {
     select: { legalAdviserName: true, legalAdviserPhone: true },
   });
 
-  const stats = {
-    open: complaints.filter((c) => c.status === "open").length,
-    inProgress: complaints.filter((c) => c.status === "in_progress").length,
-    resolved: complaints.filter((c) => c.status === "resolved" || c.status === "closed").length,
-    total: complaints.length,
-  };
+  const stats = buildComplaintStats(complaints);
 
   return jsonWithHeaders(
     {
@@ -67,6 +106,7 @@ async function legacyGET() {
       societyId: session!.societyId,
       legalAdviserName: society?.legalAdviserName ?? null,
       legalAdviserPhone: society?.legalAdviserPhone ?? null,
+      ...(scope.kind === "none" ? { noFlatLinked: true } : {}),
     },
     {
       status: 200,
@@ -89,6 +129,12 @@ async function legacyPOST(request: NextRequest) {
       return Response.json({ error: "All fields are required" }, { status: 400 });
     }
 
+    const flatAccess = await assertComplaintFlatAccess(session, flatNumber);
+    if (!flatAccess.ok) {
+      return Response.json({ error: flatAccess.error }, { status: flatAccess.status });
+    }
+
+    const resolvedPriority = priority || "medium";
     const complaint = await prisma.complaint.create({
       data: {
         societyId: session!.societyId,
@@ -97,7 +143,9 @@ async function legacyPOST(request: NextRequest) {
         title,
         description,
         category: category || "general",
-        priority: priority || "medium",
+        priority: resolvedPriority,
+        slaHours: defaultSlaHours(resolvedPriority),
+        escalationLevel: 0,
       },
     });
 
@@ -129,5 +177,5 @@ async function legacyPOST(request: NextRequest) {
   }
 }
 
-export const GET = shimOrFallback({ legacyRoute: "/api/complaints", nestPath: "/api/v1/community/helpdesk", method: "GET" }, legacyGET);
+export const GET = legacyGET;
 export const POST = shimOrFallback({ legacyRoute: "/api/complaints", nestPath: "/api/v1/community/helpdesk", method: "POST" }, legacyPOST);

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { getAuthHeaders, logoutCurrentTab } from "@/lib/client-session";
 
 interface UserSession {
   id?: string;
@@ -39,6 +40,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (url.startsWith("/api/")) {
+        return originalFetch(input, {
+          ...init,
+          headers: getAuthHeaders(init?.headers),
+        });
+      }
+      return originalFetch(input, init);
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   const fetchUser = useCallback(() => {
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -47,7 +65,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const timeout = window.setTimeout(() => setLoaded(true), 10_000);
 
     fetch("/api/auth/me", {
-      credentials: "include",
+      headers: getAuthHeaders(),
       cache: "no-store",
       signal: controller.signal,
     })
