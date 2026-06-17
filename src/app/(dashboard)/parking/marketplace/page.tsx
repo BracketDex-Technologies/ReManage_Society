@@ -12,6 +12,8 @@ import { useTranslatedToast } from "@/lib/use-translated-toast";
 import DuesEnforcementBanner from "@/components/ux/DuesEnforcementBanner";
 import { useDuesEnforcementStatus } from "@/lib/use-dues-enforcement";
 import { isOptionalTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
+import { useUser } from "@/lib/user-context";
+import { canUseResidentSelfService } from "@/lib/roles";
 
 interface Listing {
   id: string;
@@ -36,6 +38,8 @@ interface Listing {
 export default function ParkingMarketplace() {
   const { t } = useI18n();
   const toastT = useTranslatedToast();
+  const { user } = useUser();
+  const canExchangeParking = canUseResidentSelfService(user?.role);
   const [activeTab, setActiveTab] = useState<"available" | "requests">("available");
   const [shares, setShares] = useState<Listing[]>([]);
   const [requests, setRequests] = useState<Listing[]>([]);
@@ -203,9 +207,18 @@ export default function ParkingMarketplace() {
         </div>
       </div>
 
-      <DuesEnforcementBanner status={duesStatus} featureLabel={t("guest parking requests")} />
+      {canExchangeParking && (
+        <DuesEnforcementBanner status={duesStatus} featureLabel={t("guest parking requests")} />
+      )}
+
+      {!canExchangeParking && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          {t("Committee accounts manage parking slots. Residents share and request parking from their flat login.")}
+        </div>
+      )}
 
       {/* Hero Action Card */}
+      {canExchangeParking && (
       <div className="bg-gradient-to-r from-primary to-indigo-600 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-primary/20 relative overflow-hidden group">
          <div className="absolute -right-20 -bottom-20 opacity-10 group-hover:scale-110 transition-transform duration-700">
             <Car className="w-96 h-96 rotate-[-15deg] fill-current" />
@@ -223,6 +236,7 @@ export default function ParkingMarketplace() {
             </div>
          </div>
       </div>
+      )}
 
       {/* Stats/Legend */}
       <div className="flex flex-wrap gap-4 px-2">
@@ -305,7 +319,7 @@ export default function ParkingMarketplace() {
                         </a>
                       )}
 
-                      {activeTab === "available" && item.requests && item.requests.length > 0 && (
+                      {canExchangeParking && activeTab === "available" && item.requests && item.requests.length > 0 && item.canManage && (
                         <div className="mb-4 rounded-2xl border border-border bg-white p-3">
                           <p className="text-[10px] font-black uppercase tracking-widest text-text-tertiary mb-2">{t("Pending Requests")}</p>
                           <div className="space-y-2">
@@ -322,6 +336,7 @@ export default function ParkingMarketplace() {
                         </div>
                       )}
 
+                      {canExchangeParking && (
                       <button
                         onClick={() => activeTab === "available" ? openRequestForShare(item) : setShowModal("share")}
                         className="w-full btn btn-primary !rounded-2xl py-4 font-black shadow-lg shadow-primary/20 group-hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
@@ -329,7 +344,8 @@ export default function ParkingMarketplace() {
                         {activeTab === "available" ? t("Request This Slot") : t("Share My Assigned Slot")}
                          <ArrowLeft className="w-4 h-4 rotate-180" />
                       </button>
-                      {activeTab === "available" && (
+                      )}
+                      {canExchangeParking && activeTab === "available" && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
                           {item.canManage && (
                             <button onClick={() => openEdit(item, "share")} className="text-[10px] font-black text-primary hover:underline uppercase flex items-center justify-center gap-1">
@@ -343,7 +359,7 @@ export default function ParkingMarketplace() {
                           )}
                         </div>
                       )}
-                      {activeTab === "requests" && (
+                      {canExchangeParking && activeTab === "requests" && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
                           {item.canManage && (
                             <button onClick={() => openEdit(item, "request")} className="text-[10px] font-black text-primary hover:underline uppercase flex items-center justify-center gap-1">
@@ -365,7 +381,7 @@ export default function ParkingMarketplace() {
       </div>
 
       {/* Modal Form */}
-      {showModal && (
+      {showModal && canExchangeParking && (
         <div className="modal-overlay !bg-black/60 backdrop-blur-md z-[100] p-4" onClick={closeModal}>
           <div className="bg-white w-full max-w-xl rounded-[2.5rem] !p-10 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Background design element */}

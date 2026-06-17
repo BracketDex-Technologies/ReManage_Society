@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { isCommitteeRole, isResidentRole } from "@/lib/roles";
 import { NextRequest } from "next/server";
 
 
@@ -114,6 +115,14 @@ async function legacyPATCH(request: NextRequest) {
 
     if (!eventId || !response) {
       return Response.json({ error: "Event ID and response required" }, { status: 400 });
+    }
+
+    if (isCommitteeRole(session.role)) {
+      return Response.json({ error: "Committee members publish events; residents RSVP from their login." }, { status: 403 });
+    }
+
+    if (!isResidentRole(session.role)) {
+      return Response.json({ error: "Only flat residents can RSVP" }, { status: 403 });
     }
 
     const event = await prisma.societyEvent.findFirst({

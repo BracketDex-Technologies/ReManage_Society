@@ -8,6 +8,7 @@ import { Plus, CalendarCheck, Clock, Info, User, Home, ShieldCheck } from "lucid
 import { formatCurrency } from "@/lib/utils";
 import DuesEnforcementBanner from "@/components/ux/DuesEnforcementBanner";
 import { useDuesEnforcementStatus } from "@/lib/use-dues-enforcement";
+import { canUseResidentSelfService, isCommitteeRole } from "@/lib/roles";
 
 interface Facility {
   id: string;
@@ -58,7 +59,8 @@ export default function FacilitiesPage() {
     purpose: "",
   });
 
-  const isAdmin = user?.role === "chairman" || user?.role === "secretary" || user?.role === "treasurer";
+  const isCommittee = isCommitteeRole(user?.role);
+  const canBook = canUseResidentSelfService(user?.role);
   const { status: duesStatus, blocked: duesBlocked } = useDuesEnforcementStatus();
 
   const fetchData = useCallback(() => {
@@ -78,10 +80,10 @@ export default function FacilitiesPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    if (user.flatNumber) {
+    if (user.flatNumber && canBook) {
       setBookingForm((prev) => ({ ...prev, flatNumber: user.flatNumber! }));
     }
-  }, [user.flatNumber]);
+  }, [user.flatNumber, canBook]);
 
   const handleAddFacility = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +109,7 @@ export default function FacilitiesPage() {
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canBook) return;
     setSaving(true);
     try {
       const res = await fetch("/api/facilities/bookings", {
@@ -136,22 +139,26 @@ export default function FacilitiesPage() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">{t("Facilities")}</h1>
-            <p className="text-xs sm:text-sm text-text-secondary mt-0.5 font-medium">{t("Explore and book society amenities")}</p>
+            <p className="text-xs sm:text-sm text-text-secondary mt-0.5 font-medium">
+              {isCommittee ? t("Manage amenities and review the booking schedule.") : t("Explore and book society amenities")}
+            </p>
           </div>
         </div>
         <div className="flex gap-2 sm:gap-3 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0">
-          {isAdmin && (
+          {isCommittee && (
             <button onClick={() => setShowAddFacility(true)} className="btn btn-secondary !rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm flex items-center shrink-0">
               <Plus className="w-4 h-4 mr-2" /> {t("Add Amenity")}
             </button>
           )}
-          <button onClick={() => setShowBooking(true)} className="btn btn-primary !rounded-xl px-5 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm shadow-md shadow-primary/10 transition-all hover:scale-[1.01] active:scale-[0.98] shrink-0" disabled={facilities.length === 0 || (duesBlocked && !isAdmin)}>
+          {canBook && (
+          <button onClick={() => setShowBooking(true)} className="btn btn-primary !rounded-xl px-5 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm shadow-md shadow-primary/10 transition-all hover:scale-[1.01] active:scale-[0.98] shrink-0" disabled={facilities.length === 0 || duesBlocked}>
             <CalendarCheck className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> {t("New Booking")}
           </button>
+          )}
         </div>
       </div>
 
-      <DuesEnforcementBanner status={duesStatus} />
+      {canBook && <DuesEnforcementBanner status={duesStatus} />}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-white border border-border rounded-xl p-1 mb-6 w-fit shadow-sm">
@@ -206,9 +213,11 @@ export default function FacilitiesPage() {
                       ))}
                       {f.bookings.length > 3 && <div className="w-7 h-7 rounded-full border-2 border-white bg-surface flex items-center justify-center text-[10px] font-bold text-text-secondary">+{f.bookings.length - 3}</div>}
                    </div>
-                   <button onClick={() => { setBookingForm({ ...bookingForm, facilityId: f.id }); setShowBooking(true); }} className="btn btn-primary btn-sm px-4" disabled={duesBlocked && !isAdmin}>
+                   {canBook && (
+                   <button onClick={() => { setBookingForm({ ...bookingForm, facilityId: f.id }); setShowBooking(true); }} className="btn btn-primary btn-sm px-4" disabled={duesBlocked}>
                     {t("Book Now")}
                   </button>
+                   )}
                 </div>
               </div>
             ))}
@@ -243,7 +252,7 @@ export default function FacilitiesPage() {
               ))}
             </div>
             
-            {isAdmin && (
+            {isCommittee && (
               <div className="card bg-surface mt-6 border-transparent">
                 <div className="flex items-center gap-2 mb-4 text-text-primary font-bold">
                   <ShieldCheck className="w-5 h-5 text-primary" />
@@ -310,7 +319,7 @@ export default function FacilitiesPage() {
       )}
 
       {/* Book Facility Modal */}
-      {showBooking && (
+      {showBooking && canBook && (
         <div className="modal-overlay" onClick={() => setShowBooking(false)}>
           <div className="modal-content !max-w-lg" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
@@ -351,7 +360,7 @@ export default function FacilitiesPage() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowBooking(false)} className="btn btn-secondary flex-1">{t("Dismiss")}</button>
-                <button type="submit" disabled={saving || (duesBlocked && !isAdmin)} className="btn btn-primary flex-1">{saving ? t("Confirming...") : t("Book Now")}</button>
+                <button type="submit" disabled={saving || duesBlocked} className="btn btn-primary flex-1">{saving ? t("Confirming...") : t("Book Now")}</button>
               </div>
             </form>
           </div>

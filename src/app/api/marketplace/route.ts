@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/rbac";
 import { getOccupancyContext } from "@/domain/community";
+import { committeeSelfServiceError, isResidentRole } from "@/lib/roles";
 
 
 import {
@@ -63,6 +64,14 @@ async function legacyPOST(request: Request) {
   const { error, status, session } = await requirePermission("dashboard");
   if (error) return Response.json({ error }, { status });
   if (!session?.societyId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const committeeError = committeeSelfServiceError(session.role);
+  if (committeeError) {
+    return Response.json({ error: committeeError }, { status: 403 });
+  }
+  if (!isResidentRole(session.role)) {
+    return Response.json({ error: "Only flat residents can post marketplace listings" }, { status: 403 });
+  }
 
   const body = await request.json();
   const { title, description, price, category, condition, contactPhone, flatNumber, imageUrls } = body;

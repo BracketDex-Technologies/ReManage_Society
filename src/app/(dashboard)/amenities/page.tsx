@@ -11,9 +11,10 @@ import type { LucideIcon } from "lucide-react";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 import DuesEnforcementBanner from "@/components/ux/DuesEnforcementBanner";
 import { useDuesEnforcementStatus } from "@/lib/use-dues-enforcement";
-import { ModuleEmptyState, ModulePageHeader } from "@/components/ux/ModulePageKit";
+import { ModuleEmptyState, ModulePageHeader, ModuleSectionTitle } from "@/components/ux/ModulePageKit";
 import { useI18n } from "@/lib/i18n";
 import { useTranslatedToast } from "@/lib/use-translated-toast";
+import { canUseResidentSelfService, isCommitteeRole } from "@/lib/roles";
 
 interface Facility {
   id: string;
@@ -75,7 +76,7 @@ export default function AmenitiesPage() {
   const [showAddFacility, setShowAddFacility] = useState(false);
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"facilities" | "my-bookings">("facilities");
+  const [activeTab, setActiveTab] = useState<"facilities" | "my-bookings" | "all-bookings">("facilities");
 
   const [bookingForm, setBookingForm] = useState({
     startTime: "09:00",
@@ -91,7 +92,8 @@ export default function AmenitiesPage() {
     rules: "",
   });
 
-  const isAdmin = ["chairman", "secretary", "treasurer"].includes(user?.role || "");
+  const isCommittee = isCommitteeRole(user?.role);
+  const canBook = canUseResidentSelfService(user?.role);
   const { status: duesStatus, blocked: duesBlocked } = useDuesEnforcementStatus();
 
   const formatTime = (time: string) => {
@@ -101,9 +103,10 @@ export default function AmenitiesPage() {
 
   const fetchFacilities = useCallback(() => {
     setLoading(true);
+    const bookingsUrl = isCommittee ? "/api/facilities/bookings" : "/api/facilities/bookings?my=true";
     Promise.all([
       fetch(`/api/facilities?date=${selectedDate}`).then((r) => r.json()),
-      fetch(`/api/facilities/bookings?my=true`).then((r) => r.json()),
+      fetch(bookingsUrl).then((r) => r.json()),
     ])
       .then(([facData, bookData]) => {
         setFacilities(facData.facilities || facData || []);
@@ -111,13 +114,14 @@ export default function AmenitiesPage() {
       })
       .catch(() => toastT.error("Failed to load"))
       .finally(() => setLoading(false));
-  }, [selectedDate, toastT]);
+  }, [selectedDate, toastT, isCommittee]);
 
   useEffect(() => {
     fetchFacilities();
   }, [fetchFacilities]);
 
   const openBooking = (facility: Facility) => {
+    if (!canBook) return;
     setSelectedFacility(facility);
     const firstAvailable = timeSlots.find((slot) => !isSlotBooked(facility, slot)) || "09:00";
     const nextSlot = timeSlots.find((slot) => slot > firstAvailable && !doesRangeOverlapBooking(facility, firstAvailable, slot)) || "11:00";
@@ -127,7 +131,7 @@ export default function AmenitiesPage() {
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFacility) return;
+    if (!selectedFacility || !canBook) return;
     if (bookingForm.startTime >= bookingForm.endTime) {
       toastT.error("End time must be after start time");
       return;
@@ -249,26 +253,47 @@ export default function AmenitiesPage() {
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 px-4 sm:px-6 lg:px-0 pb-20">
       <ModulePageHeader
         icon={Building2}
-        title={t("Amenity Booking")}
-        description={t("Reserve shared spaces, review availability, and manage facility slots.")}
+        title={isCommittee ? t("Amenity Management") : t("Amenity Booking")}
+        description={
+          isCommittee
+            ? t("Configure shared spaces and monitor resident bookings.")
+            : t("Reserve shared spaces, review availability, and manage your bookings.")
+        }
         meta={`${facilities.length} ${t("amenities")}`}
         tone="primary"
-        actions={isAdmin && (
+        actions={isCommittee && (
           <button onClick={() => setShowAddFacility(true)} className="btn btn-primary !rounded-xl px-5 py-2.5 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-primary/10">
             <Plus className="w-4 h-4" /> {t("Add Amenity")}
           </button>
         )}
       />
 
-      <DuesEnforcementBanner status={duesStatus} />
+      {canBook && <DuesEnforcementBanner status={duesStatus} />}
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(["facilities", "my-bookings"] as const).map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)} className={`px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === tab ? "bg-primary text-white shadow-sm" : "bg-surface text-text-secondary hover:bg-primary/5"}`}>
-            {tab === "facilities" ? t("All Amenities") : t("My Bookings")}
+        <button
+          onClick={() => setActiveTab("facilities")}
+          className={`px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === "facilities" ? "bg-primary text-white shadow-sm" : "bg-surface text-text-secondary hover:bg-primary/5"}`}
+        >
+          {isCommittee ? t("Amenities") : t("All Amenities")}
+        </button>
+        {canBook && (
+          <button
+            onClick={() => setActiveTab("my-bookings")}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === "my-bookings" ? "bg-primary text-white shadow-sm" : "bg-surface text-text-secondary hover:bg-primary/5"}`}
+          >
+            {t("My Bookings")}
           </button>
-        ))}
+        )}
+        {isCommittee && (
+          <button
+            onClick={() => setActiveTab("all-bookings")}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === "all-bookings" ? "bg-primary text-white shadow-sm" : "bg-surface text-text-secondary hover:bg-primary/5"}`}
+          >
+            {t("All Bookings")}
+          </button>
+        )}
       </div>
 
       {activeTab === "facilities" && (
@@ -296,7 +321,7 @@ export default function AmenitiesPage() {
             <ModuleEmptyState
               icon={Building2}
               title={t("No amenities configured")}
-              description={isAdmin ? t("Add the first amenity to open reservations.") : t("Amenity reservations will appear after setup.")}
+              description={isCommittee ? t("Add the first amenity to open reservations.") : t("Amenity reservations will appear after setup.")}
               tone="primary"
             />
           ) : (
@@ -317,9 +342,11 @@ export default function AmenitiesPage() {
                           {f.description && <p className="text-xs text-text-secondary mt-0.5">{f.description}</p>}
                         </div>
                       </div>
-                      <button onClick={() => openBooking(f)} className="btn btn-primary !rounded-xl !py-2 !px-4 text-xs font-bold opacity-80 group-hover:opacity-100 transition-opacity" disabled={duesBlocked && !isAdmin}>
-                        {t("Book")}
-                      </button>
+                      {canBook && (
+                        <button onClick={() => openBooking(f)} className="btn btn-primary !rounded-xl !py-2 !px-4 text-xs font-bold opacity-80 group-hover:opacity-100 transition-opacity" disabled={duesBlocked}>
+                          {t("Book")}
+                        </button>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 mt-3">
                       {f.capacity && (
@@ -380,7 +407,7 @@ export default function AmenitiesPage() {
       )}
 
       {/* My Bookings Tab */}
-      {activeTab === "my-bookings" && (
+      {activeTab === "my-bookings" && canBook && (
         <div className="space-y-3">
           {myBookings.length === 0 ? (
             <ModuleEmptyState icon={Calendar} title={t("No bookings yet")} description={t("Book an amenity to see your reservations here.")} tone="primary" />
@@ -433,8 +460,33 @@ export default function AmenitiesPage() {
         </div>
       )}
 
+      {activeTab === "all-bookings" && isCommittee && (
+        <div className="space-y-3">
+          <ModuleSectionTitle
+            title={t("Resident bookings")}
+            description={t("All confirmed and upcoming amenity reservations across the society.")}
+          />
+          {myBookings.length === 0 ? (
+            <ModuleEmptyState icon={Calendar} title={t("No bookings yet")} description={t("Bookings appear here once residents reserve slots.")} tone="primary" />
+          ) : (
+            myBookings.map((b) => (
+              <div key={b.id} className="bg-white rounded-2xl border border-border/50 p-4 sm:p-5 flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">{b.facility?.name || t("Amenity")}</h3>
+                  <p className="text-xs text-text-secondary mt-1">
+                    {t("Flat")} {b.flatNumber} · {new Date(b.date).toLocaleDateString("en-IN")} · {formatTime(b.startTime)} — {formatTime(b.endTime)}
+                  </p>
+                  {b.purpose && <p className="text-[10px] text-text-tertiary mt-1">{b.purpose}</p>}
+                </div>
+                <span className="text-[10px] font-bold uppercase text-primary">{b.status}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* Booking Modal */}
-      {showBookingModal && selectedFacility && (
+      {showBookingModal && selectedFacility && canBook && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
@@ -513,7 +565,7 @@ export default function AmenitiesPage() {
               )}
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowBookingModal(false)} className="btn btn-secondary !rounded-xl !py-2.5 !px-6 text-xs font-bold">{t("Cancel")}</button>
-                <button type="submit" disabled={saving || selectedRangeBlocked || (duesBlocked && !isAdmin)} className="btn btn-primary !rounded-xl !py-2.5 !px-6 text-xs font-bold flex items-center gap-2">
+                <button type="submit" disabled={saving || selectedRangeBlocked || duesBlocked} className="btn btn-primary !rounded-xl !py-2.5 !px-6 text-xs font-bold flex items-center gap-2">
                   {saving ? <div className="spinner !w-4 !h-4" /> : <CheckCircle className="w-4 h-4" />}
                   {saving ? t("Booking...") : t("Confirm Booking")}
                 </button>
@@ -524,7 +576,7 @@ export default function AmenitiesPage() {
       )}
 
       {/* Add Facility Modal */}
-      {showAddFacility && (
+      {showAddFacility && isCommittee && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">

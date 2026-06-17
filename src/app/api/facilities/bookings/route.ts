@@ -2,6 +2,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertAmenityBookable, ensureAmenityForFacility, getOccupancyContext } from "@/domain/community";
 import { shouldSkipDuesEnforcement } from "@/lib/dues-enforcement-access";
+import { isCommitteeRole, isResidentRole } from "@/lib/roles";
 import { assertFlatDuesClear } from "@society/db";
 import { NextRequest } from "next/server";
 
@@ -23,6 +24,17 @@ async function legacyPOST(request: NextRequest) {
   const session = await getSession();
   if (!session?.societyId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (isCommitteeRole(session.role)) {
+    return Response.json(
+      { error: "Committee members manage amenities. Residents book slots from their login." },
+      { status: 403 },
+    );
+  }
+
+  if (!isResidentRole(session.role)) {
+    return Response.json({ error: "Only flat residents can book amenities" }, { status: 403 });
   }
 
   try {
@@ -127,9 +139,19 @@ async function legacyGET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const facilityId = searchParams.get("facilityId") || "";
+  const myOnly = searchParams.get("my") === "true";
 
   const where: Record<string, unknown> = { societyId: session!.societyId };
   if (facilityId) where.facilityId = facilityId;
+
+  if (myOnly) {
+    if (isCommitteeRole(session.role)) {
+      return Response.json({ bookings: [] });
+    }
+    const context = await getOccupancyContext(session);
+    const flatNumber = context?.flat?.flatNumber;
+    if (flatNumber) where.flatNumber = flatNumber;
+  }
 
   const bookings = await prisma.facilityBooking.findMany({
     where,

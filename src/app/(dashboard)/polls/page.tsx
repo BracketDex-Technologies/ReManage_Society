@@ -7,6 +7,7 @@ import { useUser } from "@/lib/user-context";
 import { Plus, Vote, BarChart3, Lock, Share2, Calendar, User, Info, CheckCircle2, X } from "lucide-react";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 import { ModuleEmptyState, ModulePageHeader, ModuleSectionTitle } from "@/components/ux/ModulePageKit";
+import { canUseResidentSelfService, isCommitteeRole } from "@/lib/roles";
 
 interface Poll {
   id: string;
@@ -32,7 +33,8 @@ export default function PollsPage() {
   const { user } = useUser();
   const [form, setForm] = useState({ title: "", description: "", options: ["", ""], closesAt: "" });
 
-  const isAdmin = user?.role === "chairman" || user?.role === "secretary" || user?.role === "treasurer";
+  const isAdmin = isCommitteeRole(user?.role);
+  const canVote = canUseResidentSelfService(user?.role);
   const myFlat = user?.flatNumber || "";
 
   const fetchPolls = useCallback(() => {
@@ -74,6 +76,10 @@ export default function PollsPage() {
   };
 
   const handleVote = async (pollId: string, optionIndex: number) => {
+    if (!canVote) {
+      toastT.error("Only residents can vote in society polls");
+      return;
+    }
     if (!myFlat) {
       toastT.error("You must have an assigned flat to vote");
       return;
@@ -136,7 +142,7 @@ export default function PollsPage() {
         )}
       />
 
-      {!isAdmin && (
+      {!isAdmin && canVote && (
          <div className="bg-gradient-to-r from-indigo-50 to-white p-6 rounded-2xl border border-indigo-100 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary shadow-sm">
@@ -180,7 +186,7 @@ export default function PollsPage() {
             const totalVotes = Object.values(votes).reduce((s, v) => s + v, 0);
             const hasVoted = myFlat && voters.includes(myFlat);
             const isClosed = poll.status === "closed";
-            const showResults = isClosed || hasVoted || isAdmin;
+            const showResults = isClosed || hasVoted || isAdmin || !canVote;
 
             const shareOnWhatsApp = () => {
               const optionsList = options.map((o, i) => `${i + 1}. ${o}`).join("\n");
@@ -267,7 +273,7 @@ export default function PollsPage() {
                                     </div>
                                  </div>
                               </div>
-                            ) : (
+                            ) : canVote ? (
                               <button
                                 onClick={() => handleVote(poll.id, i)}
                                 disabled={!myFlat}
@@ -278,7 +284,7 @@ export default function PollsPage() {
                                    <div className="w-2 h-2 rounded-full border-2 border-current" />
                                 </div>
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         );
                       })}
@@ -307,7 +313,7 @@ export default function PollsPage() {
             const totalVotes = Object.values(votes).reduce((s, v) => s + v, 0);
             const hasVoted = myFlat && voters.includes(myFlat);
             const isClosed = poll.status === "closed";
-            const showResults = isClosed || hasVoted || isAdmin;
+            const showResults = isClosed || hasVoted || isAdmin || !canVote;
 
             const shareOnWhatsApp = () => {
               const optionsList = options.map((o, i) => `${i + 1}. ${o}`).join("\n");

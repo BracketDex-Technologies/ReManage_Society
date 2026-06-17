@@ -3,11 +3,20 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logCreated } from "@/lib/activity-log";
 import { getResidentFlatForSession, noFlatLinkedPayload } from "@/lib/resident-flat";
+import { committeeSelfServiceError, isResidentRole } from "@/lib/roles";
 
 export async function GET(request: Request) {
   const session = await getSession();
   if (!session?.societyId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const committeeError = committeeSelfServiceError(session.role);
+  if (committeeError) {
+    return Response.json({ error: committeeError }, { status: 403 });
+  }
+  if (!isResidentRole(session.role)) {
+    return Response.json({ error: "Only flat residents can manage personal visitors" }, { status: 403 });
   }
 
   const flat = await getResidentFlatForSession(session);
@@ -35,6 +44,14 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session?.societyId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const committeeError = committeeSelfServiceError(session.role);
+  if (committeeError) {
+    return Response.json({ error: committeeError }, { status: 403 });
+  }
+  if (!isResidentRole(session.role)) {
+    return Response.json({ error: "Only flat residents can pre-approve visitors" }, { status: 403 });
   }
 
   try {

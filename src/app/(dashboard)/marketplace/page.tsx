@@ -8,6 +8,8 @@ import { formatCurrency } from "@/lib/utils";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 import { ModuleEmptyState, ModulePageHeader, ModuleSectionTitle } from "@/components/ux/ModulePageKit";
 import { isOptionalTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
+import { useUser } from "@/lib/user-context";
+import { canUseResidentSelfService } from "@/lib/roles";
 
 interface Listing {
   id: string;
@@ -63,6 +65,8 @@ export default function MarketplacePage() {
   const { t } = useI18n();
   const toastT = useTranslatedToast();
   const { prompt } = useAppDialog();
+  const { user } = useUser();
+  const canUseMarketplace = canUseResidentSelfService(user?.role);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -230,13 +234,21 @@ export default function MarketplacePage() {
         meta={`${listings.length} ${t("listings")}`}
         tone="violet"
         actions={
+          canUseMarketplace ? (
           <button onClick={() => setShowForm(!showForm)} className="btn btn-primary btn-sm flex items-center gap-2 !rounded-xl px-5 py-2.5 font-bold">
             {showForm ? <><X className="w-4 h-4" /> {t("Cancel")}</> : <><Plus className="w-4 h-4" /> {t("Post Listing")}</>}
           </button>
+          ) : undefined
         }
       />
 
-      {showForm && (
+      {!canUseMarketplace && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          {t("Committee accounts manage the society. Residents post and buy listings from their flat login.")}
+        </div>
+      )}
+
+      {showForm && canUseMarketplace && (
         <div className="card animate-in fade-in zoom-in-95 duration-200">
           <h3 className="font-semibold text-sm mb-4">{t("Post an Item")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -428,11 +440,11 @@ export default function MarketplacePage() {
                   }`}>
                     {l.myInterestStatus === "interested" ? t("Requested") : t(l.myInterestStatus)}
                   </span>
-                ) : (
+                ) : canUseMarketplace ? (
                   <button onClick={() => handleRequestBuy(l)} className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white flex items-center gap-1.5">
                     <Handshake className="h-3.5 w-3.5" /> {t("Request Buy")}
                   </button>
-                )}
+                ) : null}
               </div>
               <p className="text-[10px] text-text-tertiary mt-2">{new Date(l.createdAt).toLocaleDateString("en-IN")}</p>
             </div>

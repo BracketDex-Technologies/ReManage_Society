@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isCommitteeRole, isResidentRole } from "@/lib/roles";
 import { NextRequest } from "next/server";
 
 
@@ -32,6 +33,13 @@ async function legacyPATCH(
 
     // If voting
     if (body.vote !== undefined && body.flatNumber) {
+      if (isCommitteeRole(session.role)) {
+        return Response.json({ error: "Only residents can vote in society polls" }, { status: 403 });
+      }
+      if (!isResidentRole(session.role)) {
+        return Response.json({ error: "Only flat residents can vote" }, { status: 403 });
+      }
+
       const poll = await prisma.poll.findUnique({ where: { id } });
       if (!poll) return Response.json({ error: "Poll not found" }, { status: 404 });
       if (poll.status !== "active") return Response.json({ error: "Poll is closed" }, { status: 400 });

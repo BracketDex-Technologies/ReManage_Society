@@ -2,6 +2,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { findParkingOverlap, getOccupancyContext, parseParkingEndDate } from "@/domain/community";
 import { shouldSkipDuesEnforcement } from "@/lib/dues-enforcement-access";
+import { committeeSelfServiceError, isResidentRole } from "@/lib/roles";
 import { assertFlatDuesClear } from "@society/db";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -67,7 +68,15 @@ async function legacyGET() {
 
 async function legacyPATCH(request: NextRequest) {
   const session = await getSession();
-  if (!session?.societyId || !session.flatId) {
+  if (!session?.societyId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const committeeError = committeeSelfServiceError(session.role);
+  if (committeeError) {
+    return NextResponse.json({ error: committeeError }, { status: 403 });
+  }
+  if (!isResidentRole(session.role) || !session.flatId) {
     return NextResponse.json({ error: "Only flat members can manage parking exchange" }, { status: 401 });
   }
 
@@ -251,8 +260,16 @@ async function legacyPATCH(request: NextRequest) {
 
 async function legacyPOST(request: NextRequest) {
   const session = await getSession();
-  if (!session?.societyId || !session.flatId) {
-    return NextResponse.json({ error: "Only flat members can share parking" }, { status: 401 });
+  if (!session?.societyId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const committeeError = committeeSelfServiceError(session.role);
+  if (committeeError) {
+    return NextResponse.json({ error: committeeError }, { status: 403 });
+  }
+  if (!isResidentRole(session.role) || !session.flatId) {
+    return NextResponse.json({ error: "Only flat members can share or request parking" }, { status: 403 });
   }
 
   try {

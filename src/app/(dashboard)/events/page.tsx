@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { useUser } from "@/lib/user-context";
 import { useI18n } from "@/lib/i18n";
 import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { Calendar, Plus, MapPin, Users, Clock, CheckCircle, X, XCircle } from "lucide-react";
 import { ModuleEmptyState, ModulePageHeader, ModuleSectionTitle } from "@/components/ux/ModulePageKit";
+import { canUseResidentSelfService, isCommitteeRole } from "@/lib/roles";
 
 interface SEvent { id:string; title:string; description:string|null; startDate:string; endDate:string|null; venue:string|null; category:string; maxAttendees:number|null; status:string; createdAt:string; organizer:{name:string;role:string}; _count:{rsvps:number}; }
 
@@ -12,6 +14,9 @@ const catColors:Record<string,string> = { general:"bg-blue-50 text-blue-600", fe
 export default function EventsPage() {
   const { t } = useI18n();
   const toastT = useTranslatedToast();
+  const { user } = useUser();
+  const canRsvp = canUseResidentSelfService(user?.role);
+  const isCommittee = isCommitteeRole(user?.role);
   const [events,setEvents]=useState<SEvent[]>([]); const [loading,setLoading]=useState(true); const [showNew,setShowNew]=useState(false); const [saving,setSaving]=useState(false);
   const [form,setForm]=useState({title:"",description:"",startDate:"",endDate:"",venue:"",category:"general",maxAttendees:""});
 
@@ -39,7 +44,9 @@ export default function EventsPage() {
         meta={`${events.length} ${t("events")}`}
         tone="emerald"
         actions={
+          isCommittee ? (
           <button onClick={()=>setShowNew(true)} className="btn btn-primary !rounded-xl px-6 py-2.5 font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-primary/10"><Plus className="w-4 h-4" />{t("Create Event")}</button>
+          ) : undefined
         }
       />
 
@@ -69,11 +76,13 @@ export default function EventsPage() {
                         </div>
                       </div>
                     </div>
+                    {canRsvp && (
                     <div className="flex gap-2 mt-3">
                       <button onClick={()=>rsvp(ev.id,"attending")} className="btn btn-primary !rounded-xl !py-2 !px-4 text-[10px] font-bold flex items-center gap-1"><CheckCircle className="w-3 h-3" />{t("Attending")}</button>
                       <button onClick={()=>rsvp(ev.id,"maybe")} className="btn btn-secondary !rounded-xl !py-2 !px-3 text-[10px] font-bold">{t("Maybe")}</button>
                       <button onClick={()=>rsvp(ev.id,"declined")} className="btn btn-secondary !rounded-xl !py-2 !px-3 text-[10px] font-bold flex items-center gap-1"><XCircle className="w-3 h-3" />{t("Can't go")}</button>
                     </div>
+                    )}
                   </div>
                 </div>
               </div>

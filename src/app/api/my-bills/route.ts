@@ -2,11 +2,20 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBillingTargetsForSociety, targetsByFlatId } from "@/domain/billing";
 import { getResidentFlatForSession, noFlatLinkedPayload } from "@/lib/resident-flat";
+import { committeeSelfServiceError, isResidentRole } from "@/lib/roles";
 
 export async function GET() {
   const session = await getSession();
   if (!session?.societyId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const committeeError = committeeSelfServiceError(session.role);
+  if (committeeError) {
+    return Response.json({ error: committeeError }, { status: 403 });
+  }
+  if (!isResidentRole(session.role)) {
+    return Response.json({ error: "Only flat residents can view personal bills" }, { status: 403 });
   }
 
   const flat = await getResidentFlatForSession(session);

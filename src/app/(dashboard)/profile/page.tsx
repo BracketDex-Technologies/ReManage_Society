@@ -14,6 +14,7 @@ import { useUser } from "@/lib/user-context";
 import { useI18n } from "@/lib/i18n";
 import { getPersonaLabel } from "@/lib/navigation/persona-labels";
 import { usePersonaNav } from "@/lib/navigation/use-persona-nav";
+import { canUseResidentSelfService } from "@/lib/roles";
 
 export default function ProfilePage() {
   const { user } = useUser();
@@ -45,8 +46,12 @@ export default function ProfilePage() {
   };
 
   const quickLinks = [
-    { href: "/my-bills", label: t("My Bills"), icon: CreditCard, accent: "bg-[#FFF7ED] text-[#F97316]" },
-    { href: "/my-visitors", label: t("My Visitors"), icon: UserCheck, accent: "bg-[#EFF6FF] text-[#2563EB]" },
+    ...(canUseResidentSelfService(user.role)
+      ? [
+          { href: "/my-bills", label: t("My Bills"), icon: CreditCard, accent: "bg-[#FFF7ED] text-[#F97316]" },
+          { href: "/my-visitors", label: t("My Visitors"), icon: UserCheck, accent: "bg-[#EFF6FF] text-[#2563EB]" },
+        ]
+      : []),
     { href: "/complaints", label: t("Helpdesk"), icon: AlertTriangle, accent: "bg-[#FEF3C7] text-[#D97706]" },
   ];
 

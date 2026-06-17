@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { logPayment } from "@/lib/activity-log";
 import { createNotification } from "@/lib/notifications";
 import { recordMaintenanceBillPayment } from "@/domain/maintenance-finance";
+import { committeeSelfServiceError, isResidentRole } from "@/lib/roles";
 
 export async function POST(
   request: NextRequest,
@@ -12,6 +13,14 @@ export async function POST(
   const session = await getSession();
   if (!session?.societyId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const committeeError = committeeSelfServiceError(session.role);
+  if (committeeError) {
+    return Response.json({ error: committeeError }, { status: 403 });
+  }
+  if (!isResidentRole(session.role)) {
+    return Response.json({ error: "Only flat residents can pay personal bills" }, { status: 403 });
   }
 
   const { id } = await params;
