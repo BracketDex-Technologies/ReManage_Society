@@ -50,6 +50,7 @@ import PersonaDashboardRouter from "@/components/ux/PersonaDashboardRouter";
 import GuardDashboard from "./_personas/guard-dashboard";
 import TreasurerDashboard from "./_personas/treasurer-dashboard";
 import PlatformAdminDashboard from "./_personas/platform-admin-dashboard";
+import { shapeCollectionTrend } from "./dashboard-trend";
 
 interface DashboardData {
   totalCollected: number;
@@ -1028,12 +1029,12 @@ function AdminMetricCard({
   tone: "orange" | "green" | "blue" | "red" | "yellow" | "purple";
 }) {
   const styles = {
-    orange: "border-[#E6E6E6] bg-[#FFFFFF] hover:border-[#FF9966] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#CC4400]",
-    green: "border-[#BBF7D0] bg-[#F0FDF4] hover:border-[#86EFAC] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#2F7958]",
-    blue: "border-[#BFDBFE] bg-[#EFF6FF] hover:border-[#93C5FD] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#31558C]",
+    orange: "border-[#FDBA74] bg-[#FFEEE0] hover:border-[#F97316] dark:border-[#9A4F18] dark:bg-[#322218] dark:hover:border-[#FF9966]",
+    green: "border-[#4ADE80] bg-[#DCFCE7] hover:border-[#16A34A] dark:border-[#2F7958] dark:bg-[#172D22] dark:hover:border-[#6EE7B7]",
+    blue: "border-[#60A5FA] bg-[#DBEAFE] hover:border-[#2563EB] dark:border-[#31558C] dark:bg-[#1B2A3D] dark:hover:border-[#93C5FD]",
     red: "border-[#FECACA] bg-[#FEF2F2] hover:border-[#FCA5A5] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#7A3434]",
     yellow: "border-[#FFCC33] bg-[#FFF9E5] hover:border-[#FFBE00] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#8A6A19]",
-    purple: "border-[#E9D5FF] bg-[#FAF5FF] hover:border-[#C084FC] dark:border-[#404040] dark:bg-[#222222] dark:hover:border-[#6B3A8F]",
+    purple: "border-[#C084FC] bg-[#F3E8FF] hover:border-[#9333EA] dark:border-[#6B3A8F] dark:bg-[#2B1E38] dark:hover:border-[#D8B4FE]",
   }[tone];
   const iconStyles = {
     orange: "bg-[#FFEEE5] text-[#FF5400] dark:bg-[#662200]/45 dark:text-[#FF9966]",
@@ -1103,7 +1104,7 @@ function AdminDashboard({
   const totalFlow = collected + pending;
   const collectionRate = totalFlow > 0 ? Math.round((collected / totalFlow) * 100) : 0;
   const monthlyTrend = analytics?.monthlyTrend || [];
-  const maxTrend = Math.max(...monthlyTrend.map((item) => item.collected + item.pending + item.expenses), 1);
+  const collectionTrend = shapeCollectionTrend(monthlyTrend);
   const recentActivity = data?.recentActivity || [];
   const adminModules = visibleCategories
     .flatMap((category) => category.modules)
@@ -1206,32 +1207,40 @@ function AdminDashboard({
               <div>
                 <h2 className="text-xl font-bold text-[#333333] dark:text-[#F5F5F5]">{t("Collection performance")}</h2>
                 <p className="mt-0.5 text-xs font-semibold text-[#333333]/55 dark:text-[#CCCCCC]/78">{t("Collected, pending dues, and expenses across recent months.")}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-[#333333]/65 dark:text-[#CCCCCC]/82">
+                  <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />{t("Collected")}</span>
+                  <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#FF5400]" />{t("Pending")}</span>
+                  <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#3B82F6]" />{t("Expenses")}</span>
+                </div>
               </div>
               <Link href="/reports" className="dashboard-subpanel hidden min-h-9 items-center rounded-xl bg-[#F7F7F7] px-3 text-xs font-bold text-[#333333]/60 dark:bg-[#2A2A2A] dark:text-[#CCCCCC] sm:inline-flex">
                 {t("Reports")}
               </Link>
             </div>
-            <div className="dashboard-subpanel flex h-[260px] items-end gap-3 overflow-hidden rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] p-4 dark:border-[#404040] dark:bg-[#2A2A2A]">
-              {monthlyTrend.length === 0 ? (
+            <div className="dashboard-subpanel relative h-[292px] overflow-hidden rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] p-3 dark:border-[#404040] dark:bg-[#2A2A2A] sm:p-4">
+              <div className="pointer-events-none absolute inset-x-4 top-6 bottom-11 flex flex-col justify-between">
+                <span className="border-t border-dashed border-[#333333]/10 dark:border-[#CCCCCC]/12" />
+                <span className="border-t border-dashed border-[#333333]/10 dark:border-[#CCCCCC]/12" />
+                <span className="border-t border-dashed border-[#333333]/10 dark:border-[#CCCCCC]/12" />
+                <span className="border-t border-dashed border-[#333333]/10 dark:border-[#CCCCCC]/12" />
+              </div>
+              {collectionTrend.items.length === 0 ? (
                 <EmptyMiniState text={t("Analytics will appear after bills and expenses are recorded.")} />
-              ) : monthlyTrend.map((item) => {
-                const collectedHeight = Math.max(8, Math.round((item.collected / maxTrend) * 190));
-                const pendingHeight = Math.max(6, Math.round((item.pending / maxTrend) * 190));
-                const expenseHeight = Math.max(4, Math.round((item.expenses / maxTrend) * 190));
-                return (
-                  <div key={item.period} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-                    <div className="flex h-[200px] w-full max-w-[54px] items-end justify-center gap-1 rounded-full bg-white/70 px-1.5 py-2 dark:bg-[#222222]">
-                      <span className="w-2.5 rounded-full bg-[#10B981]" style={{ height: collectedHeight }} title={`${t("Collected")}: ${formatCurrency(item.collected)}`} />
-                      <span className="w-2.5 rounded-full bg-[#FF5400]" style={{ height: pendingHeight }} title={`${t("Pending")}: ${formatCurrency(item.pending)}`} />
-                      <span className="w-2.5 rounded-full bg-[#60A5FA]" style={{ height: expenseHeight }} title={`${t("Expenses")}: ${formatCurrency(item.expenses)}`} />
+              ) : <div className="relative z-10 flex h-full items-end gap-2 overflow-x-auto pb-1 sm:gap-3">
+                {collectionTrend.items.map((item) => (
+                  <div key={item.period} className="flex min-w-[62px] flex-1 flex-col items-center justify-end gap-2">
+                    <div className="flex h-[190px] w-full max-w-[76px] items-end justify-center gap-1.5 rounded-xl border border-[#E6E6E6]/80 bg-white/80 px-2 py-2 shadow-sm dark:border-[#404040] dark:bg-[#222222]/90">
+                      <span className="w-3 rounded-sm bg-[#10B981] shadow-[0_2px_7px_rgba(16,185,129,0.32)]" style={{ height: `${item.collectedHeight}%` }} title={`${t("Collected")}: ${formatCurrency(item.collected)}`} />
+                      <span className="w-3 rounded-sm bg-[#FF5400] shadow-[0_2px_7px_rgba(255,84,0,0.32)]" style={{ height: `${item.pendingHeight}%` }} title={`${t("Pending")}: ${formatCurrency(item.pending)}`} />
+                      <span className="w-3 rounded-sm bg-[#3B82F6] shadow-[0_2px_7px_rgba(59,130,246,0.32)]" style={{ height: `${item.expensesHeight}%` }} title={`${t("Expenses")}: ${formatCurrency(item.expenses)}`} />
                     </div>
                     <div className="text-center">
                       <p className="truncate text-[11px] font-bold text-[#333333] dark:text-[#F5F5F5]">{item.label}</p>
-                      <p className="text-[10px] font-bold text-[#333333]/45 dark:text-[#CCCCCC]/70">{item.collectionRate}%</p>
+                      <p className="text-[10px] font-bold text-[#333333]/55 dark:text-[#CCCCCC]/78">{item.collectionRate}%</p>
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>}
             </div>
           </div>
 
