@@ -37,8 +37,33 @@ async function legacyPOST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const { title, category, fileName, fileUrl, fileSize } = body;
+    let title: string | undefined;
+    let category: string | undefined;
+    let fileName: string | undefined;
+    let fileUrl: string | undefined;
+    let fileSize: number | undefined;
+
+    if (request.headers.get("content-type")?.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      const file = formData.get("file");
+      title = String(formData.get("title") || "");
+      category = String(formData.get("category") || "general");
+
+      if (!(file instanceof File)) {
+        return Response.json({ error: "A document file is required" }, { status: 400 });
+      }
+      if (file.size > 3_000_000) {
+        return Response.json({ error: "Document must be under 3 MB" }, { status: 413 });
+      }
+
+      fileName = file.name;
+      fileSize = file.size;
+      const content = Buffer.from(await file.arrayBuffer()).toString("base64");
+      fileUrl = `data:${file.type || "application/octet-stream"};base64,${content}`;
+    } else {
+      const body = await request.json();
+      ({ title, category, fileName, fileUrl, fileSize } = body);
+    }
 
     if (!title || !fileName || !fileUrl) {
       return Response.json({ error: "Title, filename and url are required" }, { status: 400 });
