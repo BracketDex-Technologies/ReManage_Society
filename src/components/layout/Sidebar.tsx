@@ -171,7 +171,7 @@ export default function Sidebar({
           </div>
         </div>
 
-        <nav className={`flex-1 overflow-y-auto ${isCompact ? "px-2.5 py-1.5" : "px-3 py-1.5"}`}>
+        <nav className={`flex-1 min-h-0 overflow-y-auto ${isCompact ? "px-2.5 py-1.5" : "px-3 py-1.5"}`}>
           <div className={isCompact ? "space-y-1.5" : "space-y-2.5"}>
             {visibleSections.map((section) => (
               <div key={section.title || "main"}>
@@ -220,7 +220,7 @@ export default function Sidebar({
           </div>
         </nav>
 
-        <div className={`mt-auto ${isCompact ? "p-2.5" : "p-3"}`}>
+        <div className={`mt-auto shrink-0 ${isCompact ? "p-2.5" : "p-3"}`}>
           {!isCompact && (
             <div className="mb-2 rounded-[1.15rem] border border-[#E6E6E6] bg-white p-2.5 dark:border-[#404040] dark:bg-[#2A2A2A]">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#333333]/[0.45] dark:text-[#CCCCCC]/70">
@@ -238,14 +238,16 @@ export default function Sidebar({
           )}
           <button
             onClick={handleLogout}
+            data-testid="mobile-sidebar-logout"
             title={t("Sign Out")}
             className={`flex items-center gap-3 border border-[#FFDDCC] bg-[#FFEEE5] font-bold text-[#993300] transition-colors hover:bg-[#FFDDCC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF7733] dark:border-[#662200]/40 dark:bg-[#662200]/20 dark:text-[#FF9966] dark:hover:bg-[#662200]/35 ${
               isCompact
-                ? "h-10 w-10 justify-center rounded-xl"
+                ? "h-14 w-10 flex-col justify-center gap-0.5 rounded-xl lg:h-10 lg:flex-row lg:gap-0"
                 : "w-full rounded-xl px-3 py-2.5 text-sm"
             }`}
           >
             <LogOut className="h-[18px] w-[18px]" />
+            {isCompact && <span className="text-[9px] font-black leading-none lg:hidden">{t("Sign Out")}</span>}
             {!isCompact && t("Sign Out")}
           </button>
         </div>
