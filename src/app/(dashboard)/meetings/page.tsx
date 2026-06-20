@@ -4,6 +4,7 @@ import { useI18n } from "@/lib/i18n";
 import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
 import { Plus, FileText, Calendar, Image as ImageIcon, Trash2 } from "lucide-react";
+import { getAuthHeaders } from "@/lib/client-session";
 
 interface Meeting {
   id: string;
@@ -47,7 +48,7 @@ export default function MeetingsPage() {
 
   const fetchMeetings = useCallback(() => {
     setLoading(true);
-    fetch("/api/meetings")
+    fetch("/api/meetings", { headers: getAuthHeaders() })
       .then((r) => r.json())
       .then((d) => setMeetings(d.meetings || []))
       .catch(() => toastT.error("Failed to load"))
@@ -66,7 +67,7 @@ export default function MeetingsPage() {
     try {
       const res = await fetch("/api/meetings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(form),
       });
       if (res.ok) {
@@ -208,7 +209,7 @@ export default function MeetingsPage() {
       {/* Record Meeting Modal */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content !max-w-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content !max-w-2xl !max-h-[85dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4">Record Meeting Minutes</h3>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

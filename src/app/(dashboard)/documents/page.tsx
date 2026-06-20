@@ -5,6 +5,7 @@ import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
 import { FolderOpen, Plus, FileText, Eye, Trash2, Shield, Settings, File, X } from "lucide-react";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
+import { getAuthHeaders } from "@/lib/client-session";
 
 interface Document {
   id: string;
@@ -38,7 +39,7 @@ export default function DocumentsPage() {
 
   const fetchDocuments = useCallback(() => {
     setLoading(true);
-    fetch("/api/documents")
+    fetch("/api/documents", { headers: getAuthHeaders() })
       .then((r) => r.json())
       .then((d) => setDocuments(d.documents || []))
       .catch(() => toastT.error("Failed to load"))
@@ -80,7 +81,7 @@ export default function DocumentsPage() {
     try {
       const res = await fetch("/api/documents", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(form),
       });
       if (res.ok) {
@@ -104,7 +105,7 @@ export default function DocumentsPage() {
       danger: true,
     });
     if (!ok) return;
-    await fetch(`/api/documents/${id}`, { method: "DELETE" });
+    await fetch(`/api/documents/${id}`, { method: "DELETE", headers: getAuthHeaders() });
     toastT.success("Document deleted");
     fetchDocuments();
   };
@@ -197,7 +198,7 @@ export default function DocumentsPage() {
       {/* Upload Modal */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content !max-w-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content !max-w-lg !max-h-[85dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4">Upload Document</h3>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div><label className="label">Title *</label><input className="input" placeholder="e.g. Society Bylaws 2024" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>

@@ -16,6 +16,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useLiveData } from "@/lib/use-live-data";
 import { nocPurposeLabel } from "@society/operations-core";
+import { getAuthHeaders } from "@/lib/client-session";
 
 type NocRequest = {
   id: string;
@@ -64,7 +65,7 @@ export default function NocPage() {
     try {
       const res = await fetch("/api/noc", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ purpose, notes }),
       });
       const result = await res.json();
@@ -86,11 +87,21 @@ export default function NocPage() {
     }
   };
 
-  const downloadNoc = (id: string, certificateNo: string) => {
-    const link = document.createElement("a");
-    link.href = `/api/noc/${id}/download`;
-    link.download = `${certificateNo}.pdf`;
-    link.click();
+  const downloadNoc = async (id: string, certificateNo: string) => {
+    try {
+      const response = await fetch(`/api/noc/${id}/download`, { headers: getAuthHeaders() });
+      if (!response.ok) throw new Error("Download failed");
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${certificateNo}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toastT.error("Could not download NOC PDF");
+    }
   };
 
   const verificationCode = (hash: string) => hash.slice(0, 12).toUpperCase();
