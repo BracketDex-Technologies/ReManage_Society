@@ -2,23 +2,53 @@
 
 import { ArrowLeft } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect } from "react";
 
 export default function MobileBackButton() {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (pathname === "/" || pathname === "/dashboard") {
-    return null;
-  }
-
-  const goBack = () => {
+  const goBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
       return;
     }
 
     router.push("/dashboard");
-  };
+  }, [router]);
+
+  useEffect(() => {
+    let removeListener: (() => Promise<void>) | undefined;
+    let active = true;
+
+    void import("@capacitor/app").then(({ App }) => {
+      if (!active) return;
+
+      void App.addListener("backButton", () => {
+        // Keep Android's system back gesture in sync with the in-app Back button.
+        if (pathname === "/" || pathname === "/dashboard") {
+          void App.exitApp();
+          return;
+        }
+
+        goBack();
+      }).then((listener) => {
+        if (active) removeListener = () => listener.remove();
+        else void listener.remove();
+      });
+    }).catch(() => {
+      // The Capacitor plugin is unavailable in a normal web browser.
+    });
+
+    return () => {
+      active = false;
+      void removeListener?.();
+    };
+  }, [goBack, pathname]);
+
+  if (pathname === "/" || pathname === "/dashboard") {
+    return null;
+  }
 
   return (
     <div className="mb-3 lg:hidden">
