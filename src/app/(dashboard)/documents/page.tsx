@@ -194,16 +194,22 @@ export default function DocumentsPage() {
 
       {/* Upload Modal */}
       {showForm && (
-        <div className="modal-overlay items-end overflow-y-auto sm:items-center sm:p-4" onClick={() => setShowForm(false)}>
-          <div className="modal-content !m-0 flex !max-h-[calc(100dvh-1rem)] w-full !max-w-lg flex-col !rounded-b-none !p-5 sm:!m-4 sm:!max-h-[85dvh] sm:!rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay z-[100] p-3 sm:p-4" onClick={() => setShowForm(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upload-document-title"
+            className="modal-content !m-0 flex min-h-0 !max-h-[calc(100dvh-1.5rem)] w-full !max-w-lg flex-col overflow-hidden !rounded-2xl !p-5 sm:!max-h-[85dvh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-4 flex shrink-0 items-center justify-between gap-4">
-              <h3 className="text-lg font-semibold">Upload Document</h3>
+              <h3 id="upload-document-title" className="text-lg font-semibold">Upload Document</h3>
               <button type="button" onClick={() => setShowForm(false)} className="rounded-lg p-2 text-text-secondary hover:bg-surface" aria-label="Close upload document form">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
                 <div><label className="label">Title *</label><input className="input" placeholder="e.g. Society Bylaws 2024" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>
                 <div>
                   <label className="label">Category *</label>
