@@ -194,12 +194,12 @@ export default function DocumentsPage() {
 
       {/* Upload Modal */}
       {showForm && (
-        <div className="modal-overlay z-[100] p-3 sm:p-4" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay z-[100] !items-center !justify-center p-3 sm:p-4" onClick={() => setShowForm(false)}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="upload-document-title"
-            className="modal-content !m-0 flex min-h-0 !max-h-[calc(100dvh-1.5rem)] w-full !max-w-lg flex-col overflow-hidden !rounded-2xl !p-5 sm:!max-h-[85dvh]"
+            className="modal-content !m-0 flex min-h-0 !max-h-[calc(100dvh-1.5rem)] w-full !max-w-lg flex-col !overflow-hidden !rounded-2xl !p-5 sm:!max-h-[85dvh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex shrink-0 items-center justify-between gap-4">
