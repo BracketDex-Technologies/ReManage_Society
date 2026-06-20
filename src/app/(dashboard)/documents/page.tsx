@@ -35,7 +35,8 @@ export default function DocumentsPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
-  const [form, setForm] = useState({ title: "", category: "general", fileName: "", fileUrl: "", fileSize: 0 });
+  const [form, setForm] = useState({ title: "", category: "general" });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const fetchDocuments = useCallback(() => {
     setLoading(true);
@@ -52,19 +53,10 @@ export default function DocumentsPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 3_000_000) {
-        toastT.error("Document must be under 3 MB for preview storage");
+        toastT.error("Document must be under 3 MB");
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setForm(f => ({
-          ...f,
-          fileName: file.name,
-          fileSize: file.size,
-          fileUrl: String(reader.result || ""),
-        }));
-      };
-      reader.readAsDataURL(file);
+      setSelectedFile(file);
     }
   };
 
@@ -72,22 +64,27 @@ export default function DocumentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.fileUrl) {
+    if (!selectedFile) {
       toastT.error("Please select a file first");
       return;
     }
     
     setSaving(true);
     try {
+      const upload = new FormData();
+      upload.set("title", form.title);
+      upload.set("category", form.category);
+      upload.set("file", selectedFile);
       const res = await fetch("/api/documents", {
         method: "POST",
-        headers: getAuthHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify(form),
+        headers: getAuthHeaders(),
+        body: upload,
       });
       if (res.ok) {
         toastT.success("Document uploaded");
         setShowForm(false);
-        setForm({ title: "", category: "general", fileName: "", fileUrl: "", fileSize: 0 });
+        setForm({ title: "", category: "general" });
+        setSelectedFile(null);
         fetchDocuments();
       } else {
         const d = await res.json();
@@ -213,6 +210,7 @@ export default function DocumentsPage() {
               <div>
                 <label className="label">File *</label>
                 <input type="file" className="input file:btn file:btn-secondary file:border-0 file:mr-4 file:py-1 file:px-3 text-sm" onChange={handleFileChange} required />
+                {selectedFile && <p className="mt-1 text-xs text-text-secondary truncate">{selectedFile.name} ({formatSize(selectedFile.size)})</p>}
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
