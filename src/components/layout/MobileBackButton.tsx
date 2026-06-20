@@ -17,6 +17,10 @@ export default function MobileBackButton() {
     router.push("/dashboard");
   }, [router]);
 
+  const goHome = useCallback(() => {
+    router.push("/dashboard");
+  }, [router]);
+
   useEffect(() => {
     let removeListener: (() => Promise<void>) | undefined;
     let active = true;
@@ -25,13 +29,13 @@ export default function MobileBackButton() {
       if (!active) return;
 
       void App.addListener("backButton", () => {
-        // Keep Android's system back gesture in sync with the in-app Back button.
+        // Android's system-back gesture always returns an in-app user to Home.
+        // At Home, leaving the handler empty prevents Capacitor from closing the app.
         if (pathname === "/" || pathname === "/dashboard") {
-          void App.exitApp();
           return;
         }
 
-        goBack();
+        goHome();
       }).then((listener) => {
         if (active) removeListener = () => listener.remove();
         else void listener.remove();
@@ -44,7 +48,7 @@ export default function MobileBackButton() {
       active = false;
       void removeListener?.();
     };
-  }, [goBack, pathname]);
+  }, [goHome, pathname]);
 
   if (pathname === "/" || pathname === "/dashboard") {
     return null;
