@@ -51,4 +51,15 @@ describe("legacy route policy", () => {
       }),
     ).toBe(true);
   });
+
+  it("allows residents to read meeting minutes", () => {
+    expect(
+      canAccessLegacyRoute({
+        role: "member",
+        societyId: "soc_1",
+        subject: "user_1",
+        pathname: "/api/meetings",
+      }),
+    ).toBe(true);
+  });
 });
