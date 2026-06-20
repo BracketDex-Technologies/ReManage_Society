@@ -126,11 +126,13 @@ export const NAV_CATALOG: readonly NavItemDefinition[] = [
 
   { href: "/visitors", label: "Security Gate", iconKey: "shield", sectionTitle: "OPERATIONS", sectionOrder: 1, personas: ["committee", "guard"], requiredActions: ["operations:gate.manage"] },
   { href: "/my-visitors", label: "My Visitors", iconKey: "user-check", sectionTitle: "OPERATIONS", sectionOrder: 1, personas: ["resident"], requiredActions: ["operations:visitor.respond"] },
+  { href: "/move-wizard", label: "Move-In / Out", iconKey: "clipboard-list", sectionTitle: "OPERATIONS", sectionOrder: 1, personas: ["resident"], requiredActions: ["tenant:membership.read"] },
   { href: "/staff", label: "Staff & Daily Help", iconKey: "briefcase", sectionTitle: "OPERATIONS", sectionOrder: 1, personas: ["committee", "resident"], requiredActions: ["operations:read"] },
   { href: "/packages", label: "Parcel Desk", iconKey: "package", sectionTitle: "OPERATIONS", sectionOrder: 1, personas: ["committee", "resident", "guard"], requiredActions: ["operations:read"] },
 
   { href: "/maintenance", label: "Billing & Ledger", iconKey: "receipt", sectionTitle: "FINANCE", sectionOrder: 2, personas: ["committee", "treasurer"], requiredActions: ["society:finance.read"] },
   { href: "/my-bills", label: "My Bills", iconKey: "credit-card", sectionTitle: "FINANCE", sectionOrder: 2, personas: ["resident"], requiredActions: ["society:finance.read"], pinned: true },
+  { href: "/noc", label: "Society NOC", iconKey: "file-badge", sectionTitle: "FINANCE", sectionOrder: 2, personas: ["resident"], requiredActions: ["society:finance.read"] },
   { href: "/expenses", label: "Expenses", iconKey: "wallet", sectionTitle: "FINANCE", sectionOrder: 2, personas: ["committee", "treasurer"], requiredActions: ["society:finance.manage"] },
   { href: "/funds", label: "Fund Accounts", iconKey: "piggy-bank", sectionTitle: "FINANCE", sectionOrder: 2, personas: ["committee", "treasurer"], requiredActions: ["society:finance.manage"] },
   { href: "/budgets", label: "Budget Planning", iconKey: "trending-up", sectionTitle: "FINANCE", sectionOrder: 2, personas: ["committee", "treasurer"], requiredActions: ["society:finance.manage"] },
