@@ -194,25 +194,32 @@ export default function DocumentsPage() {
 
       {/* Upload Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content !max-w-lg !max-h-[85dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">Upload Document</h3>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div><label className="label">Title *</label><input className="input" placeholder="e.g. Society Bylaws 2024" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>
-              <div>
-                <label className="label">Category *</label>
-                <select className="select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                  {Object.entries(categoryConfig).map(([key, val]) => (
-                    <option key={key} value={key}>{val.label}</option>
-                  ))}
-                </select>
+        <div className="modal-overlay items-end overflow-y-auto sm:items-center sm:p-4" onClick={() => setShowForm(false)}>
+          <div className="modal-content !m-0 flex !max-h-[calc(100dvh-1rem)] w-full !max-w-lg flex-col !rounded-b-none !p-5 sm:!m-4 sm:!max-h-[85dvh] sm:!rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex shrink-0 items-center justify-between gap-4">
+              <h3 className="text-lg font-semibold">Upload Document</h3>
+              <button type="button" onClick={() => setShowForm(false)} className="rounded-lg p-2 text-text-secondary hover:bg-surface" aria-label="Close upload document form">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                <div><label className="label">Title *</label><input className="input" placeholder="e.g. Society Bylaws 2024" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>
+                <div>
+                  <label className="label">Category *</label>
+                  <select className="select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                    {Object.entries(categoryConfig).map(([key, val]) => (
+                      <option key={key} value={key}>{val.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">File *</label>
+                  <input type="file" className="input file:btn file:btn-secondary file:border-0 file:mr-4 file:py-1 file:px-3 text-sm" onChange={handleFileChange} required />
+                  {selectedFile && <p className="mt-1 text-xs text-text-secondary truncate">{selectedFile.name} ({formatSize(selectedFile.size)})</p>}
+                </div>
               </div>
-              <div>
-                <label className="label">File *</label>
-                <input type="file" className="input file:btn file:btn-secondary file:border-0 file:mr-4 file:py-1 file:px-3 text-sm" onChange={handleFileChange} required />
-                {selectedFile && <p className="mt-1 text-xs text-text-secondary truncate">{selectedFile.name} ({formatSize(selectedFile.size)})</p>}
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="mt-3 flex shrink-0 justify-end gap-3 border-t border-border pt-3">
                 <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
                 <button type="submit" disabled={saving} className="btn btn-primary">{saving ? <div className="spinner !w-4 !h-4 !border-white/30 !border-t-white" /> : "Upload"}</button>
               </div>
