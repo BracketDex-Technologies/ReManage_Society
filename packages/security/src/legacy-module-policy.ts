@@ -17,7 +17,7 @@ const MODULE_TO_ACTION: Record<string, PermissionAction> = {
   facilities: "operations:booking.manage",
   emergency: "operations:sos.raise",
   documents: "community:read",
-  meetings: "community:governance.manage",
+  meetings: "community:read",
   polls: "community:vote.cast",
   settings: "society:settings.manage",
   activity_log: "audit:event.read",
