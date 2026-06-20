@@ -145,8 +145,10 @@ export default function NotificationCenter({ compact = false }: { compact?: bool
       >
         <Bell className="w-4 h-4 text-text-secondary" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center px-1 animate-pulse">
-            {unreadCount > 99 ? "99+" : unreadCount}
+          <span
+            className={compact ? "absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-white dark:ring-[#222222] animate-pulse" : "absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white animate-pulse"}
+          >
+            {!compact && (unreadCount > 99 ? "99+" : unreadCount)}
           </span>
         )}
       </button>

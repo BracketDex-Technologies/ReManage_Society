@@ -20,4 +20,5 @@ describe("collection trend shaping", () => {
 
     expect(trend.items[0]).toMatchObject({ collectedHeight: 100, pendingHeight: 0, expensesHeight: 0 });
   });
+
 });

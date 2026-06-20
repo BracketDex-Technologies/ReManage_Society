@@ -642,7 +642,7 @@ function ResidentDashboard({
   return (
     <>
       {/* Mobile view: hidden on lg screens, visible on mobile/tablet */}
-      <div className="dashboard-flat-theme block w-full space-y-4 pb-24 text-[#333333] dark:text-[#F5F5F5] lg:hidden">
+      <div className="dashboard-flat-theme block w-full space-y-4 pb-16 text-[#333333] dark:text-[#F5F5F5] lg:hidden">
         {/* SECTION 1 - Top Header (directly on cream/dark, clean typography) */}
         <div className="px-1 pt-4 pb-2">
           <p className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-[0.14em]">

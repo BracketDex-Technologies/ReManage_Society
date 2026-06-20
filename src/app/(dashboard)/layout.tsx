@@ -56,7 +56,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-      <BottomNav userRole={user.role} userId={user.id} societyId={user.societyId} />
+      {!sidebarOpen && (
+        <BottomNav userRole={user.role} userId={user.id} societyId={user.societyId} />
+      )}
       <MobileRuntime />
       <GuardRedirect />
     </div>

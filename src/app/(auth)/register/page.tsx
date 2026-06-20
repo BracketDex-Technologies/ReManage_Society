@@ -93,7 +93,7 @@ export default function RegisterPage() {
                 <label htmlFor="reg-password" className="label">{t("Password *")}</label>
                 <div className="relative">
                   <input id="reg-password" type={showPassword ? "text" : "password"} className="input pr-10" placeholder={t("Min 6 characters")} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="input-icon-button absolute right-2 top-1/2 -translate-y-1/2">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>

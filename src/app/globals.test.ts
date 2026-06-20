@@ -14,13 +14,15 @@ describe("global contrast-border system", () => {
     expect(styles).toContain("--dashboard-border: #5B5B5B;");
   });
 
-  it("uses a 1.5px, 1rem outline for shared cards and buttons", () => {
+  it("uses a 1.5px, 1rem outline for semantic cards and action buttons", () => {
     expect(styles).toMatch(/\.btn \{[\s\S]*border-radius: 1rem;[\s\S]*border: 1\.5px solid var\(--color-control-border\);/);
     expect(styles).toMatch(/\.card \{[\s\S]*border-radius: 1rem;[\s\S]*border: 1\.5px solid var\(--color-card-border\);/);
-    expect(styles).toContain('main :is(section, article, form, div)[class~="border"][class*="rounded"]');
+    expect(styles).not.toContain('button,\n.btn,\n[role="button"]');
+    expect(styles).not.toContain('main :is(section, article, form, div)[class~="border"][class*="rounded"]');
   });
 
-  it("keeps explicit circular and pill controls rounded", () => {
-    expect(styles).toMatch(/button\[class~="rounded-full"\],\s*\[role="button"\]\[class~="rounded-full"\]/);
+  it("provides borderless icon-control primitives", () => {
+    expect(styles).toMatch(/\.icon-button,\s*\.input-icon-button \{[\s\S]*border: 0 !important;/);
+    expect(styles).toMatch(/\.input-icon-button \{[\s\S]*background: transparent;/);
   });
 });
