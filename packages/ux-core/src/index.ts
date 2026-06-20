@@ -147,7 +147,7 @@ export const NAV_CATALOG: readonly NavItemDefinition[] = [
   { href: "/parking", label: "Parking", iconKey: "car", sectionTitle: "COMMUNITY", sectionOrder: 3, personas: ["committee", "resident"], requiredActions: ["operations:read"] },
   { href: "/emergency", label: "SOS & Safety", iconKey: "phone", sectionTitle: "COMMUNITY", sectionOrder: 3, personas: ["committee", "resident", "guard"], requiredActions: ["operations:sos.raise"] },
 
-  { href: "/meetings", label: "Meetings", iconKey: "file-text", sectionTitle: "GOVERNANCE", sectionOrder: 4, personas: ["committee"], requiredActions: ["community:governance.manage"] },
+  { href: "/meetings", label: "Meetings", iconKey: "file-text", sectionTitle: "GOVERNANCE", sectionOrder: 4, personas: ["committee", "resident"], requiredActions: ["community:read"] },
   { href: "/polls", label: "Polls & Voting", iconKey: "vote", sectionTitle: "GOVERNANCE", sectionOrder: 4, personas: ["committee", "resident"], requiredActions: ["community:vote.cast"] },
   { href: "/documents", label: "Document Vault", iconKey: "folder-open", sectionTitle: "GOVERNANCE", sectionOrder: 4, personas: ["committee", "resident"], requiredActions: ["community:read"] },
 
