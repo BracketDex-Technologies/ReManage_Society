@@ -14,12 +14,6 @@ const apiLimiter = new RateLimiter(store, {
   keyPrefix: "api",
 });
 
-const mfaLimiter = new RateLimiter(store, {
-  limit: 5,
-  windowMs: 5 * 60_000,
-  keyPrefix: "mfa",
-});
-
 export async function authRateLimit(ip: string): Promise<boolean> {
   const decision = await authLimiter.check(ip, "login");
   return decision.allowed;
@@ -27,10 +21,5 @@ export async function authRateLimit(ip: string): Promise<boolean> {
 
 export async function apiRateLimit(userId: string): Promise<boolean> {
   const decision = await apiLimiter.check(userId, "request");
-  return decision.allowed;
-}
-
-export async function mfaRateLimit(userId: string, ipAddress: string): Promise<boolean> {
-  const decision = await mfaLimiter.check(`${userId}:${ipAddress}`, "verify");
   return decision.allowed;
 }

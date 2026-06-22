@@ -8,7 +8,6 @@ import { getOidcLoginUrl } from "@/lib/auth";
 import { isKeycloakEnabled } from "@/lib/keycloak-config";
 import { redirect } from "next/navigation";
 import { getDefaultRoute } from "@/lib/role-access";
-import { resolveMfaLoginRequirement } from "@/lib/mfa/totp";
 
 // Retry helper for transient PgBouncer / connection errors
 async function findUserWithRetry(email: string, retries = 1) {
@@ -129,30 +128,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const mfaRequirement = resolveMfaLoginRequirement(
-      user.role,
-      user.mfaTotpSecretEncrypted,
-      user.mfaEnrolledAt,
-    );
-    if (mfaRequirement !== "not_required") {
-      const mfaChallengeToken = await createSession(user, { persistCookie: false, mfaPending: true });
-      const enrollmentRequired = mfaRequirement === "enrollment_required";
-
-      if (wantsRedirect) {
-        const redirectUrl = new URL("/mfa", request.url);
-        redirectUrl.searchParams.set("token", mfaChallengeToken);
-        if (enrollmentRequired) redirectUrl.searchParams.set("enroll", "1");
-        return NextResponse.redirect(redirectUrl, 303);
-      }
-
-      return Response.json({
-        mfaRequired: true,
-        enrollmentRequired,
-        mfaChallengeToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, societyId: user.societyId },
-      });
-    }
-
     const sessionToken = await createSession(user, { persistCookie: false });
 
     if (wantsRedirect) {
@@ -188,3 +163,4 @@ export async function GET(request: NextRequest) {
   const loginUrl = getOidcLoginUrl(redirectUri);
   redirect(loginUrl);
 }
+

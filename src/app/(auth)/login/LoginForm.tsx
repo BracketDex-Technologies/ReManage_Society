@@ -7,7 +7,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { setMfaChallengeToken, setTabSessionToken } from "@/lib/client-session";
+import { setTabSessionToken } from "@/lib/client-session";
 import { getDefaultRoute } from "@/lib/role-access";
 
 interface LoginFormProps {
@@ -69,12 +69,6 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
       if (data.expired) {
         if (data.sessionToken) setTabSessionToken(data.sessionToken);
         router.push("/expired");
-        return;
-      }
-
-      if (data.mfaRequired && data.mfaChallengeToken) {
-        setMfaChallengeToken(data.mfaChallengeToken);
-        router.push(data.enrollmentRequired ? "/mfa?enroll=1" : "/mfa");
         return;
       }
 

@@ -22,7 +22,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const personaNav = usePersonaNav(
     user.societyId
-      ? { subject: user.id || user.email || "user", societyId: user.societyId, role: user.role, mfaVerified: user.mfaVerified }
+      ? { subject: user.id || user.email || "user", societyId: user.societyId, role: user.role }
       : null,
   );
 

@@ -77,7 +77,7 @@ export default function BottomNav({
 
   const personaNav = usePersonaNav(
     societyId
-      ? { subject: userId || user.email || "user", societyId, role: userRole, mfaVerified: user.mfaVerified }
+      ? { subject: userId || user.email || "user", societyId, role: userRole }
       : null,
   );
 

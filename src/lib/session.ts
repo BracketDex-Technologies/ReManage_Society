@@ -26,43 +26,9 @@ export interface SessionPayload {
   name: string;
   email: string;
   flatId?: string;
-  mfaPending?: boolean;
   mfaVerified?: boolean;
-  mfaVerifiedAt?: Date;
   accessToken?: string;
   expiresAt: Date;
-}
-
-export interface SessionIdentity {
-  userId: string;
-  societyId: string;
-  role: string;
-  name: string;
-  email: string;
-  flatId?: string;
-  accessToken?: string;
-}
-
-const MFA_PENDING_SESSION_DURATION_MS = 5 * 60 * 1000;
-const STANDARD_SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
-
-export function createMfaPendingPayload(identity: SessionIdentity, now = new Date()): SessionPayload {
-  return {
-    ...identity,
-    mfaPending: true,
-    mfaVerified: false,
-    expiresAt: new Date(now.getTime() + MFA_PENDING_SESSION_DURATION_MS),
-  };
-}
-
-export function createVerifiedMfaPayload(identity: SessionIdentity, now = new Date()): SessionPayload {
-  return {
-    ...identity,
-    mfaPending: false,
-    mfaVerified: true,
-    mfaVerifiedAt: now,
-    expiresAt: new Date(now.getTime() + STANDARD_SESSION_DURATION_MS),
-  };
 }
 
 export async function encryptSession(payload: SessionPayload) {

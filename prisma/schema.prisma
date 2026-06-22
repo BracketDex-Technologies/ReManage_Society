@@ -631,8 +631,6 @@ model User {
   personId             String?
   showPhoneInDirectory Boolean  @default(true)
   showEmailInDirectory Boolean  @default(false)
-  mfaTotpSecretEncrypted String?
-  mfaEnrolledAt         DateTime?
   createdAt            DateTime @default(now())
   society              Society? @relation(fields: [societyId], references: [id])
   flat                 Flat?    @relation(fields: [flatId], references: [id])

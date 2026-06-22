@@ -15,7 +15,6 @@ interface UserSession {
   societyUpiId?: string;
   joinCode?: string;
   noFlatLinked?: boolean;
-  mfaVerified?: boolean;
 }
 
 interface UserContextValue {
@@ -85,7 +84,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             joinCode: data.user.joinCode,
             flatNumber: data.user.flatNumber,
             noFlatLinked: Boolean(data.user.noFlatLinked),
-            mfaVerified: data.user.mfaVerified === true,
           });
         }
       })
