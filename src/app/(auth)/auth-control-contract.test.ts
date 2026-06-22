@@ -9,6 +9,14 @@ const authFiles = [
 ].map((file) => readFileSync(resolve(process.cwd(), file), "utf8"));
 
 describe("auth utility controls", () => {
+   it("credits BracketDex Technologies in the login footer", () => {
+    const loginForm = authFiles[0];
+
+    expect(loginForm).toContain("Powered by BracketDex Technologies");
+    expect(loginForm).not.toContain("BracketDexTechnologies.in");
+  
+  });
+
   it("marks password reveal controls as input icon buttons", () => {
     for (const source of authFiles) {
       expect(source).toContain("input-icon-button");

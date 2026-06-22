@@ -184,11 +184,10 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
 
         <div className="mt-6 text-center">
           <p className="text-xs text-text-secondary">
-            Powered by{" "}
-            <a href="https://www.buzyhub.in" target="_blank" className="text-primary hover:underline">
-              Buzyhub.in
+            Powered by BracketDex Technologies{" "}
+            <a href="https://www.BracketDexTechnologies.in" target="_blank" className="text-primary hover:underline">
+              BracketDexTechnologies.in
             </a>{" "}
-            | Pramod Ranpise
           </p>
         </div>
       </div>
