@@ -2,6 +2,7 @@
 
 const SESSION_KEY = "rms.session";
 const LEGACY_SESSION_KEY = "rms.tabSession";
+const MFA_CHALLENGE_KEY = "rms.mfaChallenge";
 
 export function getTabSessionToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -37,6 +38,33 @@ export function clearTabSessionToken(): void {
   try {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(LEGACY_SESSION_KEY);
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+}
+
+export function getMfaChallengeToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(MFA_CHALLENGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setMfaChallengeToken(token: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(MFA_CHALLENGE_KEY, token);
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+}
+
+export function clearMfaChallengeToken(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(MFA_CHALLENGE_KEY);
   } catch {
     // Storage can be unavailable in restricted browser contexts.
   }

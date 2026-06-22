@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   buildPersonaNavigation,
   buildPrincipalFromLegacySession,
@@ -9,6 +9,19 @@ import {
 import type { UserRole } from "@/lib/role-access";
 
 const SOCIETY_ID = "society_a";
+const previousMfaEnforcement = process.env.MFA_ENFORCEMENT_ENABLED;
+
+beforeAll(() => {
+  process.env.MFA_ENFORCEMENT_ENABLED = "true";
+});
+
+afterAll(() => {
+  if (previousMfaEnforcement === undefined) {
+    delete process.env.MFA_ENFORCEMENT_ENABLED;
+  } else {
+    process.env.MFA_ENFORCEMENT_ENABLED = previousMfaEnforcement;
+  }
+});
 
 describe("mapLegacyRoleToSocietyRoles", () => {
   const cases: Array<[UserRole, string]> = [
@@ -105,6 +118,36 @@ describe("resolveAllowedActions", () => {
 });
 
 describe("buildPersonaNavigation", () => {
+  it("shows all management navigation only after a chairman completes MFA", () => {
+    const unverified = buildPersonaNavigation({
+      subject: "chairman_1",
+      societyId: SOCIETY_ID,
+      role: "chairman",
+      mfaVerified: false,
+    });
+    const verified = buildPersonaNavigation({
+      subject: "chairman_1",
+      societyId: SOCIETY_ID,
+      role: "chairman",
+      mfaVerified: true,
+    });
+    const managementLinks = (result: ReturnType<typeof buildPersonaNavigation>) =>
+      result.navigation.sections.find((section) => section.title === "MANAGEMENT")?.items.map((item) => item.href) ?? [];
+
+    expect(managementLinks(unverified)).toEqual(["/reminders"]);
+    expect(managementLinks(verified)).toEqual(expect.arrayContaining([
+      "/members",
+      "/tenants",
+      "/move-events",
+      "/vendors",
+      "/assets",
+      "/reminders",
+      "/credentials",
+      "/activity-log",
+      "/settings",
+    ]));
+  });
+
   it("builds guard-first navigation for watchmen", () => {
     const result = buildPersonaNavigation({
       subject: "guard_1",

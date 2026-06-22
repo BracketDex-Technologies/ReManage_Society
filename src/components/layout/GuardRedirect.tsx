@@ -15,6 +15,7 @@ export default function GuardRedirect() {
           subject: user.id || user.email || "user",
           societyId: user.societyId,
           role: user.role,
+          mfaVerified: user.mfaVerified,
         }
       : null,
   );

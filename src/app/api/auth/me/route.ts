@@ -40,6 +40,7 @@ export async function GET() {
       society: user.society,
       joinCode: user.society?.joinCode,
       noFlatLinked: !(user.flatId || resolvedFlat),
+      mfaVerified: session.mfaVerified === true,
     },
   });
 }

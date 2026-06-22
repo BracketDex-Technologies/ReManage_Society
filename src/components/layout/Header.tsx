@@ -62,7 +62,7 @@ export default function Header({
   const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
   const personaNav = usePersonaNav(
     user.societyId
-      ? { subject: user.id || user.email || "user", societyId: user.societyId, role: userRole }
+      ? { subject: user.id || user.email || "user", societyId: user.societyId, role: userRole, mfaVerified: user.mfaVerified }
       : null,
   );
   const personaLabel = roleLabels[userRole] || (personaNav ? getPersonaLabel(personaNav.persona) : userRole);

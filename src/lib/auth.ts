@@ -1,7 +1,13 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
 import { prisma } from "./prisma";
-import { encryptSession, decryptSession } from "./session";
+import {
+  createMfaPendingPayload,
+  createVerifiedMfaPayload,
+  decryptSession,
+  encryptSession,
+  type SessionIdentity,
+} from "./session";
 import type { SessionPayload } from "./session";
 
 export type { SessionPayload };
@@ -18,10 +24,10 @@ export async function createSession(
     flatId?: string | null;
     accessToken?: string;
   },
-  options: { persistCookie?: boolean } = {},
+  options: { persistCookie?: boolean; mfaPending?: boolean; mfaVerified?: boolean } = {},
 ): Promise<string> {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const sessionToken = await encryptSession({
+  const identity: SessionIdentity = {
     userId: user.id,
     societyId: user.societyId || "",
     role: user.role,
@@ -29,8 +35,13 @@ export async function createSession(
     email: user.email,
     flatId: user.flatId || "",
     accessToken: user.accessToken,
-    expiresAt,
-  });
+  };
+  const payload = options.mfaPending
+    ? createMfaPendingPayload(identity)
+    : options.mfaVerified
+      ? createVerifiedMfaPayload(identity)
+      : { ...identity, mfaPending: false, mfaVerified: false, expiresAt };
+  const sessionToken = await encryptSession(payload);
 
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0] || "unknown";
@@ -74,7 +85,7 @@ export async function createSession(
     cookieStore.set("session", sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      expires: expiresAt,
+      expires: payload.expiresAt,
       sameSite: "lax",
       path: "/",
     });

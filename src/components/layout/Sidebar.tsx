@@ -63,6 +63,7 @@ export default function Sidebar({
           subject: userId || user.id || user.email || "user",
           societyId: societyId || user.societyId || "",
           role: userRole,
+          mfaVerified: user.mfaVerified,
         }
       : null,
   );
