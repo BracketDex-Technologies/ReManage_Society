@@ -1,6 +1,13 @@
 import { getSession } from "@/lib/auth";
+import { getResidentFlatForSession } from "@/lib/resident-flat";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
+import {
+  decodeDocumentCategory,
+  encodeDocumentCategory,
+  resolveDocumentVisibility,
+  type DocumentScope,
+} from "@society/community-core";
 
 
 import {
@@ -15,6 +22,9 @@ import { shimOrFallback } from "@/lib/api/nest-shim";
 const LEGACY_ROUTE = "/api/documents";
 const NEST_GET = "/api/v1/community/documents/list";
 const NEST_POST = "/api/v1/community/documents/upload";
+const COMMITTEE_ROLES = new Set(["chairman", "secretary", "treasurer"]);
+const RESIDENT_ROLES = new Set(["member", "tenant"]);
+const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
 
 async function legacyGET() {
   const session = await getSession();
@@ -22,12 +32,35 @@ async function legacyGET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const flat = RESIDENT_ROLES.has(session.role) ? await getResidentFlatForSession(session) : null;
   const documents = await prisma.document.findMany({
     where: { societyId: session!.societyId },
     orderBy: { createdAt: "desc" },
   });
 
-  return Response.json({ documents });
+  const visibleDocuments = documents
+    .map((document) => {
+      const decoded = decodeDocumentCategory(document.category);
+      return {
+        ...document,
+        category: decoded.category,
+        scope: decoded.scope,
+        ownerRef: decoded.ownerRef,
+      };
+    })
+    .filter((document) =>
+      resolveDocumentVisibility({
+        scope: document.scope,
+        ownerRef: document.ownerRef,
+        viewer: {
+          userId: session.userId,
+          flatNumber: flat?.flatNumber,
+          isManager: COMMITTEE_ROLES.has(session.role),
+        },
+      }),
+    );
+
+  return Response.json({ documents: visibleDocuments });
 }
 
 async function legacyPOST(request: NextRequest) {
@@ -52,8 +85,8 @@ async function legacyPOST(request: NextRequest) {
       if (!(file instanceof File)) {
         return Response.json({ error: "A document file is required" }, { status: 400 });
       }
-      if (file.size > 3_000_000) {
-        return Response.json({ error: "Document must be under 3 MB" }, { status: 413 });
+      if (file.size > MAX_DOCUMENT_BYTES) {
+        return Response.json({ error: "Document must be under 20 MB" }, { status: 413 });
       }
 
       fileName = file.name;
@@ -68,12 +101,22 @@ async function legacyPOST(request: NextRequest) {
     if (!title || !fileName || !fileUrl) {
       return Response.json({ error: "Title, filename and url are required" }, { status: 400 });
     }
+    if (fileSize && fileSize > MAX_DOCUMENT_BYTES) {
+      return Response.json({ error: "Document must be under 20 MB" }, { status: 413 });
+    }
+
+    const scope: DocumentScope = RESIDENT_ROLES.has(session.role) ? "personal" : "society";
+    const ownerRef = scope === "personal" ? session.userId : "society";
 
     const doc = await prisma.document.create({
       data: {
         societyId: session!.societyId,
         title,
-        category: category || "general",
+        category: encodeDocumentCategory({
+          category: category || "general",
+          scope,
+          ownerRef,
+        }),
         fileName,
         fileUrl,
         fileSize: fileSize || null,

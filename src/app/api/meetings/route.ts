@@ -35,8 +35,8 @@ async function legacyPOST(request: NextRequest) {
   if (!session?.societyId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!["chairman", "secretary", "treasurer"].includes(session.role)) {
-    return Response.json({ error: "Only committee members can record meeting minutes" }, { status: 403 });
+  if (session.role !== "chairman") {
+    return Response.json({ error: "Only chairman can record meeting minutes" }, { status: 403 });
   }
 
   try {
@@ -74,4 +74,4 @@ async function legacyPOST(request: NextRequest) {
 }
 
 export const GET = shimOrFallback({ legacyRoute: "/api/meetings", nestPath: "/api/v1/community/meetings", method: "GET" }, legacyGET);
-export const POST = shimOrFallback({ legacyRoute: "/api/meetings", nestPath: "/api/v1/community/meetings", method: "POST", allowedRoles: ["chairman", "secretary", "treasurer"] }, legacyPOST);
+export const POST = shimOrFallback({ legacyRoute: "/api/meetings", nestPath: "/api/v1/community/meetings", method: "POST", allowedRoles: ["chairman"] }, legacyPOST);

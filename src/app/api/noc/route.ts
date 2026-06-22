@@ -4,6 +4,7 @@ import {
   listSocietyNocRequests,
   requestSocietyNoc,
 } from "@/lib/noc-service";
+import { getResidentFlatForSession } from "@/lib/resident-flat";
 import { NOC_PURPOSES } from "@society/operations-core";
 import { logCreated } from "@/lib/activity-log";
 
@@ -23,15 +24,18 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const residentFlat = isResident ? await getResidentFlatForSession(session) : null;
+  const residentFlatId = residentFlat?.id || "";
+
   let eligibility = null;
-  if (session.flatId && isResident) {
-    eligibility = await getFlatNocEligibility(session.societyId, session.flatId);
+  if (residentFlatId) {
+    eligibility = await getFlatNocEligibility(session.societyId, residentFlatId);
   }
 
   const requests = await listSocietyNocRequests({
     societyId: session.societyId,
     requestedBy: isResident ? session.userId : undefined,
-    flatId: isResident && session.flatId ? session.flatId : undefined,
+    flatId: isResident && residentFlatId ? residentFlatId : undefined,
     limit: isCommittee ? 100 : 20,
   });
 
@@ -40,7 +44,7 @@ export async function GET() {
     eligibility,
     requests,
     viewerRole: session.role,
-    canRequest: isResident && Boolean(session.flatId),
+    canRequest: isResident && Boolean(residentFlatId),
   });
 }
 
@@ -49,7 +53,8 @@ export async function POST(request: Request) {
   if (!session?.societyId || !RESIDENT_ROLES.has(session.role)) {
     return Response.json({ error: "Residents only" }, { status: 403 });
   }
-  if (!session.flatId) {
+  const residentFlat = await getResidentFlatForSession(session);
+  if (!residentFlat) {
     return Response.json({ error: "Your account is not linked to a flat" }, { status: 400 });
   }
 
@@ -64,7 +69,7 @@ export async function POST(request: Request) {
 
     const result = await requestSocietyNoc({
       societyId: session.societyId,
-      flatId: session.flatId,
+      flatId: residentFlat.id,
       requestedBy: session.userId,
       requesterName: session.name || session.email,
       purpose,
@@ -84,7 +89,7 @@ export async function POST(request: Request) {
 
     await logCreated("noc", result.noc!.id, `NOC ${result.noc!.certificateNo}`, {
       purpose,
-      flatId: session.flatId,
+      flatId: residentFlat.id,
       reused: result.reused,
     });
 

@@ -73,7 +73,7 @@ describe("resolveDocumentVisibility", () => {
     ).toBe(true);
   });
 
-  it("shows personal documents only to the owner or a manager", () => {
+  it("shows personal documents only to the owner", () => {
     expect(
       resolveDocumentVisibility({ scope: "personal", ownerRef: "u1", viewer: resident }),
     ).toBe(true);
@@ -82,7 +82,7 @@ describe("resolveDocumentVisibility", () => {
     ).toBe(false);
     expect(
       resolveDocumentVisibility({ scope: "personal", ownerRef: "u2", viewer: manager }),
-    ).toBe(true);
+    ).toBe(false);
   });
 });
 

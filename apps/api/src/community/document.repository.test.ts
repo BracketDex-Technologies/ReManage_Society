@@ -88,6 +88,6 @@ describe("DocumentRepository", () => {
       userId: "c1",
       isManager: true,
     });
-    expect(manager).toHaveLength(5);
+    expect(manager.map((d) => d.id).sort()).toEqual(["a101_doc", "b202_doc", "society_doc"]);
   });
 });
