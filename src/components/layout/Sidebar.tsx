@@ -17,7 +17,18 @@ import { useUser } from "@/lib/user-context";
 import { usePersonaNav } from "@/lib/navigation/use-persona-nav";
 import { logoutCurrentTab } from "@/lib/client-session";
 import { getNavIcon } from "@/lib/navigation/nav-icons";
-import { getPersonaLabel } from "@/lib/navigation/persona-labels";
+
+const roleLabels: Record<string, string> = {
+  chairman: "Chairman",
+  secretary: "Secretary",
+  treasurer: "Treasurer",
+  member: "Flat Member",
+  tenant: "Tenant",
+  guard: "Security Guard",
+  watchman: "Watchman",
+  vendor_staff: "Vendor",
+  facility_manager: "Facility Manager",
+};
 
 interface SidebarProps {
   societyName?: string;
@@ -64,9 +75,8 @@ export default function Sidebar({
   const visibleSections = personaNav?.navigation.sections ?? [];
   const displaySocietyName = societyName?.trim() || "ReManage";
   const displaySocietyAddress = societyAddress?.trim() || "Society";
-  const displayUserRole = personaNav
-    ? t(getPersonaLabel(personaNav.persona))
-    : t(userRole.charAt(0).toUpperCase() + userRole.slice(1).replace("_", " "));
+  const displayUserRole =
+    roleLabels[userRole] || userRole.charAt(0).toUpperCase() + userRole.slice(1).replace("_", " ");
 
   const toggleSection = (title: string) => {
     setCollapsedSections((current) => ({ ...current, [title]: !current[title] }));

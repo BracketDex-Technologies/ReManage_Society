@@ -5,6 +5,7 @@ import {
   evaluateNocEligibility,
   type NocBillSnapshot,
 } from "@society/operations-core";
+import { Prisma } from "@prisma/client";
 import { pdfToDataUrl, renderNocPdf } from "@/lib/noc-pdf";
 import { prisma } from "@/lib/prisma";
 
@@ -31,16 +32,15 @@ function mapBill(bill: {
   };
 }
 
-async function nextCertificateNo(societyId: string, issuedAt: Date) {
+async function nextCertificateNo(issuedAt: Date, offset = 1) {
   const year = issuedAt.getFullYear();
   const prefix = `NOC-${year}-`;
   const count = await prisma.societyNocRequest.count({
     where: {
-      societyId,
       certificateNo: { startsWith: prefix },
     },
   });
-  return `${prefix}${String(count + 1).padStart(5, "0")}`;
+  return `${prefix}${String(count + offset).padStart(5, "0")}`;
 }
 
 function buildVerificationHash(input: {
@@ -145,26 +145,45 @@ export async function requestSocietyNoc(input: {
 
   const issuedAt = now;
   const validUntil = new Date(issuedAt.getTime() + NOC_VALIDITY_DAYS * 86_400_000);
-  const certificateNo = await nextCertificateNo(input.societyId, issuedAt);
   const residentName =
     input.requesterName || flat.ownerName || flat.tenantName || "Resident";
 
-  const draft = await prisma.societyNocRequest.create({
-    data: {
-      societyId: input.societyId,
-      flatId: input.flatId,
-      requestedBy: input.requestedBy,
-      requesterName: residentName,
-      purpose,
-      status: "issued",
-      certificateNo,
-      totalDuesAmount: 0,
-      verificationHash: "pending",
-      issuedAt,
-      validUntil,
-      notes: input.notes?.trim() || null,
-    },
-  });
+  let certificateNo = "";
+  let draft = null;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    certificateNo = await nextCertificateNo(issuedAt, attempt);
+    try {
+      draft = await prisma.societyNocRequest.create({
+        data: {
+          societyId: input.societyId,
+          flatId: input.flatId,
+          requestedBy: input.requestedBy,
+          requesterName: residentName,
+          purpose,
+          status: "issued",
+          certificateNo,
+          totalDuesAmount: 0,
+          verificationHash: "pending",
+          issuedAt,
+          validUntil,
+          notes: input.notes?.trim() || null,
+        },
+      });
+      break;
+    } catch (error) {
+      const isCertificateCollision =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        String(error.meta?.target || "").includes("certificateNo");
+      if (!isCertificateCollision || attempt === 5) {
+        throw error;
+      }
+    }
+  }
+
+  if (!draft) {
+    throw new Error("Could not generate a unique NOC certificate number");
+  }
 
   const verificationHash = buildVerificationHash({
     id: draft.id,

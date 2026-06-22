@@ -65,7 +65,7 @@ export default function Header({
       ? { subject: user.id || user.email || "user", societyId: user.societyId, role: userRole }
       : null,
   );
-  const personaLabel = personaNav ? getPersonaLabel(personaNav.persona) : roleLabels[userRole] || userRole;
+  const personaLabel = roleLabels[userRole] || (personaNav ? getPersonaLabel(personaNav.persona) : userRole);
 
   // Close on outside click
   useEffect(() => {
@@ -249,12 +249,12 @@ export default function Header({
                 {/* Menu Items */}
                 <div className="p-1.5">
                   <button
-                    onClick={() => { setShowProfile(false); router.push("/settings"); }}
+                    onClick={() => { setShowProfile(false); router.push("/profile"); }}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-text-primary transition-colors hover:bg-[#FEFDDF] dark:hover:bg-[#171717]"
                   >
                     <User className="w-4 h-4 text-text-tertiary" /> {t("My Profile")}
                   </button>
-                  {["chairman", "secretary", "treasurer"].includes(userRole) && (
+                  {userRole === "chairman" && (
                     <button
                       onClick={() => { setShowProfile(false); router.push("/settings"); }}
                       className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-text-primary transition-colors hover:bg-[#FEFDDF] dark:hover:bg-[#171717]"

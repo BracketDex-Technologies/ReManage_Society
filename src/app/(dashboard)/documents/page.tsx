@@ -25,6 +25,7 @@ const categoryConfig: Record<string, { icon: React.ComponentType<{className?: st
   financial: { icon: Settings, color: "text-orange-700 bg-orange-100", label: "Financial" },
   general: { icon: FolderOpen, color: "text-gray-700 bg-gray-100", label: "General" }
 };
+const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
 
 export default function DocumentsPage() {
   const { t } = useI18n();
@@ -35,6 +36,8 @@ export default function DocumentsPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [form, setForm] = useState({ title: "", category: "general" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -45,15 +48,50 @@ export default function DocumentsPage() {
       .then((d) => setDocuments(d.documents || []))
       .catch(() => toastT.error("Failed to load"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [toastT]);
 
   useEffect(() => { fetchDocuments(); }, [fetchDocuments]);
+
+  useEffect(() => {
+    if (!previewDoc) {
+      setPreviewUrl("");
+      setPreviewLoading(false);
+      return;
+    }
+
+    let objectUrl = "";
+    const controller = new AbortController();
+    setPreviewLoading(true);
+    fetch(`/api/documents/${previewDoc.id}`, {
+      headers: getAuthHeaders(),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Preview failed");
+        objectUrl = URL.createObjectURL(await response.blob());
+        setPreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          toastT.error("Could not open document");
+          setPreviewDoc(null);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPreviewLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [previewDoc, toastT]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 3_000_000) {
-        toastT.error("Document must be under 3 MB");
+      if (file.size > MAX_DOCUMENT_BYTES) {
+        toastT.error("Document must be under 20 MB");
         return;
       }
       setSelectedFile(file);
@@ -61,6 +99,7 @@ export default function DocumentsPage() {
   };
 
   const isImagePreview = (doc: Document) => doc.fileUrl.startsWith("data:image") || /\.(png|jpe?g|webp|gif)$/i.test(doc.fileName);
+  const isPdfPreview = (doc: Document) => doc.fileUrl.startsWith("data:application/pdf") || /\.pdf$/i.test(doc.fileName);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,7 +170,7 @@ export default function DocumentsPage() {
           </div>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary btn-sm">
-          <Plus className="w-4 h-4" /> Upload Document
+          <Plus className="w-4 h-4" /> {t("Upload Document")}
         </button>
       </div>
 
@@ -203,7 +242,7 @@ export default function DocumentsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex shrink-0 items-center justify-between gap-4">
-              <h3 id="upload-document-title" className="text-lg font-semibold">Upload Document</h3>
+              <h3 id="upload-document-title" className="text-lg font-semibold">{t("Upload Document")}</h3>
               <button type="button" onClick={() => setShowForm(false)} className="rounded-lg p-2 text-text-secondary hover:bg-surface" aria-label="Close upload document form">
                 <X className="h-5 w-5" />
               </button>
@@ -222,6 +261,7 @@ export default function DocumentsPage() {
                 <div>
                   <label className="label">File *</label>
                   <input type="file" className="input file:btn file:btn-secondary file:border-0 file:mr-4 file:py-1 file:px-3 text-sm" onChange={handleFileChange} required />
+                  <p className="mt-1 text-[10px] font-semibold text-text-tertiary">PDF, images, and documents up to 20 MB</p>
                   {selectedFile && <p className="mt-1 text-xs text-text-secondary truncate">{selectedFile.name} ({formatSize(selectedFile.size)})</p>}
                 </div>
               </div>
@@ -247,10 +287,24 @@ export default function DocumentsPage() {
               </button>
             </div>
             <div className="flex-1 overflow-hidden rounded-xl border border-border bg-surface">
-              {isImagePreview(previewDoc) ? (
-                <img src={previewDoc.fileUrl} alt={previewDoc.title} className="h-full w-full object-contain" />
+              {previewLoading || !previewUrl ? (
+                <div className="flex h-full items-center justify-center">
+                  <div className="spinner" />
+                </div>
+              ) : isImagePreview(previewDoc) ? (
+                <img src={previewUrl} alt={previewDoc.title} className="h-full w-full object-contain" />
+              ) : isPdfPreview(previewDoc) ? (
+                <object data={previewUrl} type="application/pdf" className="h-full w-full bg-white">
+                  <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-text-secondary">
+                    <FileText className="h-10 w-10 opacity-50" />
+                    <p>PDF preview is blocked by this browser.</p>
+                    <a href={previewUrl} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
+                      Open PDF
+                    </a>
+                  </div>
+                </object>
               ) : (
-                <iframe src={previewDoc.fileUrl} title={previewDoc.title} className="h-full w-full bg-white" />
+                <iframe src={previewUrl} title={previewDoc.title} className="h-full w-full bg-white" />
               )}
             </div>
           </div>

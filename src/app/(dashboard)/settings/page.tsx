@@ -17,18 +17,30 @@ interface GuardItem {
   isActive: boolean;
 }
 
+interface CommitteeAccount {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  createdAt: string;
+}
+
 export default function SettingsPage() {
   const { t } = useI18n();
   const toastT = useTranslatedToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [flatsLoading, setFlatsLoading] = useState(false);
-  const [tab, setTab] = useState<"profile" | "flats" | "guards" | "roles">("profile");
+  const [tab, setTab] = useState<"profile" | "flats" | "guards" | "committee" | "roles">("profile");
   const [joinCode, setJoinCode] = useState("");
   const [flats, setFlats] = useState<FlatSetupItem[]>([]);
   const [guards, setGuards] = useState<GuardItem[]>([]);
   const [guardsLoading, setGuardsLoading] = useState(false);
   const [guardSaving, setGuardSaving] = useState(false);
+  const [committeeAccounts, setCommitteeAccounts] = useState<CommitteeAccount[]>([]);
+  const [committeeLoading, setCommitteeLoading] = useState(false);
+  const [committeeSaving, setCommitteeSaving] = useState(false);
   const [guardForm, setGuardForm] = useState({
     name: "",
     phone: "",
@@ -36,6 +48,13 @@ export default function SettingsPage() {
     gateAssignment: "",
     shiftStart: "",
     shiftEnd: "",
+  });
+  const [committeeForm, setCommitteeForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    role: "secretary",
   });
   const [form, setForm] = useState({
     name: "",
@@ -94,9 +113,19 @@ export default function SettingsPage() {
       .finally(() => setGuardsLoading(false));
   };
 
+  const fetchCommitteeAccounts = () => {
+    setCommitteeLoading(true);
+    fetch("/api/credentials?role=admins&limit=50")
+      .then((r) => r.json())
+      .then((d) => setCommitteeAccounts(d.users || []))
+      .catch(() => toastT.error("Failed to load committee accounts"))
+      .finally(() => setCommitteeLoading(false));
+  };
+
   useEffect(() => {
     fetchFlats();
     fetchGuards();
+    fetchCommitteeAccounts();
   }, []);
 
   const handleSave = async () => {
@@ -175,6 +204,42 @@ export default function SettingsPage() {
     }
   };
 
+  const createCommitteeAccount = async () => {
+    if (!isOptionalTenDigitPhone(committeeForm.phone)) {
+      toastT.error("Enter a valid 10-digit phone number");
+      return;
+    }
+    if (!committeeForm.name.trim() || !committeeForm.email.trim() || !committeeForm.password) {
+      toastT.error("Name, email, and password are required");
+      return;
+    }
+    if (committeeForm.password.length < 6) {
+      toastT.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setCommitteeSaving(true);
+    try {
+      const res = await fetch("/api/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_committee", ...committeeForm }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toastT.success(`${committeeForm.role} account created`);
+        setCommitteeForm({ name: "", email: "", phone: "", password: "", role: "secretary" });
+        fetchCommitteeAccounts();
+      } else {
+        toastT.error(data.error || "Failed to create account");
+      }
+    } catch {
+      toastT.error("Something went wrong");
+    } finally {
+      setCommitteeSaving(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center py-12"><div className="spinner" /></div>;
   }
@@ -197,11 +262,12 @@ export default function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white border border-border rounded-lg p-0.5 mb-6 w-fit">
+      <div className="flex flex-wrap gap-1 bg-white border border-border rounded-lg p-0.5 mb-6 w-fit">
         {([
           { id: "profile" as const, label: "Society Profile", icon: Building2 },
           { id: "flats" as const, label: "Flat Setup", icon: Home },
           { id: "guards" as const, label: "Gate Staff", icon: UserCheck },
+          { id: "committee" as const, label: "Committee Logins", icon: Shield },
           { id: "roles" as const, label: "Roles & Access", icon: Shield },
         ]).map((t) => (
           <button
@@ -391,6 +457,88 @@ export default function SettingsPage() {
                         {guard.isActive ? "Pause" : "Approve"}
                       </button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : tab === "committee" ? (
+        <div className="space-y-6">
+          <div className="card">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div>
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-primary" />
+                  Committee Logins
+                </h3>
+                <p className="text-xs text-text-secondary mt-1">
+                  Chairman can create secretary and treasurer accounts with email and password.
+                </p>
+              </div>
+              <button onClick={fetchCommitteeAccounts} className="btn btn-secondary btn-sm">
+                <RefreshCw className={`w-4 h-4 ${committeeLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="label">Full Name</label>
+                <input className="input" value={committeeForm.name} onChange={(e) => setCommitteeForm({ ...committeeForm, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">Role</label>
+                <select className="select" value={committeeForm.role} onChange={(e) => setCommitteeForm({ ...committeeForm, role: e.target.value })}>
+                  <option value="secretary">Secretary</option>
+                  <option value="treasurer">Treasurer</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Phone</label>
+                <input {...phoneInputProps} className="input" value={committeeForm.phone} onChange={(e) => setCommitteeForm({ ...committeeForm, phone: sanitizePhoneInput(e.target.value) })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label">Login Email</label>
+                <input type="email" className="input" value={committeeForm.email} onChange={(e) => setCommitteeForm({ ...committeeForm, email: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">Password</label>
+                <input type="password" className="input" minLength={6} value={committeeForm.password} onChange={(e) => setCommitteeForm({ ...committeeForm, password: e.target.value })} />
+              </div>
+            </div>
+
+            <button onClick={createCommitteeAccount} disabled={committeeSaving} className="btn btn-primary mt-4">
+              {committeeSaving ? <div className="spinner !w-4 !h-4 !border-white/30 !border-t-white" /> : <Plus className="w-4 h-4" />}
+              Create Committee Login
+            </button>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-sm">Current Committee Accounts</h3>
+              <span className="text-xs text-text-secondary">{committeeAccounts.length} records</span>
+            </div>
+            {committeeAccounts.length === 0 ? (
+              <div className="text-center py-10 border border-dashed border-border rounded-xl">
+                <Shield className="w-8 h-8 mx-auto text-text-tertiary opacity-40 mb-3" />
+                <p className="text-sm font-medium text-text-primary">No committee accounts found</p>
+                <p className="text-xs text-text-secondary mt-1">Create secretary and treasurer logins above.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {committeeAccounts.map((account) => (
+                  <div key={account.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border p-4">
+                    <div>
+                      <p className="text-sm font-bold text-text-primary">{account.name}</p>
+                      <p className="text-xs text-text-secondary mt-1">
+                        {account.email}
+                        {account.phone ? ` · ${account.phone}` : ""}
+                      </p>
+                    </div>
+                    <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-primary/10 text-primary uppercase">
+                      {account.role}
+                    </span>
                   </div>
                 ))}
               </div>

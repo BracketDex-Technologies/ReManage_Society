@@ -5,6 +5,7 @@ import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
 import { Plus, FileText, Calendar, Image as ImageIcon, Trash2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/client-session";
+import { useUser } from "@/lib/user-context";
 
 interface Meeting {
   id: string;
@@ -30,6 +31,7 @@ const typeConfig: Record<string, { label: string; color: string }> = {
 export default function MeetingsPage() {
   const { t } = useI18n();
   const toastT = useTranslatedToast();
+  const { user } = useUser();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -45,6 +47,7 @@ export default function MeetingsPage() {
     decisions: "",
     photoUrls: [] as string[],
   });
+  const canRecordMeeting = user.role === "chairman";
 
   const fetchMeetings = useCallback(() => {
     setLoading(true);
@@ -53,7 +56,7 @@ export default function MeetingsPage() {
       .then((d) => setMeetings(d.meetings || []))
       .catch(() => toastT.error("Failed to load"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [toastT]);
 
   useEffect(() => { fetchMeetings(); }, [fetchMeetings]);
 
@@ -133,9 +136,11 @@ export default function MeetingsPage() {
             <p className="text-sm text-text-secondary mt-0.5">{meetings.length} {t("meetings recorded")}</p>
           </div>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn btn-primary btn-sm">
-          <Plus className="w-4 h-4" /> Record Meeting
-        </button>
+        {canRecordMeeting && (
+          <button onClick={() => setShowForm(true)} className="btn btn-primary btn-sm">
+            <Plus className="w-4 h-4" /> {t("Record Meeting")}
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -207,7 +212,7 @@ export default function MeetingsPage() {
       )}
 
       {/* Record Meeting Modal */}
-      {showForm && (
+      {showForm && canRecordMeeting && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal-content !max-w-2xl !max-h-[85dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4">Record Meeting Minutes</h3>

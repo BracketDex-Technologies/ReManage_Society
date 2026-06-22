@@ -354,12 +354,12 @@ export function resolveDocumentVisibility(input: {
   ownerRef: string;
   viewer: DocumentViewer;
 }): boolean {
-  if (input.viewer.isManager || input.scope === "society") {
+  if (input.scope === "society") {
     return true;
   }
 
   if (input.scope === "flat") {
-    return Boolean(input.viewer.flatNumber) && input.viewer.flatNumber === input.ownerRef;
+    return input.viewer.isManager || (Boolean(input.viewer.flatNumber) && input.viewer.flatNumber === input.ownerRef);
   }
 
   return input.viewer.userId === input.ownerRef;
