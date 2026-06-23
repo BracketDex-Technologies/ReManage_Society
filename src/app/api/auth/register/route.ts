@@ -63,6 +63,17 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      await tx.societyMembership.create({
+        data: {
+          userId: user.id,
+          societyId: society.id,
+          productRole: "chairman",
+          permissionRole: "society_admin",
+          status: "active",
+          activatedAt: new Date(),
+        },
+      });
+
       return { user, society };
     });
 

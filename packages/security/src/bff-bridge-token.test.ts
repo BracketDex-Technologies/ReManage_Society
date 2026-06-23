@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mintBffBridgeToken, verifyBffBridgeToken } from "./bff-bridge-token.ts";
+import { mapLegacyRoleToSocietyRoles, mintBffBridgeToken, verifyBffBridgeToken } from "./bff-bridge-token.ts";
 
 describe("bff-bridge-token", () => {
   it("mints and verifies a bridge token from legacy session claims", async () => {
@@ -39,5 +39,24 @@ describe("bff-bridge-token", () => {
 
     const principal = await verifyBffBridgeToken(token, secret);
     expect(principal.memberships[0]?.roles).toEqual(["guard"]);
+  });
+
+  it("preserves member and tenant permission roles in bridge claims", async () => {
+    const secret = "test-bridge-secret-at-least-32-chars-long";
+    const [memberToken, tenantToken] = await Promise.all([
+      mintBffBridgeToken({ subject: "member_1", societyId: "society_a", role: "member" }, secret),
+      mintBffBridgeToken({ subject: "tenant_1", societyId: "society_a", role: "tenant" }, secret),
+    ]);
+
+    await expect(verifyBffBridgeToken(memberToken, secret)).resolves.toMatchObject({
+      memberships: [{ roles: ["member"] }],
+    });
+    await expect(verifyBffBridgeToken(tenantToken, secret)).resolves.toMatchObject({
+      memberships: [{ roles: ["tenant"] }],
+    });
+  });
+
+  it("accepts an internal society_admin permission role in session claims", () => {
+    expect(mapLegacyRoleToSocietyRoles("society_admin")).toEqual(["society_admin"]);
   });
 });

@@ -278,6 +278,7 @@ export default function CredentialsPage() {
               <select className="select" value={committeeForm.role} onChange={(e) => setCommitteeForm({ ...committeeForm, role: e.target.value })}>
                 <option value="secretary">Secretary</option>
                 <option value="treasurer">Treasurer</option>
+                <option value="guard">Guard</option>
               </select>
             </div>
             <div className="md:col-span-2 md:col-start-4 md:row-start-1">

@@ -1,9 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { createSession } from "@/lib/auth";
 import { normalizeJoinCode } from "@/lib/join-code";
 import { ensureUnitForFlat } from "@/domain/unit-migration";
-import { refreshUnitOccupancyStatus } from "@/domain/occupancy-lifecycle";
 import { RELATIONSHIP_TYPES } from "@/domain/occupancy";
+import { mapProductRoleToPermissionRole } from "@/lib/membership";
 import bcrypt from "bcryptjs";
 import { NextRequest } from "next/server";
 
@@ -147,11 +146,6 @@ export async function POST(request: NextRequest) {
     const parsedMoveInDate = parseOptionalDate(moveInDate);
     const parsedAgreementEndDate = parseOptionalDate(agreementEndDate);
     const cleanVehicleCount = Math.max(0, Number(vehicleCount || 0) || 0);
-    const shouldBePrimary =
-      typeof isPrimaryOccupant === "boolean"
-        ? isPrimaryOccupant
-        : !activeRelationships.some((item) => item.isPrimaryOccupant);
-
     const user = await prisma.$transaction(async (tx) => {
       const person = await tx.person.create({
         data: {
@@ -175,12 +169,17 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      if (shouldBePrimary) {
-        await tx.unitOccupancy.updateMany({
-          where: { unitId: unit.id, isActive: true, isPrimaryOccupant: true },
-          data: { isPrimaryOccupant: false },
-        });
-      }
+      await tx.societyMembership.create({
+        data: {
+          userId: created.id,
+          societyId: society.id,
+          productRole: cleanRole,
+          permissionRole: mapProductRoleToPermissionRole(cleanRole),
+          status: "pending",
+          flatId: legacyFlat.id,
+          personId: person.id,
+        },
+      });
 
       await tx.unitOccupancy.create({
         data: {
@@ -192,53 +191,16 @@ export async function POST(request: NextRequest) {
           moveInDate: parsedMoveInDate,
           agreementEndDate: parsedAgreementEndDate,
           vehicleCount: cleanVehicleCount,
-          isPrimaryOccupant: shouldBePrimary,
+          isPrimaryOccupant: false,
+          occupancyStatus: "PENDING",
         },
       });
-
-      if (["OWNER", "CO_OWNER"].includes(requestedRelationship)) {
-        await tx.flat.update({
-          where: { id: legacyFlat.id },
-          data: {
-            ownerName: legacyFlat.ownerName || cleanName,
-            contact: legacyFlat.contact || cleanPhone,
-            email: legacyFlat.email || cleanEmail,
-            currentOccupant: legacyFlat.currentOccupant === "vacant" ? "owner" : legacyFlat.currentOccupant,
-          },
-        });
-      } else if (requestedRelationship === "TENANT") {
-        await tx.tenant.create({
-          data: {
-            flatId: legacyFlat.id,
-            societyId: society.id,
-            name: cleanName,
-            phone: cleanPhone || "",
-            email: cleanEmail,
-            leaseStart: parsedMoveInDate || new Date(),
-            leaseEnd: parsedAgreementEndDate,
-            registeredBy: created.id,
-            userId: created.id,
-            status: "active",
-          },
-        });
-
-        await tx.flat.update({
-          where: { id: legacyFlat.id },
-          data: {
-            tenantName: legacyFlat.tenantName || cleanName,
-            currentOccupant: "tenant",
-          },
-        });
-      }
 
       return created;
     });
 
-    await refreshUnitOccupancyStatus(unit.id);
-
-    await createSession(user);
-
     return Response.json({
+      pending: true,
       user: {
         id: user.id,
         name: user.name,

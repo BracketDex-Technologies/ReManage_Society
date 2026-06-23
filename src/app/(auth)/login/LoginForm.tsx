@@ -5,16 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { Eye, EyeOff, Shield } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { setTabSessionToken } from "@/lib/client-session";
 import { getDefaultRoute } from "@/lib/role-access";
 
-interface LoginFormProps {
-  keycloakEnabled: boolean;
-}
-
-export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
+export default function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -34,8 +30,6 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
     if (!error) return;
 
     const messages: Record<string, string> = {
-      OIDC_EXCHANGE_FAILED: t("oidcExchangeFailed"),
-      keycloak_unavailable: t("keycloakUnavailable"),
       access_denied: t("accessDenied"),
       invalid_credentials: t("invalidCredentials"),
       missing_fields: t("missingFields"),
@@ -147,24 +141,6 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
             </button>
           </form>
 
-          {keycloakEnabled ? (
-            <>
-              <div className="my-6 flex items-center justify-center space-x-4">
-                <div className="h-px bg-border/50 w-full" />
-                <span className="text-xs text-text-tertiary uppercase font-bold tracking-wider">OR</span>
-                <div className="h-px bg-border/50 w-full" />
-              </div>
-
-              <a
-                href="/api/auth/login"
-                className="btn btn-secondary w-full btn-lg flex items-center justify-center gap-2"
-              >
-                <Shield className="w-5 h-5 text-primary" />
-                {t("signInWithKeycloak")}
-              </a>
-            </>
-          ) : null}
-
           <div className="mt-4 text-center">
             <p className="text-sm text-text-secondary">
               {t("noAccount")}{" "}
@@ -184,7 +160,7 @@ export default function LoginForm({ keycloakEnabled }: LoginFormProps) {
 
         <div className="mt-6 text-center">
           <p className="text-xs text-text-secondary">
-            Powered by BracketDex Technologies{" "}
+            Powered by{" "}
             <a href="https://www.BracketDexTechnologies.in" target="_blank" className="text-primary hover:underline">
               BracketDexTechnologies.in
             </a>{" "}

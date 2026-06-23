@@ -21,7 +21,6 @@ const publicPaths = [
   "/api/auth/login",      // JSON + HTML form login
   "/api/auth/register",
   "/api/auth/join",
-  "/api/auth/callback",   // Keycloak OIDC callback
   "/api/societies/join-code",
   "/gate",                // Guard PWA (standalone)
   "/api/guard",           // Guard API endpoints
@@ -90,6 +89,7 @@ export async function proxy(request: NextRequest) {
 
   // ── Role-Based Access Control ─────────────────────────
   const userRole = payload.role || "member";
+  const permissionRole = payload.permissionRole || userRole;
 
   if (pathname === "/") {
     const defaultRoute = getDefaultRoute(userRole);
@@ -99,7 +99,7 @@ export async function proxy(request: NextRequest) {
   // Enforce RBAC on API routes only — HTML pages use client TabSessionGate
   if (
     isApiRoute &&
-    !canAccess(userRole, pathname, {
+    !canAccess(permissionRole, pathname, {
       societyId: payload.societyId,
       subject: payload.userId,
       mfaVerified: payload.mfaVerified,

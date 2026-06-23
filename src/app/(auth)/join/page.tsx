@@ -143,6 +143,12 @@ export default function JoinPage() {
       const data = await res.json();
 
       if (res.ok) {
+        if (data.pending) {
+          toastT.success("Join request submitted for approval");
+          router.push("/login");
+          return;
+        }
+
         toastT.success("Joined society successfully");
         router.push("/dashboard");
         router.refresh();

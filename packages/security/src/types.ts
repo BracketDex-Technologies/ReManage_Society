@@ -2,6 +2,8 @@ export type SocietyRole =
   | "committee"
   | "treasurer"
   | "resident"
+  | "member"
+  | "tenant"
   | "guard"
   | "society_admin";
 

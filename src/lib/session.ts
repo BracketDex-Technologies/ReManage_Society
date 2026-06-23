@@ -21,8 +21,10 @@ function getEncodedKey(): Uint8Array {
 
 export interface SessionPayload {
   userId: string;
+  membershipId?: string;
   societyId: string;
   role: string;
+  permissionRole?: string;
   name: string;
   email: string;
   flatId?: string;

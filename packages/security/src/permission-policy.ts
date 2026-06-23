@@ -59,6 +59,32 @@ const ROLE_PERMISSIONS: Record<SocietyRole | "platform_admin", readonly Permissi
     "community:rsvp.manage",
     "community:post",
   ],
+  member: [
+    "society:directory.read",
+    "society:finance.read",
+    "operations:visitor.respond",
+    "operations:read",
+    "operations:booking.manage",
+    "operations:sos.raise",
+    "community:read",
+    "community:helpdesk.respond",
+    "community:vote.cast",
+    "community:rsvp.manage",
+    "community:post",
+  ],
+  tenant: [
+    "society:directory.read",
+    "society:finance.read",
+    "operations:visitor.respond",
+    "operations:read",
+    "operations:booking.manage",
+    "operations:sos.raise",
+    "community:read",
+    "community:helpdesk.respond",
+    "community:vote.cast",
+    "community:rsvp.manage",
+    "community:post",
+  ],
   guard: [
     "operations:gate.manage",
     "operations:read",
@@ -122,31 +148,6 @@ const ROLE_PERMISSIONS: Record<SocietyRole | "platform_admin", readonly Permissi
   ],
 };
 
-const MFA_REQUIRED_ACTIONS = new Set<PermissionAction>([
-  "audit:event.read",
-  "society:onboard",
-  "society:core.manage",
-  "society:finance.manage",
-  "society:occupancy.manage",
-  "society:import.manage",
-  "society:settings.manage",
-  "operations:manage",
-  "community:document.manage",
-  "community:governance.manage",
-]);
-
-/** MFA is enforced in production unless explicitly overridden via MFA_ENFORCEMENT_ENABLED. */
-export function isMfaEnforcementEnabled(): boolean {
-  const override = process.env.MFA_ENFORCEMENT_ENABLED?.trim().toLowerCase();
-  if (override === "true") {
-    return true;
-  }
-  if (override === "false") {
-    return false;
-  }
-  return process.env.NODE_ENV === "production";
-}
-
 export function evaluatePermission(request: PermissionRequest): PermissionDecision {
   let tenantContext;
 
@@ -158,23 +159,6 @@ export function evaluatePermission(request: PermissionRequest): PermissionDecisi
     }
 
     throw error;
-  }
-
-  if (
-    isMfaEnforcementEnabled() &&
-    MFA_REQUIRED_ACTIONS.has(request.action) &&
-    !tenantContext.mfaVerified
-  ) {
-    const wouldBeAllowed = tenantContext.roles.some((role) =>
-      ROLE_PERMISSIONS[role].includes(request.action),
-    );
-
-    if (wouldBeAllowed) {
-      return {
-        allowed: false,
-        reason: `MFA is required for ${request.action}`,
-      };
-    }
   }
 
   const allowedRole = tenantContext.roles.find((role) =>

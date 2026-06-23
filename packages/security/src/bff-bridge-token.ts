@@ -12,11 +12,13 @@ export interface BffBridgeSessionClaims {
 }
 
 const LEGACY_ROLE_TO_SOCIETY_ROLES: Record<string, readonly SocietyRole[]> = {
+  society_admin: ["society_admin"],
+  committee: ["committee"],
   chairman: ["society_admin"],
   secretary: ["committee"],
   treasurer: ["treasurer"],
-  member: ["resident"],
-  tenant: ["resident"],
+  member: ["member"],
+  tenant: ["tenant"],
   watchman: ["guard"],
   guard: ["guard"],
   vendor_staff: ["resident"],

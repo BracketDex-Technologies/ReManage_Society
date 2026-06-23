@@ -4,9 +4,6 @@ import { authRateLimit } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { getOidcLoginUrl } from "@/lib/auth";
-import { isKeycloakEnabled } from "@/lib/keycloak-config";
-import { redirect } from "next/navigation";
 import { getDefaultRoute } from "@/lib/role-access";
 
 // Retry helper for transient PgBouncer / connection errors
@@ -65,6 +62,7 @@ function loginErrorResponse(
   const messages: Record<string, string> = {
     missing_fields: "Email and password are required",
     invalid_credentials: "Invalid credentials",
+    membership_pending: "Your society membership is pending approval.",
     rate_limited: "Too many login attempts. Please wait 1 minute.",
     server_error: "Login failed. Please try again.",
   };
@@ -95,13 +93,23 @@ export async function POST(request: NextRequest) {
     const cleanEmail = email.trim().toLowerCase();
     const user = await findUserWithRetry(cleanEmail);
 
-    if (!user) {
+    if (!user || !user.isActive) {
       return loginErrorResponse(request, wantsRedirect, "invalid_credentials", 401);
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return loginErrorResponse(request, wantsRedirect, "invalid_credentials", 401);
+    }
+
+    let sessionToken: string;
+    try {
+      sessionToken = await createSession(user, { persistCookie: false });
+    } catch (error) {
+      if (error instanceof Error && error.message === "No active society membership for this account") {
+        return loginErrorResponse(request, wantsRedirect, "membership_pending", 403);
+      }
+      throw error;
     }
 
     // Check society subscription
@@ -112,7 +120,6 @@ export async function POST(request: NextRequest) {
           select: { subscriptionEnd: true },
         });
         if (society?.subscriptionEnd && new Date(society.subscriptionEnd) < new Date()) {
-          const sessionToken = await createSession(user, { persistCookie: false });
           if (wantsRedirect) {
             return NextResponse.redirect(new URL("/expired", request.url), 303);
           }
@@ -127,8 +134,6 @@ export async function POST(request: NextRequest) {
         console.error("Subscription check failed (non-fatal):", subErr);
       }
     }
-
-    const sessionToken = await createSession(user, { persistCookie: false });
 
     if (wantsRedirect) {
       const landingRoute = getDefaultRoute(user.role);
@@ -152,15 +157,5 @@ export async function POST(request: NextRequest) {
     console.error("Login Error:", error instanceof Error ? error.message : error);
     return loginErrorResponse(request, wantsRedirect, "server_error", 500);
   }
-}
-
-export async function GET(request: NextRequest) {
-  if (!isKeycloakEnabled()) {
-    redirect("/login?error=keycloak_unavailable");
-  }
-
-  const redirectUri = new URL("/api/auth/callback", request.url).toString();
-  const loginUrl = getOidcLoginUrl(redirectUri);
-  redirect(loginUrl);
 }
 

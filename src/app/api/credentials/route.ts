@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
+import { mapProductRoleToPermissionRole } from "@/lib/membership";
 
 
 import {
@@ -38,8 +39,8 @@ async function legacyPOST(request: NextRequest) {
       const phone = String(body.phone || "").trim();
       const password = String(body.password || "");
 
-      if (!["secretary", "treasurer"].includes(role)) {
-        return Response.json({ error: "Role must be secretary or treasurer" }, { status: 400 });
+      if (!["secretary", "treasurer", "guard"].includes(role)) {
+        return Response.json({ error: "Role must be secretary, treasurer, or guard" }, { status: 400 });
       }
       if (!name || !email || !password) {
         return Response.json({ error: "Name, email, and password are required" }, { status: 400 });
@@ -54,16 +55,31 @@ async function legacyPOST(request: NextRequest) {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await prisma.user.create({
-        data: {
-          name,
-          email,
-          password: hashedPassword,
-          phone: phone || null,
-          role,
-          societyId: session.societyId,
-        },
-        select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+      const user = await prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: {
+            name,
+            email,
+            password: hashedPassword,
+            phone: phone || null,
+            role,
+            societyId: session.societyId,
+          },
+          select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+        });
+
+        await tx.societyMembership.create({
+          data: {
+            userId: created.id,
+            societyId: session.societyId,
+            productRole: role,
+            permissionRole: mapProductRoleToPermissionRole(role as "secretary" | "treasurer" | "guard"),
+            status: "active",
+            activatedAt: new Date(),
+          },
+        });
+
+        return created;
       });
 
       return Response.json({ user, message: `${role} account created` }, { status: 201 });
