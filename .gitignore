@@ -49,6 +49,9 @@ next-env.d.ts
 /tmp/
 /l.json
 
+# brainstorming visual companion
+/.superpowers/
+
 
 /src/generated/prisma
 docs/superpowers/plans/2026-06-16-dashboard-language-selector.md
@@ -60,3 +63,4 @@ docs/superpowers/specs/2026-06-16-dashboard-language-selector-design.md
 docs/superpowers/specs/2026-06-16-phone-field-validation-design.md
 .gitignore
 docs/superpowers/plans/2026-06-16-frontend-translation-coverage.md
+nul

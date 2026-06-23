@@ -66,6 +66,17 @@ describe("approved authentication flow contracts", () => {
     expect(approval).toContain('occupancyStatus: "ACTIVE"');
   });
 
+  it("scopes resident rejection to the committee member's society", () => {
+    const rejection = readRoute("src/app/api/memberships/[id]/reject/route.ts");
+
+    expect(rejection).toContain('["chairman", "secretary"].includes(session.role)');
+    expect(rejection).toContain('societyId: session.societyId');
+    expect(rejection).toContain('status: "pending"');
+    expect(rejection).toContain('status: "rejected"');
+    expect(rejection).toContain('occupancyStatus: "REJECTED"');
+    expect(rejection).toContain('isActive: false');
+  });
+
   it("provisions all approved staff roles into the Chairman's society", () => {
     const credentials = readRoute("src/app/api/credentials/route.ts");
 

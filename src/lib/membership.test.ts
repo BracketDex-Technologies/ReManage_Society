@@ -21,5 +21,6 @@ describe("resolveActiveMembership", () => {
 
     expect(active).toEqual({ id: "active", status: "active" });
     expect(resolveActiveMembership([{ id: "pending", status: "pending" }])).toBeNull();
+    expect(resolveActiveMembership([{ id: "rejected", status: "rejected" }])).toBeNull();
   });
 });

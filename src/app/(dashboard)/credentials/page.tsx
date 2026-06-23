@@ -3,7 +3,7 @@
 import { useI18n } from "@/lib/i18n";
 import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { useEffect, useState, useCallback } from "react";
-import { Key, Users, Shield, UserPlus, Download, RefreshCw, Copy, Eye, EyeOff, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Key, Users, Shield, UserPlus, Download, RefreshCw, Copy, Eye, EyeOff, Search, ChevronDown, ChevronUp, Check, X, Clock } from "lucide-react";
 import { isOptionalTenDigitPhone, phoneInputProps, sanitizePhoneInput } from "@/lib/phone-input";
 import Pagination from "@/components/ui/Pagination";
 
@@ -34,7 +34,7 @@ interface CredentialsSummary {
   guards: number;
 }
 
-type RoleTab = "all" | "members" | "guards" | "admins" | "tenants";
+type RoleTab = "pending" | "all" | "members" | "guards" | "admins" | "tenants";
 
 const roleStyles: Record<string, { bg: string; text: string; label: string }> = {
   chairman: { bg: "bg-amber-500/5", text: "text-amber-700", label: "Chairman" },
@@ -46,6 +46,7 @@ const roleStyles: Record<string, { bg: string; text: string; label: string }> = 
 };
 
 const tabLabels: Record<RoleTab, string> = {
+  pending: "Pending",
   all: "All Users",
   members: "Residents",
   admins: "Committee",
@@ -57,6 +58,9 @@ export default function CredentialsPage() {
   const { t } = useI18n();
   const toastT = useTranslatedToast();
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [pendingMemberships, setPendingMemberships] = useState<any[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [handlingId, setHandlingId] = useState<string | null>(null);
   const [summary, setSummary] = useState<CredentialsSummary>({ total: 0, admins: 0, members: 0, tenants: 0, guards: 0 });
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +83,23 @@ export default function CredentialsPage() {
     role: "secretary",
   });
 
+  const fetchPending = useCallback(() => {
+    fetch("/api/memberships")
+      .then((r) => r.json())
+      .then((d) => {
+        setPendingMemberships(d.pending || []);
+        setPendingCount(d.summary?.pending || 0);
+      })
+      .catch(() => console.error("Failed to load pending requests"));
+  }, []);
+
   const fetchUsers = useCallback(() => {
+    if (activeTab === "pending") {
+      fetchPending();
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
@@ -98,12 +118,59 @@ export default function CredentialsPage() {
       })
       .catch(() => toastT.error("Failed to load accounts"))
       .finally(() => setLoading(false));
-  }, [search, activeTab, page, pageSize]);
+  }, [search, activeTab, page, pageSize, fetchPending, toastT]);
+
+  useEffect(() => {
+    fetchPending();
+  }, [fetchPending]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 300);
     return () => clearTimeout(timer);
   }, [fetchUsers]);
+
+  const handleApprove = async (id: string) => {
+    setHandlingId(id);
+    try {
+      const res = await fetch(`/api/memberships/${id}/approve`, { method: "POST" });
+      if (res.ok) {
+        setPendingMemberships((prev) => prev.filter((m) => m.id !== id));
+        toastT.success("Request approved");
+        fetchPending();
+        fetchUsers();
+      } else if (res.status === 404) {
+        toastT.error("This request was already handled");
+        fetchPending();
+      } else {
+        toastT.error("Failed to approve request");
+      }
+    } catch {
+      toastT.error("Something went wrong");
+    } finally {
+      setHandlingId(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    setHandlingId(id);
+    try {
+      const res = await fetch(`/api/memberships/${id}/reject`, { method: "POST" });
+      if (res.ok) {
+        setPendingMemberships((prev) => prev.filter((m) => m.id !== id));
+        toastT.success("Request rejected");
+        fetchPending();
+      } else if (res.status === 404) {
+        toastT.error("This request was already handled");
+        fetchPending();
+      } else {
+        toastT.error("Failed to reject request");
+      }
+    } catch {
+      toastT.error("Something went wrong");
+    } finally {
+      setHandlingId(null);
+    }
+  };
 
   const generateCredentials = async () => {
     setGenerating(true);
@@ -180,6 +247,7 @@ export default function CredentialsPage() {
   };
 
   const tabCount = (tab: RoleTab) => {
+    if (tab === "pending") return pendingCount;
     if (tab === "all") return summary.total;
     if (tab === "admins") return summary.admins;
     if (tab === "members") return summary.members;
@@ -225,6 +293,29 @@ export default function CredentialsPage() {
           >
             {joinCode}
             <Copy className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {pendingCount > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-red-900">⏳ {pendingCount} requests awaiting approval</p>
+              <p className="text-xs text-red-700 mt-0.5">New residents have registered and are waiting for committee approval to log in.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setActiveTab("pending");
+              setPage(1);
+            }}
+            className="btn !bg-red-600 hover:!bg-red-700 !text-white !rounded-xl !py-2.5 !px-5 text-sm font-bold shadow-md shadow-red-600/20 whitespace-nowrap"
+          >
+            Review pending →
           </button>
         </div>
       )}
@@ -346,7 +437,7 @@ export default function CredentialsPage() {
       <div className="space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {(["all", "members", "tenants", "guards", "admins"] as RoleTab[]).map((tab) => (
+            {(["pending", "all", "members", "tenants", "guards", "admins"] as RoleTab[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -359,7 +450,11 @@ export default function CredentialsPage() {
                 }`}
               >
                 {tabLabels[tab]}
-                <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab ? "bg-white/20" : "bg-white"}`}>
+                <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${
+                  tab === "pending" && tabCount(tab) > 0 
+                    ? "bg-red-500 text-white" 
+                    : activeTab === tab ? "bg-white/20" : "bg-white"
+                }`}>
                   {tabCount(tab)}
                 </span>
               </button>
@@ -382,6 +477,83 @@ export default function CredentialsPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="spinner !w-8 !h-8" />
+          </div>
+        ) : activeTab === "pending" ? (
+          <div className="bg-white rounded-2xl border border-border/50 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-border/40 bg-surface/30">
+                    <th className="px-5 py-3.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider">User</th>
+                    <th className="px-5 py-3.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider">Flat</th>
+                    <th className="px-5 py-3.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider">Role</th>
+                    <th className="px-5 py-3.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider">Requested</th>
+                    <th className="px-5 py-3.5 text-[10px] font-bold text-text-tertiary uppercase tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingMemberships.map((m) => {
+                    return (
+                      <tr key={m.id} className="border-b border-border/20 hover:bg-surface/20 transition-colors">
+                        <td className="px-5 py-4">
+                          <p className="text-sm font-bold text-text-primary">{m.user?.name}</p>
+                          {m.user?.phone && <p className="text-[10px] text-text-tertiary mt-0.5">{m.user.phone}</p>}
+                        </td>
+                        <td className="px-5 py-4">
+                          {m.flat ? (
+                            <span className="text-xs font-bold text-text-secondary bg-surface px-2 py-1 rounded-lg">
+                              {m.flat.wing ? `${m.flat.wing}-` : ""}
+                              {m.flat.flatNumber}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-text-tertiary">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider bg-primary/5 text-primary`}>
+                            {m.relationshipType === "TENANT" ? "Tenant" : "Owner"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="text-[10px] text-text-tertiary">
+                            {new Date(m.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleApprove(m.id)}
+                              disabled={handlingId === m.id}
+                              className="btn btn-primary !rounded-lg !py-1.5 !px-3 text-xs flex items-center gap-1.5"
+                            >
+                              {handlingId === m.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleReject(m.id)}
+                              disabled={handlingId === m.id}
+                              className="btn btn-secondary !rounded-lg !py-1.5 !px-3 text-xs flex items-center gap-1.5 !text-red-600 hover:!bg-red-50"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {pendingMemberships.length === 0 && (
+              <div className="text-center py-16">
+                <Shield className="w-10 h-10 text-text-tertiary mx-auto mb-4 opacity-20" />
+                <p className="text-text-primary font-bold">No pending requests</p>
+                <p className="text-xs text-text-secondary mt-1">
+                  All resident join requests have been handled.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-border/50 overflow-hidden">
