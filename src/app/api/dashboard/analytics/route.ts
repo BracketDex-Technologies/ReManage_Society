@@ -2,8 +2,27 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPeriod } from "@/lib/utils";
 import { cached } from "@/lib/api-cache";
+import { NextRequest } from "next/server";
 
-export async function GET() {
+function periodLabel(period: string) {
+  const [year, month] = period.split("-").map(Number);
+  if (!year || !month) return period;
+  return new Date(year, month - 1, 1).toLocaleDateString("en-IN", {
+    month: "short",
+    year: "2-digit",
+  });
+}
+
+function yearDateRange(year: string | null) {
+  if (!year) return {};
+  const value = Number(year);
+  return {
+    gte: new Date(value, 0, 1),
+    lte: new Date(value, 11, 31, 23, 59, 59),
+  };
+}
+
+export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
@@ -15,20 +34,40 @@ export async function GET() {
       return Response.json({ error: "No society associated" }, { status: 403 });
     }
 
-    const cacheKey = `analytics:${societyId}:${getCurrentPeriod()}`;
+    const requestedYear = request.nextUrl.searchParams.get("year") || "all";
+    const selectedYear = /^\d{4}$/.test(requestedYear) ? requestedYear : null;
+    const cacheKey = `analytics:${societyId}:${requestedYear}:${getCurrentPeriod()}`;
 
     const data = await cached(cacheKey, async () => {
       const now = new Date();
-      const monthDataPromises = [];
+      let periods: string[] = [];
 
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        const label = d.toLocaleDateString("en-IN", { month: "short" });
-        const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-        const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      if (selectedYear) {
+        periods = Array.from({ length: 12 }, (_, index) => `${selectedYear}-${String(index + 1).padStart(2, "0")}`);
+      } else {
+        const activeBillPeriods = await prisma.maintenanceBill.findMany({
+          where: { societyId },
+          select: { period: true },
+          distinct: ["period"],
+          orderBy: { period: "asc" },
+        });
+        periods = activeBillPeriods.map((item) => item.period).filter(Boolean);
 
-        monthDataPromises.push((async () => {
+        if (!periods.length) {
+          periods = Array.from({ length: 6 }, (_, index) => {
+            const d = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          });
+        }
+      }
+
+      const monthDataPromises = periods.map((period) => {
+        const [year, month] = period.split("-").map(Number);
+        const monthStart = new Date(year, month - 1, 1);
+        const monthEnd = new Date(year, month, 0, 23, 59, 59);
+        const label = periodLabel(period);
+
+        return (async () => {
           const [billAgg, expenseAgg, paidCount] = await Promise.all([
             prisma.maintenanceBill.aggregate({
               where: { societyId, period },
@@ -45,8 +84,8 @@ export async function GET() {
           ]);
 
           return { billAgg, expenseAgg, paidCount, period, label };
-        })());
-      }
+        })();
+      });
 
       const results = await Promise.all(monthDataPromises);
       const monthlyTrend = results.map(({ billAgg, expenseAgg, paidCount, period, label }) => ({
@@ -60,20 +99,29 @@ export async function GET() {
           : 0,
       }));
 
-      const currentPeriod = getCurrentPeriod();
-      const [yearStr, monthStr] = currentPeriod.split("-");
-      const startDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, 1);
-      const endDate = new Date(parseInt(yearStr), parseInt(monthStr), 0, 23, 59, 59);
+      const selectedDateRange = yearDateRange(selectedYear);
+      const expenseRange = selectedYear ? selectedDateRange : undefined;
+      const paymentPeriodWhere = selectedYear
+        ? { startsWith: `${selectedYear}-` }
+        : undefined;
 
       const [categoryGroup, methodGroup, agingResults, topDefaultersData] = await Promise.all([
         prisma.expense.groupBy({
           by: ["category"],
-          where: { societyId, approvalStatus: "approved", paidOn: { gte: startDate, lte: endDate } },
+          where: {
+            societyId,
+            approvalStatus: "approved",
+            ...(expenseRange ? { paidOn: expenseRange } : {}),
+          },
           _sum: { amount: true },
         }),
         prisma.maintenanceBill.groupBy({
           by: ["paidVia"],
-          where: { societyId, period: currentPeriod, status: { in: ["paid", "partial"] } },
+          where: {
+            societyId,
+            ...(paymentPeriodWhere ? { period: paymentPeriodWhere } : {}),
+            status: { in: ["paid", "partial"] },
+          },
           _sum: { paidAmount: true },
           _count: { id: true },
         }),

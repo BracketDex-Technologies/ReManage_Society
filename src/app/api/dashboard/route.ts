@@ -2,8 +2,27 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPeriod } from "@/lib/utils";
 import { cached } from "@/lib/api-cache";
+import { NextRequest } from "next/server";
 
-export async function GET() {
+function yearFromPeriod(period: string | null | undefined) {
+  const match = String(period || "").match(/^(\d{4})-/);
+  return match?.[1] || null;
+}
+
+function yearDateRange(year: string | null) {
+  if (!year) return {};
+  const value = Number(year);
+  return {
+    gte: new Date(value, 0, 1),
+    lte: new Date(value, 11, 31, 23, 59, 59),
+  };
+}
+
+function billTotal(bill: { amount: number; lateFee: number; gstAmount: number; totalAmount: number | null }) {
+  return bill.totalAmount ?? bill.amount + bill.lateFee + bill.gstAmount;
+}
+
+export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
@@ -16,16 +35,24 @@ export async function GET() {
     }
 
     const period = getCurrentPeriod();
-    const cacheKey = `dashboard:${societyId}:${period}`;
+    const requestedYear = request.nextUrl.searchParams.get("year") || "all";
+    const selectedYear = /^\d{4}$/.test(requestedYear) ? requestedYear : null;
+    const billWhere = {
+      societyId,
+      ...(selectedYear ? { period: { startsWith: `${selectedYear}-` } } : {}),
+    };
+    const expenseDateRange = yearDateRange(selectedYear);
+    const expenseWhere = {
+      societyId,
+      approvalStatus: "approved",
+      ...(selectedYear ? { paidOn: expenseDateRange } : {}),
+    };
+    const cacheKey = `dashboard:${societyId}:${requestedYear}:${period}`;
 
     const data = await cached(cacheKey, async () => {
-      const [yearStr, monthStr] = period.split("-");
-      const startDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, 1);
-      const endDate = new Date(parseInt(yearStr), parseInt(monthStr), 0, 23, 59, 59);
-
       const [
         society,
-        billStats,
+        bills,
         totalMembers,
         openComplaints,
         todayVisitors,
@@ -34,20 +61,23 @@ export async function GET() {
         incomeAggregate,
         allExpensesAggregate,
         recentBills,
+        billPeriods,
+        expenseDates,
       ] = await Promise.all([
         prisma.society.findUnique({
           where: { id: societyId },
           select: { openingBalance: true, totalFlats: true },
         }),
-        prisma.maintenanceBill.groupBy({
-          by: ["status"],
-          where: {
-            societyId,
-            period,
-            flat: { users: { some: { role: { in: ["member", "tenant"] } } } },
+        prisma.maintenanceBill.findMany({
+          where: billWhere,
+          select: {
+            amount: true,
+            lateFee: true,
+            gstAmount: true,
+            totalAmount: true,
+            paidAmount: true,
+            status: true,
           },
-          _sum: { amount: true, paidAmount: true },
-          _count: { id: true },
         }),
         prisma.flat.count({
           where: {
@@ -67,7 +97,7 @@ export async function GET() {
         }),
         prisma.poll.count({ where: { societyId, status: "active" } }),
         prisma.expense.aggregate({
-          where: { societyId, approvalStatus: "approved", paidOn: { gte: startDate, lte: endDate } },
+          where: expenseWhere,
           _sum: { amount: true },
         }),
         prisma.maintenanceBill.aggregate({
@@ -79,11 +109,7 @@ export async function GET() {
           _sum: { amount: true },
         }),
         prisma.maintenanceBill.findMany({
-          where: {
-            societyId,
-            period,
-            flat: { users: { some: { role: { in: ["member", "tenant"] } } } },
-          },
+          where: billWhere,
           include: {
             flat: {
               select: {
@@ -98,6 +124,15 @@ export async function GET() {
           },
           orderBy: { updatedAt: "desc" },
           take: 8,
+        }),
+        prisma.maintenanceBill.findMany({
+          where: { societyId },
+          select: { period: true },
+          distinct: ["period"],
+        }),
+        prisma.expense.findMany({
+          where: { societyId, approvalStatus: "approved" },
+          select: { paidOn: true },
         }),
       ]);
 
@@ -124,15 +159,19 @@ export async function GET() {
       let partialCount = 0;
       let pendingCount = 0;
 
-      billStats.forEach((stat) => {
-        const collected = stat._sum?.paidAmount || 0;
-        const total = stat._sum?.amount || 0;
+      bills.forEach((bill) => {
+        const total = billTotal(bill);
+        const collected = bill.paidAmount || 0;
         totalCollected += collected;
-        pendingAmount += total - collected;
-        if (stat.status === "paid") paidCount = stat._count?.id || 0;
-        else if (stat.status === "partial") partialCount = stat._count?.id || 0;
-        else if (stat.status === "pending") pendingCount = stat._count?.id || 0;
+        pendingAmount += Math.max(0, total - collected);
+        if (bill.status === "paid") paidCount += 1;
+        else if (bill.status === "partial") partialCount += 1;
+        else if (bill.status === "pending") pendingCount += 1;
       });
+
+      const billYears = billPeriods.map((item) => yearFromPeriod(item.period)).filter(Boolean) as string[];
+      const expenseYears = expenseDates.map((item) => String(item.paidOn.getFullYear()));
+      const financeYears = Array.from(new Set([...billYears, ...expenseYears])).sort((a, b) => Number(b) - Number(a));
 
       return {
         totalCollected,
@@ -145,6 +184,8 @@ export async function GET() {
         totalFlats: totalMembers,
         recentActivity,
         period,
+        financeScope: selectedYear || "all",
+        financeYears,
         fundBalance,
         openComplaints,
         visitorsToday: todayVisitors,

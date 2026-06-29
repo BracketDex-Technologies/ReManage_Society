@@ -8,6 +8,8 @@ export interface DashboardData {
   pendingCount: number;
   totalFlats: number;
   period: string;
+  financeScope?: string;
+  financeYears?: string[];
   fundBalance: number;
   openComplaints: number;
   visitorsToday: number;
