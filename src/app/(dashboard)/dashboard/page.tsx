@@ -62,6 +62,8 @@ interface DashboardData {
   pendingCount: number;
   totalFlats: number;
   period: string;
+  financeScope?: string;
+  financeYears?: string[];
   fundBalance: number;
   openComplaints: number;
   visitorsToday: number;
@@ -1086,6 +1088,8 @@ function AdminDashboard({
   data,
   analytics,
   visibleCategories,
+  financeYear,
+  onFinanceYearChange,
   loading,
   isStale,
 }: {
@@ -1093,6 +1097,8 @@ function AdminDashboard({
   data: DashboardData | null;
   analytics: AdminAnalyticsData | null;
   visibleCategories: Category[];
+  financeYear: string;
+  onFinanceYearChange: (year: string) => void;
   loading: boolean;
   isStale: boolean;
 }) {
@@ -1113,6 +1119,8 @@ function AdminDashboard({
   const topDefaulters = analytics?.topDefaulters || [];
   const aging = analytics?.aging || { current: 0, days30: 0, days60: 0, days90Plus: 0 };
   const riskTotal = aging.current + aging.days30 + aging.days60 + aging.days90Plus;
+  const financeYears = data?.financeYears || [];
+  const financeScopeLabel = financeYear === "all" ? t("All time") : financeYear;
 
   return (
     <div className="dashboard-flat-theme -m-3 min-h-full overflow-x-hidden bg-[#FEFDDF] p-2 text-[#333333] dark:bg-[#171717] dark:text-[#F5F5F5] sm:-m-4 sm:p-3 lg:-m-6 lg:p-4 xl:p-5">
@@ -1163,10 +1171,23 @@ function AdminDashboard({
             <div className="dashboard-panel rounded-[1.5rem] border border-[#E6E6E6] bg-white p-4 text-[#333333] dark:border-[#404040] dark:bg-[#222222] dark:text-[#F5F5F5]">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#333333]/45 dark:text-[#CCCCCC]/70">{t("This period")}</p>
-                  <h2 className="mt-1.5 text-2xl font-bold text-[#333333] dark:text-[#F5F5F5]">{data?.period || "--"}</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#333333]/45 dark:text-[#CCCCCC]/70">{t("Finance scope")}</p>
+                  <h2 className="mt-1.5 text-2xl font-bold text-[#333333] dark:text-[#F5F5F5]">{financeScopeLabel}</h2>
                 </div>
-                <IndianRupee className="h-6 w-6 text-[#FF5400]" />
+                <div className="flex items-center gap-2">
+                  <select
+                    value={financeYear}
+                    onChange={(event) => onFinanceYearChange(event.target.value)}
+                    className="min-h-9 rounded-xl border border-[#E6E6E6] bg-[#F7F7F7] px-2 text-xs font-bold text-[#333333] outline-none dark:border-[#404040] dark:bg-[#2A2A2A] dark:text-[#F5F5F5]"
+                    aria-label={t("Finance scope")}
+                  >
+                    <option value="all">{t("All time")}</option>
+                    {financeYears.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                  <IndianRupee className="h-6 w-6 text-[#FF5400]" />
+                </div>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-2">
                 <div className="dashboard-subpanel rounded-xl border border-[#E6E6E6] bg-[#F7F7F7] p-2.5 dark:border-[#404040] dark:bg-[#2A2A2A]">
@@ -1197,7 +1218,7 @@ function AdminDashboard({
         <section className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <AdminMetricCard href="/maintenance" label={t("Pending dues")} value={formatCurrency(pending)} note={`${data?.pendingCount || 0} ${t("pending bills")}`} icon={Receipt} tone="orange" />
           <AdminMetricCard href="/reports" label={t("Collected")} value={formatCurrency(collected)} note={`${data?.paidCount || 0} ${t("paid bills")}`} icon={TrendingUp} tone="green" />
-          <AdminMetricCard href="/expenses" label={t("Expenses")} value={formatCurrency(expenses)} note={t("Society spending this period")} icon={Wallet} tone="blue" />
+          <AdminMetricCard href="/expenses" label={t("Expenses")} value={formatCurrency(expenses)} note={financeYear === "all" ? t("Society spending all time") : t("Society spending this year")} icon={Wallet} tone="blue" />
           <AdminMetricCard href="/members" label={t("Residents")} value={String(data?.totalMembers || 0)} note={`${data?.visitorsToday || 0} ${t("visitors today")}`} icon={Users} tone="purple" />
         </section>
 
@@ -1336,8 +1357,11 @@ export default function DashboardPage() {
   const { user, loaded } = useUser();
   const isAdmin = admin.includes(user?.role || "");
   const { t } = useI18n();
+  const [financeYear, setFinanceYear] = useState("all");
+  const dashboardUrl = `/api/dashboard?year=${encodeURIComponent(financeYear)}`;
+  const analyticsUrl = `/api/dashboard/analytics?year=${encodeURIComponent(financeYear)}`;
 
-  const { data, loading, isStale } = useLiveData<DashboardData>({ url: "/api/dashboard", interval: LIVE_STANDARD_INTERVAL_MS, enabled: true });
+  const { data, loading, isStale } = useLiveData<DashboardData>({ url: dashboardUrl, interval: LIVE_STANDARD_INTERVAL_MS, enabled: true });
   const { data: myBills } = useLiveData<MyBillsData>({
     url: "/api/my-bills",
     interval: LIVE_FAST_INTERVAL_MS,
@@ -1349,7 +1373,7 @@ export default function DashboardPage() {
     enabled: loaded && !isAdmin,
   });
   const { data: adminAnalytics } = useLiveData<AdminAnalyticsData>({
-    url: "/api/dashboard/analytics",
+    url: analyticsUrl,
     interval: LIVE_STANDARD_INTERVAL_MS,
     enabled: loaded && isAdmin,
   });
@@ -1378,6 +1402,8 @@ export default function DashboardPage() {
           data={data}
           analytics={adminAnalytics}
           visibleCategories={visibleCategories}
+          financeYear={financeYear}
+          onFinanceYearChange={setFinanceYear}
           loading={loading}
           isStale={isStale}
         />
