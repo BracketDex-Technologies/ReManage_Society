@@ -9,8 +9,10 @@ const dashboard = readFileSync(resolve(process.cwd(), "src/app/(dashboard)/dashb
 const styles = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
 
 describe("mobile shell contracts", () => {
-  it("uses a compact unread dot inside the mobile bell", () => {
-    expect(notificationCenter).toContain('compact ? "absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-white dark:ring-[#222222] animate-pulse"');
+  it("uses a compact unread count inside the mobile bell", () => {
+    expect(notificationCenter).toContain('compact');
+    expect(notificationCenter).toContain('absolute -right-1 -top-1 flex h-5 min-w-5');
+    expect(notificationCenter).toContain('{visibleUnreadCount}');
   });
 
   it("keeps a visible logout label in the compact mobile sidebar", () => {
