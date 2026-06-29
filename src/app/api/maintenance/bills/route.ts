@@ -106,6 +106,7 @@ async function legacyGET(request: NextRequest) {
       .map((target) => ({
         id: target.flatId,
         flatNumber: target.flatNumber,
+        wing: target.wing,
         ownerName: target.payerName,
         role: target.payerRole,
         linkedOwnerName: target.ownerName,

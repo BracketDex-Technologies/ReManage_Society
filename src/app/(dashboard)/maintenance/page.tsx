@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useTranslatedToast } from "@/lib/use-translated-toast";
 import { ChevronLeft, ChevronRight, Search, FileText, Bell, Zap, RefreshCcw, Save, Settings2, Trash2, MessageCircle, Link2, Copy, Send, Gauge } from "lucide-react";
@@ -12,6 +12,11 @@ import { useLiveQuery } from "@/lib/use-live-data";
 import { LIVE_FAST_INTERVAL_MS } from "@/lib/live-refresh";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
 import { buildDefaultDueDate } from "@/components/billing/billing-helpers";
+import {
+  buildCustomInvoiceSelectionGroups,
+  toggleAllAvailableFlatIds,
+  toggleFlatGroupSelection,
+} from "@/components/billing/custom-invoice-selection";
 import { currentPeriod } from "@/lib/history-utils";
 
 export default function MaintenancePage() {
@@ -84,6 +89,7 @@ export default function MaintenancePage() {
     availableFlats: Array<{
       id: string;
       flatNumber: string;
+      wing: string | null;
       ownerName: string;
       role: string;
       linkedOwnerName: string | null;
@@ -111,6 +117,12 @@ export default function MaintenancePage() {
   const summary = data?.summary || null;
   const availableFlats = invoiceData?.availableFlats || [];
   const unbilledCount = availableFlats.length;
+  const { wingOptions, flatOptions } = useMemo(
+    () => buildCustomInvoiceSelectionGroups(availableFlats),
+    [availableFlats],
+  );
+  const selectedAvailableCount = availableFlats.filter((flat) => invoiceForm.flatIds.includes(flat.id)).length;
+  const allAvailableSelected = availableFlats.length > 0 && selectedAvailableCount === availableFlats.length;
   const defaultBillAmount =
     parseFloat(invoiceForm.amount || billingConfig.maintenanceAmt || "") ||
     invoiceData?.defaultInvoiceAmount ||
@@ -838,10 +850,10 @@ export default function MaintenancePage() {
                   {availableFlats.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => setInvoiceForm((current) => ({ ...current, flatIds: availableFlats.map((flat) => flat.id) }))}
+                      onClick={() => setInvoiceForm((current) => ({ ...current, flatIds: toggleAllAvailableFlatIds(current.flatIds, availableFlats) }))}
                       className="text-xs font-bold text-primary hover:underline"
                     >
-                      {t("Select all available")}
+                      {allAvailableSelected ? t("Deselect all available") : t("Select all available")}
                     </button>
                   )}
                 </div>
@@ -850,46 +862,104 @@ export default function MaintenancePage() {
                     {t("All linked flats already have an invoice for {period}.").replace("{period}", periodLabel)}
                   </div>
                 ) : (
-                  <div className="max-h-56 overflow-y-auto rounded-xl border border-border divide-y divide-border">
-                    {availableFlats.map((flat) => {
-                      const checked = invoiceForm.flatIds.includes(flat.id);
-                      return (
-                        <label key={flat.id} className="flex items-center gap-3 p-3 hover:bg-surface cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => {
-                              setInvoiceForm((current) => ({
-                                ...current,
-                                flatIds: e.target.checked
-                                  ? [...current.flatIds, flat.id]
-                                  : current.flatIds.filter((id) => id !== flat.id),
-                              }));
-                            }}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-text-primary">{flat.flatNumber}</p>
-                            <p className="text-xs text-text-primary truncate">
-                              {t("Bill to {name} ({role})")
-                                .replace("{name}", flat.payerName || flat.ownerName)
-                                .replace("{role}", flat.payerRole || flat.role)}
-                            </p>
-                            {flat.tenantName && (
-                              <p className="text-[10px] text-text-secondary truncate">
-                                {t("Tenant:")} {flat.tenantName}
-                                {flat.privateMonthlyRent ? ` · ${t("Private rent")} ${formatCurrency(flat.privateMonthlyRent)}/${t("month")}` : ""}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">{t("Wingwise")}</label>
+                        <select
+                          className="select"
+                          value=""
+                          onChange={(e) => {
+                            const selectedWing = wingOptions.find((option) => option.value === e.target.value);
+                            if (!selectedWing) return;
+                            setInvoiceForm((current) => ({
+                              ...current,
+                              flatIds: toggleFlatGroupSelection(current.flatIds, selectedWing.flatIds),
+                            }));
+                          }}
+                        >
+                          <option value="">{t("Select wing")}</option>
+                          {wingOptions.map((option) => {
+                            const selectedCount = option.flatIds.filter((id) => invoiceForm.flatIds.includes(id)).length;
+                            return (
+                              <option key={option.value} value={option.value}>
+                                {option.label} ({selectedCount}/{option.flatIds.length})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">{t("Flatwise")}</label>
+                        <select
+                          className="select"
+                          value=""
+                          onChange={(e) => {
+                            const flatId = e.target.value;
+                            if (!flatId) return;
+                            setInvoiceForm((current) => ({
+                              ...current,
+                              flatIds: toggleFlatGroupSelection(current.flatIds, [flatId]),
+                            }));
+                          }}
+                        >
+                          <option value="">{t("Select flat")}</option>
+                          {flatOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label} {invoiceForm.flatIds.includes(option.value) ? `- ${t("Selected")}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-xs font-bold text-text-secondary">
+                      {t("{selected} of {total} available flats selected")
+                        .replace("{selected}", String(selectedAvailableCount))
+                        .replace("{total}", String(availableFlats.length))}
+                    </p>
+                    <div className="max-h-56 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+                      {availableFlats.map((flat) => {
+                        const checked = invoiceForm.flatIds.includes(flat.id);
+                        return (
+                          <label key={flat.id} className="flex items-center gap-3 p-3 hover:bg-surface cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                setInvoiceForm((current) => ({
+                                  ...current,
+                                  flatIds: e.target.checked
+                                    ? [...current.flatIds, flat.id]
+                                    : current.flatIds.filter((id) => id !== flat.id),
+                                }));
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-text-primary">
+                                {flat.wing ? `${flat.wing} · ` : ""}{flat.flatNumber}
                               </p>
-                            )}
-                            {flat.linkedOwnerName && (
-                              <p className="text-[10px] text-text-secondary truncate">
-                                {t("Owner:")} {flat.linkedOwnerName}
-                                {flat.linkedOwnerPhone ? ` · ${flat.linkedOwnerPhone}` : ""}
+                              <p className="text-xs text-text-primary truncate">
+                                {t("Bill to {name} ({role})")
+                                  .replace("{name}", flat.payerName || flat.ownerName)
+                                  .replace("{role}", flat.payerRole || flat.role)}
                               </p>
-                            )}
-                          </div>
-                        </label>
-                      );
-                    })}
+                              {flat.tenantName && (
+                                <p className="text-[10px] text-text-secondary truncate">
+                                  {t("Tenant:")} {flat.tenantName}
+                                  {flat.privateMonthlyRent ? ` · ${t("Private rent")} ${formatCurrency(flat.privateMonthlyRent)}/${t("month")}` : ""}
+                                </p>
+                              )}
+                              {flat.linkedOwnerName && (
+                                <p className="text-[10px] text-text-secondary truncate">
+                                  {t("Owner:")} {flat.linkedOwnerName}
+                                  {flat.linkedOwnerPhone ? ` · ${flat.linkedOwnerPhone}` : ""}
+                                </p>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
