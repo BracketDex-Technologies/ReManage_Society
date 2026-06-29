@@ -161,8 +161,8 @@ export default function LoginForm() {
         <div className="mt-6 text-center">
           <p className="text-xs text-text-secondary">
             Powered by{" "}
-            <a href="https://www.BracketDexTechnologies.in" target="_blank" className="text-primary hover:underline">
-              BracketDexTechnologies.in
+            <a href="https://www.bracketdex.com" target="_blank" className="text-primary hover:underline">
+              Bracketdex.com
             </a>{" "}
           </p>
         </div>
