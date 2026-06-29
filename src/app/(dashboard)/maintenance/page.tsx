@@ -8,6 +8,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import { formatCurrency } from "@/lib/utils";
 import type { BillWithFlat, BillingSummary } from "@/types";
 import Link from "next/link";
+import { useUser } from "@/lib/user-context";
 import { useLiveQuery } from "@/lib/use-live-data";
 import { LIVE_FAST_INTERVAL_MS } from "@/lib/live-refresh";
 import { useAppDialog } from "@/components/ui/AppDialogProvider";
@@ -17,12 +18,14 @@ import {
   toggleAllAvailableFlatIds,
   toggleFlatGroupSelection,
 } from "@/components/billing/custom-invoice-selection";
+import { buildPrintableInvoicePdfFilename, renderPrintableInvoicePdf } from "@/components/billing/printable-invoice-pdf";
 import { currentPeriod } from "@/lib/history-utils";
 
 export default function MaintenancePage() {
   const { t } = useI18n();
   const toastT = useTranslatedToast();
   const { confirm } = useAppDialog();
+  const { user } = useUser();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [period, setPeriod] = useState(() => {
@@ -30,6 +33,7 @@ export default function MaintenancePage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
   const [generating, setGenerating] = useState(false);
+  const [downloadingInvoicePdf, setDownloadingInvoicePdf] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [applyingLateFees, setApplyingLateFees] = useState(false);
@@ -121,7 +125,8 @@ export default function MaintenancePage() {
     () => buildCustomInvoiceSelectionGroups(availableFlats),
     [availableFlats],
   );
-  const selectedAvailableCount = availableFlats.filter((flat) => invoiceForm.flatIds.includes(flat.id)).length;
+  const selectedInvoiceFlats = availableFlats.filter((flat) => invoiceForm.flatIds.includes(flat.id));
+  const selectedAvailableCount = selectedInvoiceFlats.length;
   const allAvailableSelected = availableFlats.length > 0 && selectedAvailableCount === availableFlats.length;
   const defaultBillAmount =
     parseFloat(invoiceForm.amount || billingConfig.maintenanceAmt || "") ||
@@ -271,8 +276,62 @@ export default function MaintenancePage() {
     return new Date(y, m - 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   })();
 
+  const formatPrintableFlatNumber = (flat: { flatNumber: string; wing: string | null }) => {
+    if (!flat.wing) return flat.flatNumber;
+    const normalizedFlat = flat.flatNumber.trim().toUpperCase();
+    const normalizedWing = flat.wing.trim().toUpperCase();
+    if (normalizedFlat.startsWith(`${normalizedWing}-`) || normalizedFlat.startsWith(`${normalizedWing} `)) {
+      return flat.flatNumber;
+    }
+    return `${flat.wing}-${flat.flatNumber}`;
+  };
+
   const generateBills = async () => {
     await raiseInvoices(invoiceForm.flatIds);
+  };
+
+  const downloadPrintableInvoicePdf = async () => {
+    const amount = parseFloat(invoiceForm.amount || billingConfig.maintenanceAmt || "");
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toastT.error("Enter a valid invoice amount before downloading the PDF.");
+      return;
+    }
+    if (selectedInvoiceFlats.length === 0) {
+      toastT.error("Select at least one available flat before downloading the PDF.");
+      return;
+    }
+
+    setDownloadingInvoicePdf(true);
+    try {
+      const bytes = await renderPrintableInvoicePdf({
+        societyName: user?.societyName || "Society",
+        period,
+        description: invoiceForm.description || "Society Dues",
+        amount,
+        dueDate: invoiceForm.dueDate,
+        flats: selectedInvoiceFlats.map((flat) => ({
+          flatNumber: formatPrintableFlatNumber(flat),
+          payerName: flat.payerName || flat.ownerName || "Resident",
+          payerRole: flat.payerRole || flat.role,
+        })),
+      });
+      const pdfBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+      const blob = new Blob([pdfBuffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = buildPrintableInvoicePdfFilename(invoiceForm.description || "custom-invoice", period);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toastT.success("Printable invoice PDF downloaded.");
+    } catch (error) {
+      console.error("Failed to generate printable invoice PDF", error);
+      toastT.error("Failed to generate printable invoice PDF.");
+    } finally {
+      setDownloadingInvoicePdf(false);
+    }
   };
 
   const saveBillingConfig = async () => {
@@ -836,7 +895,7 @@ export default function MaintenancePage() {
 
       {showInvoiceModal && (
         <div className="modal-overlay" onClick={() => setShowInvoiceModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content !max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-5">
               <h3 className="text-lg font-semibold">{t("Raise Maintenance Invoices")}</h3>
               <p className="text-sm text-text-secondary mt-1">
@@ -1020,8 +1079,17 @@ export default function MaintenancePage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2 mt-8">
+            <div className="flex flex-col gap-2 mt-8 sm:flex-row">
               <button onClick={() => setShowInvoiceModal(false)} className="btn btn-secondary flex-1">{t("Cancel")}</button>
+              <button
+                type="button"
+                onClick={downloadPrintableInvoicePdf}
+                disabled={downloadingInvoicePdf || generating || selectedAvailableCount === 0}
+                className="btn btn-secondary flex-1"
+              >
+                {downloadingInvoicePdf ? <div className="spinner !w-4 !h-4" /> : <FileText className="w-4 h-4" />}
+                {t("Download PDF")}
+              </button>
               <button onClick={generateBills} disabled={generating || availableFlats.length === 0} className="btn btn-primary flex-[2]">
                 {generating ? <div className="spinner !w-4 !h-4 !border-white/30 !border-t-white" /> : <Zap className="w-4 h-4" />}
                 {t("Raise Invoices")}

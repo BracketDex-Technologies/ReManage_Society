@@ -25,4 +25,11 @@ describe("global contrast-border system", () => {
     expect(styles).toMatch(/\.icon-button,\s*\.input-icon-button \{[\s\S]*border: 0 !important;/);
     expect(styles).toMatch(/\.input-icon-button \{[\s\S]*background: transparent;/);
   });
+
+  it("keeps modal panels inside the viewport with internal scrolling", () => {
+    expect(styles).toMatch(/\.modal-overlay \{[\s\S]*padding: 1rem;/);
+    expect(styles).toMatch(/\.modal-overlay > :where\(div, form, section\) \{[\s\S]*max-height: calc\(100dvh - 2rem\);[\s\S]*overflow-y: auto;/);
+    expect(styles).toMatch(/\.modal-content \{[\s\S]*max-height: calc\(100dvh - 2rem\);[\s\S]*overflow-y: auto;/);
+    expect(styles).toMatch(/@media \(max-width: 640px\) \{[\s\S]*\.modal-content \{[\s\S]*max-height: calc\(100dvh - 1\.5rem\);/);
+  });
 });

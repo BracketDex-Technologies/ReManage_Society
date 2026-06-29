@@ -614,8 +614,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 1rem;
     z-index: 50;
     animation: fadeIn 0.15s ease;
+  }
+
+  .modal-overlay > :where(div, form, section) {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .modal-content {
@@ -625,7 +632,10 @@
     padding: 1.5rem;
     max-width: 28rem;
     width: 100%;
-    margin: 1rem;
+    margin: 0;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     animation: slideUp 0.2s ease;
   }
@@ -665,6 +675,23 @@
     background: var(--color-primary);
     border-radius: 0 2px 2px 0;
   }
+}
+
+.modal-overlay {
+  padding: 1rem;
+}
+
+.modal-overlay > :where(div, form, section) {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-content {
+  margin: 0;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 @keyframes spin {
@@ -974,10 +1001,14 @@ img {
     padding: 0.75rem;
   }
 
+  .modal-overlay > :where(div, form, section) {
+    max-height: calc(100dvh - 1.5rem);
+  }
+
   .modal-content {
     width: 100%;
     max-width: none;
-    max-height: 88dvh;
+    max-height: calc(100dvh - 1.5rem);
     overflow-y: auto;
     border-radius: 1rem;
     padding: 1rem;
