@@ -117,8 +117,14 @@ export async function POST(request: NextRequest) {
       try {
         const society = await prisma.society.findUnique({
           where: { id: user.societyId },
-          select: { subscriptionEnd: true },
+          select: { accessDisabledAt: true, deletedAt: true, subscriptionEnd: true },
         });
+        if (society?.deletedAt) {
+          return loginErrorResponse(request, wantsRedirect, "invalid_credentials", 401);
+        }
+        if (society?.accessDisabledAt) {
+          return loginErrorResponse(request, wantsRedirect, "invalid_credentials", 401);
+        }
         if (society?.subscriptionEnd && new Date(society.subscriptionEnd) < new Date()) {
           if (wantsRedirect) {
             return NextResponse.redirect(new URL("/expired", request.url), 303);
@@ -158,4 +164,3 @@ export async function POST(request: NextRequest) {
     return loginErrorResponse(request, wantsRedirect, "server_error", 500);
   }
 }
-

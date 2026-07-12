@@ -16,6 +16,7 @@ function withSecurityHeaders(response: NextResponse) {
 const publicPaths = [
   "/login",
   "/register",
+  "/registered-society",
   "/join",
   "/auth/complete",
   "/api/auth/login",      // JSON + HTML form login
@@ -32,6 +33,7 @@ const publicPaths = [
   "/api/pay",             // Public payment link API
   "/api/noc/verify",      // Public NOC certificate verification
   "/api/subscription",    // Subscription check
+  "/api/portal",          // Portal-owner APIs use separate portal_session auth
   "/api/health/db",       // DB connectivity diagnostic (redacted host only)
 ];
 
@@ -64,7 +66,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Allow public paths
-  if (publicPaths.some((p) => pathname.startsWith(p))) {
+  if (isPublicPath(pathname)) {
     return withSecurityHeaders(NextResponse.next());
   }
 
@@ -154,6 +156,10 @@ export async function proxy(request: NextRequest) {
   }
 
   return withSecurityHeaders(NextResponse.next());
+}
+
+export function isPublicPath(pathname: string) {
+  return publicPaths.some((p) => pathname.startsWith(p));
 }
 
 export const config = {

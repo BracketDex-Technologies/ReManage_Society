@@ -33,6 +33,12 @@ model Society {
   moveInShiftingCharge   Float   @default(2000)
   moveOutShiftingCharge  Float   @default(1500)
   meterRatesJson         String? // JSON utility rate tiers per meter type
+  deletedAt      DateTime?
+  deletedByPortalAdminId String?
+  deletionReason String?
+  accessDisabledAt DateTime?
+  accessDisabledByPortalAdminId String?
+  accessDisableReason String?
   createdAt      DateTime @default(now())
 
   flats              Flat[]
@@ -1949,4 +1955,15 @@ model MeterReading {
 
   @@unique([societyId, flatId, period, meterType])
   @@index([societyId, period])
+}
+
+model PortalAdmin {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("partner") // owner | partner
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

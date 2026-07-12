@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     // Find guard by phone
     const guards = await prisma.guardUser.findMany({
       where: { phone, ...(societyId ? { societyId } : {}) },
-      include: { society: { select: { name: true, id: true, address: true } } },
+      include: { society: { select: { name: true, id: true, address: true, accessDisabledAt: true, deletedAt: true } } },
     });
 
     if (guards.length === 0) {
@@ -28,6 +28,18 @@ export async function POST(request: NextRequest) {
         if (!guard.isActive) {
           return Response.json(
             { error: "Guard access is pending committee approval" },
+            { status: 403 }
+          );
+        }
+        if (guard.society.deletedAt) {
+          return Response.json(
+            { error: "Society access is disabled" },
+            { status: 403 }
+          );
+        }
+        if (guard.society.accessDisabledAt) {
+          return Response.json(
+            { error: "Society access is disabled" },
             { status: 403 }
           );
         }
