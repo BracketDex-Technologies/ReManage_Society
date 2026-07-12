@@ -149,12 +149,6 @@ export default function LoginForm() {
               </Link>
             </p>
 
-            <p className="text-sm text-text-secondary mt-2">
-              {tCommon("Chairman")}?{" "}
-              <Link href="/register" className="text-primary font-medium hover:underline">
-                {t("createSociety")}
-              </Link>
-            </p>
           </div>
         </div>
 
