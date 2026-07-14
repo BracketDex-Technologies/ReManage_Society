@@ -57,6 +57,8 @@ model Society {
   backgroundJobs     BackgroundJob[]
   users              User[]
   memberships        SocietyMembership[]
+  mobileDeviceSessions MobileDeviceSession[]
+  mobileOtpChallenges  MobileOtpChallenge[]
   bills              MaintenanceBill[]
   billPaymentLinks   BillPaymentLink[]
   expenses           Expense[]
@@ -641,6 +643,8 @@ model User {
   person               Person?  @relation(fields: [personId], references: [id])
   sessions             UserSession[]
   memberships          SocietyMembership[]
+  mobileDeviceSessions MobileDeviceSession[]
+  mobileOtpChallenges  MobileOtpChallenge[]
   forumThreads         ForumThread[]
   forumReplies         ForumReply[]
   organizedEvents      SocietyEvent[]
@@ -666,11 +670,77 @@ model SocietyMembership {
   society              Society  @relation(fields: [societyId], references: [id], onDelete: Cascade)
   flat                 Flat?    @relation(fields: [flatId], references: [id])
   person               Person?  @relation(fields: [personId], references: [id])
+  roleAssignments      SocietyRoleAssignment[]
+  mobileDeviceSessions MobileDeviceSession[]
 
   @@unique([userId, societyId])
   @@index([userId, status])
   @@index([societyId, status])
   @@index([societyId, permissionRole, status])
+}
+
+model SocietyRoleAssignment {
+  id             String   @id @default(cuid())
+  membershipId   String
+  role           String
+  permissionRole String
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  membership SocietyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, role])
+  @@index([membershipId, permissionRole, revokedAt])
+}
+
+model MobileDeviceSession {
+  id                   String   @id @default(cuid())
+  userId               String
+  membershipId         String
+  societyId            String
+  installationId       String
+  platform             String
+  appVersion           String
+  deviceName           String?
+  activeRole           String
+  activePermissionRole String
+  refreshFamilyId      String
+  refreshTokenHash     String
+  refreshRotation      Int      @default(0)
+  version              Int      @default(1)
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  revokeReason         String?
+  lastSeenAt           DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership SocietyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  society    Society           @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, societyId, installationId, revokedAt])
+  @@index([societyId, revokedAt, expiresAt])
+}
+
+model MobileOtpChallenge {
+  id             String    @id
+  userId         String
+  societyId      String
+  installationId String
+  identifierHash String
+  codeHash       String
+  attempts       Int       @default(0)
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  society Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  @@index([identifierHash, createdAt])
+  @@index([installationId, createdAt])
+  @@index([expiresAt, consumedAt])
 }
 
 model Expense {
