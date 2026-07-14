@@ -148,6 +148,12 @@ const ROLE_PERMISSIONS: Record<SocietyRole | "platform_admin", readonly Permissi
   ],
 };
 
+export function permissionsForRoles(
+  roles: readonly (SocietyRole | "platform_admin")[],
+): readonly PermissionAction[] {
+  return [...new Set(roles.flatMap((role) => ROLE_PERMISSIONS[role]))];
+}
+
 export function evaluatePermission(request: PermissionRequest): PermissionDecision {
   let tenantContext;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluatePermission } from "./permission-policy.ts";
+import { evaluatePermission, permissionsForRoles } from "./permission-policy.ts";
 import type { AuthenticatedPrincipal } from "./types.ts";
 
 describe("evaluatePermission", () => {
@@ -238,5 +238,21 @@ describe("evaluatePermission", () => {
         societyId: "society_a",
       }),
     ).toMatchObject({ allowed: false });
+  });
+});
+
+describe("permissionsForRoles", () => {
+  it("does not grant gate management to residents", () => {
+    expect(permissionsForRoles(["resident"])).not.toContain("operations:gate.manage");
+  });
+
+  it("does not grant visitor responses to guards", () => {
+    expect(permissionsForRoles(["guard"])).not.toContain("operations:visitor.respond");
+  });
+
+  it("returns each permission at most once", () => {
+    const permissions = permissionsForRoles(["resident", "member", "tenant"]);
+
+    expect(new Set(permissions).size).toBe(permissions.length);
   });
 });

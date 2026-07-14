@@ -8,7 +8,7 @@ export {
   sessionClaimsToPrincipal,
   verifyBffBridgeToken,
 } from "./bff-bridge-token.ts";
-export { evaluatePermission } from "./permission-policy.ts";
+export { evaluatePermission, permissionsForRoles } from "./permission-policy.ts";
 export {
   canAccessLegacyRoute,
   getDefaultRouteForRole,

@@ -44,6 +44,11 @@ export interface AppEnv {
   KEYCLOAK_CLIENT_SECRET: string;
   API_SECURITY_HEADERS_ENABLED: boolean;
   API_AUDIT_LOGGING_ENABLED: boolean;
+  MOBILE_API_ENABLED: boolean;
+  MOBILE_BETA_SOCIETY_ID: string;
+  MOBILE_ACCESS_TOKEN_SECRET: string;
+  MOBILE_REFRESH_TOKEN_PEPPER: string;
+  MOBILE_OTP_PEPPER: string;
   VALKEY_PORT: number;
   VALKEY_URL: string;
   MINIO_API_PORT: number;
@@ -97,6 +102,11 @@ export const ENV_RULES: readonly EnvRule[] = [
   rule("KEYCLOAK_CLIENT_SECRET", "Keycloak confidential client secret.", false, "string", ""),
   rule("API_SECURITY_HEADERS_ENABLED", "Enable strict API security headers.", true, "boolean", "true"),
   rule("API_AUDIT_LOGGING_ENABLED", "Enable audit-event emission for privileged API actions.", true, "boolean", "true"),
+  rule("MOBILE_API_ENABLED", "Enable the dedicated mobile API.", true, "boolean", "false"),
+  rule("MOBILE_BETA_SOCIETY_ID", "Society allowed to use the mobile beta.", false, "string", ""),
+  rule("MOBILE_ACCESS_TOKEN_SECRET", "Secret used to sign mobile access tokens.", false, "string", ""),
+  rule("MOBILE_REFRESH_TOKEN_PEPPER", "Pepper used to hash mobile refresh tokens.", false, "string", ""),
+  rule("MOBILE_OTP_PEPPER", "Pepper used to hash mobile one-time passwords.", false, "string", ""),
   rule("VALKEY_PORT", "Local Valkey host port.", true, "integer", "6379", undefined, 1),
   rule("VALKEY_URL", "Valkey connection URL.", true, "url"),
   rule("MINIO_API_PORT", "Local MinIO S3 API host port.", true, "integer", "9000", undefined, 1),
