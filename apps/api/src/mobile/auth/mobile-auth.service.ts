@@ -3,6 +3,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   Optional,
   ServiceUnavailableException,
   UnauthorizedException,
@@ -35,6 +36,20 @@ export const MOBILE_PASSWORD_RATE_LIMIT_STORE = Symbol(
 
 export interface MobileAuthAudit {
   record(event: AuditEvent): Promise<void>;
+}
+
+export class MobileAuthAuditSink implements MobileAuthAudit {
+  private readonly logger = new Logger(MobileAuthAuditSink.name);
+
+  constructor(private readonly delivery: MobileAuthAudit) {}
+
+  async record(event: AuditEvent): Promise<void> {
+    try {
+      await this.delivery.record(event);
+    } catch {
+      this.logger.warn("Mobile authentication audit delivery failed");
+    }
+  }
 }
 
 export interface MobilePasswordRateLimitInput {
@@ -98,7 +113,10 @@ export interface MobilePasswordLoginContext {
 
 @Injectable()
 export class MobileAuthService {
+  private readonly audit: MobileAuthAuditSink;
+
   constructor(
+    @Inject(MobileConfigService)
     private readonly config: MobileConfigService,
     @Inject(MobileIdentityRepository)
     private readonly identities: Pick<
@@ -108,10 +126,12 @@ export class MobileAuthService {
     @Inject(MobileSessionService)
     private readonly sessions: Pick<MobileSessionService, "issueForIdentity">,
     @Inject(MOBILE_AUTH_AUDIT)
-    private readonly audit: MobileAuthAudit,
+    auditDelivery: MobileAuthAudit,
     @Inject(MobilePasswordRateLimitService)
     private readonly rateLimiter: MobilePasswordRateLimiter,
-  ) {}
+  ) {
+    this.audit = new MobileAuthAuditSink(auditDelivery);
+  }
 
   async passwordLogin(
     body: PasswordLoginRequestDto,
@@ -141,7 +161,7 @@ export class MobileAuthService {
         createAuditEvent({
           actorId: "anonymous",
           societyId: this.config.value.betaSocietyId,
-          action: "tenant:membership.read",
+          action: "auth:login",
           targetType: "mobile_auth",
           targetId: "mobile_password_login",
           outcome: "denied",
@@ -160,7 +180,7 @@ export class MobileAuthService {
       createAuditEvent({
         actorId: identity.userId,
         societyId: identity.societyId,
-        action: "tenant:membership.read",
+        action: "auth:login",
         targetType: "mobile_auth",
         targetId: identity.userId,
         outcome: "allowed",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAuditEvent } from "./audit-event.ts";
+import { createAuditEvent, type AuditEventInput } from "./audit-event.ts";
 
 describe("createAuditEvent", () => {
   it("creates an immutable audit event with tenant and request context", () => {
@@ -26,5 +26,19 @@ describe("createAuditEvent", () => {
       metadata: {},
     });
     expect(Object.isFrozen(event)).toBe(true);
+  });
+
+  it("supports authentication audit actions outside permission decisions", () => {
+    const input = {
+      actorId: "user_123",
+      societyId: "society_a",
+      action: "auth:login",
+      targetType: "mobile_auth",
+      targetId: "user_123",
+      outcome: "allowed",
+      requestId: "req_auth_123",
+    } satisfies AuditEventInput;
+
+    expect(createAuditEvent(input).action).toBe("auth:login");
   });
 });

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { hashSync } from "bcryptjs";
+import { Logger } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import type { RateLimitStore } from "../../security/rate-limit.service.ts";
 import { MobileConfigService } from "../common/mobile-config.service.ts";
@@ -89,9 +90,11 @@ class FakeRateLimiter implements MobilePasswordRateLimiter {
 
 class FakeAudit implements MobileAuthAudit {
   readonly events: Parameters<MobileAuthAudit["record"]>[0][] = [];
+  failure?: Error;
 
   async record(event: Parameters<MobileAuthAudit["record"]>[0]): Promise<void> {
     this.events.push(event);
+    if (this.failure) throw this.failure;
   }
 }
 
@@ -166,7 +169,7 @@ describe("MobileAuthService password login", () => {
     expect(audit.events[0]).toMatchObject({
       actorId: "user_1",
       societyId: "society_beta",
-      action: "tenant:membership.read",
+      action: "auth:login",
       outcome: "allowed",
       requestId: "request_1",
       metadata: {
@@ -197,6 +200,7 @@ describe("MobileAuthService password login", () => {
       expect(audit.events[0]).toMatchObject({
         actorId: "anonymous",
         societyId: "society_beta",
+        action: "auth:login",
         outcome: "denied",
       });
     },
@@ -217,6 +221,55 @@ describe("MobileAuthService password login", () => {
       status: 401,
     });
     expect(sessionCalls).toHaveLength(0);
+  });
+
+  it("preserves invalid_credentials when denied-login audit delivery fails", async () => {
+    const warning = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const { audit, service } = createService(null);
+    audit.failure = new Error(
+      `audit unavailable ${PASSWORD} resident@example.com ${ISSUE.accessToken}`,
+    );
+
+    try {
+      const failure = await readPublicError(
+        service.passwordLogin(loginBody(), {
+          networkAddress: "203.0.113.9",
+          requestId: "request_denied_audit_outage",
+        }),
+      );
+
+      expect(failure).toEqual({
+        response: { error: "invalid_credentials" },
+        status: 401,
+      });
+      expect(warning.mock.calls).toEqual([
+        ["Mobile authentication audit delivery failed"],
+      ]);
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
+  it("returns issued credentials when successful-login audit delivery fails", async () => {
+    const warning = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const { audit, service } = createService();
+    audit.failure = new Error(
+      `audit unavailable ${PASSWORD} resident@example.com ${ISSUE.renewableCredential}`,
+    );
+
+    try {
+      await expect(
+        service.passwordLogin(loginBody(), {
+          networkAddress: "203.0.113.9",
+          requestId: "request_success_audit_outage",
+        }),
+      ).resolves.toEqual(ISSUE);
+      expect(warning.mock.calls).toEqual([
+        ["Mobile authentication audit delivery failed"],
+      ]);
+    } finally {
+      warning.mockRestore();
+    }
   });
 
   it.each(["installation", "network"] as const)(

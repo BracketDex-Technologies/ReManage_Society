@@ -14,6 +14,7 @@ export class MobileSessionService {
     private readonly sessions: Pick<MobileDeviceSessionRepository, "createSession">,
     @Inject(MobileAccessTokenService)
     private readonly accessTokens: Pick<MobileAccessTokenService, "issue">,
+    @Inject(MobileConfigService)
     private readonly config: MobileConfigService,
   ) {}
 

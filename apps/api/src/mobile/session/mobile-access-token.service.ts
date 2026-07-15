@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { MobileConfigService } from "../common/mobile-config.service.ts";
 
@@ -18,7 +18,10 @@ export interface MobileAccessClaims {
 
 @Injectable()
 export class MobileAccessTokenService {
-  constructor(private readonly config: MobileConfigService) {}
+  constructor(
+    @Inject(MobileConfigService)
+    private readonly config: MobileConfigService,
+  ) {}
 
   async issue(claims: MobileAccessClaims): Promise<string> {
     return new SignJWT({ ...claims })

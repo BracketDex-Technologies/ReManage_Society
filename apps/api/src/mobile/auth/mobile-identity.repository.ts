@@ -1,5 +1,4 @@
-import { Injectable } from "@nestjs/common";
-import { prisma } from "../../../../../packages/db/src/index.ts";
+import { Inject, Injectable } from "@nestjs/common";
 import { MobileConfigService } from "../common/mobile-config.service.ts";
 import {
   isPermissionRoleValidForMobileRole,
@@ -47,12 +46,15 @@ export interface MobileIdentityPersistenceClient {
   };
 }
 
+export const MOBILE_IDENTITY_CLIENT = Symbol("MOBILE_IDENTITY_CLIENT");
+
 @Injectable()
 export class MobileIdentityRepository {
   constructor(
-    private readonly client: MobileIdentityPersistenceClient =
-      prisma as unknown as MobileIdentityPersistenceClient,
-    private readonly config: MobileConfigService = new MobileConfigService(),
+    @Inject(MOBILE_IDENTITY_CLIENT)
+    private readonly client: MobileIdentityPersistenceClient,
+    @Inject(MobileConfigService)
+    private readonly config: MobileConfigService,
   ) {}
 
   async findApprovedByEmail(identifier: string): Promise<MobileIdentity | null> {
