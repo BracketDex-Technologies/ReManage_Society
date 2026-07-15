@@ -75,11 +75,17 @@ function applyData(record: SessionRecord, data: Record<string, unknown>) {
   return record;
 }
 
-function createClient(options: { serializationFailures?: number } = {}): RepositoryTestClient {
+function createClient(
+  options: {
+    serializationFailures?: number;
+    uniqueConflicts?: Array<Record<string, unknown>>;
+  } = {},
+): RepositoryTestClient {
   const sessions: SessionRecord[] = [];
   const operations: RepositoryOperation[] = [];
   let serializableTail = Promise.resolve();
   let serializationFailures = options.serializationFailures ?? 0;
+  const uniqueConflicts = [...(options.uniqueConflicts ?? [])];
   const model = {
     findFirst: async (input: unknown) => {
       const where = (input as { where: Record<string, unknown> }).where;
@@ -139,6 +145,15 @@ function createClient(options: { serializationFailures?: number } = {}): Reposit
       if (serializationFailures > 0) {
         serializationFailures -= 1;
         return Promise.reject(Object.assign(new Error("write conflict"), { code: "P2034" }));
+      }
+      const uniqueConflict = uniqueConflicts.shift();
+      if (uniqueConflict) {
+        return Promise.reject(
+          Object.assign(new Error("unique constraint conflict"), {
+            code: "P2002",
+            meta: uniqueConflict,
+          }),
+        );
       }
 
       const pending = serializableTail.then(run);
@@ -247,6 +262,49 @@ describe("MobileDeviceSessionRepository", () => {
 
     expect(client.transactionCount).toBe(2);
     expect(client.sessions).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      "constraint name",
+      { target: "MobileDeviceSession_one_active_installation_idx" },
+    ],
+    [
+      "field target",
+      {
+        modelName: "MobileDeviceSession",
+        target: ["userId", "societyId", "installationId"],
+      },
+    ],
+  ])("retries an active-installation P2002 reported by %s", async (_label, meta) => {
+    const client = createClient({ uniqueConflicts: [meta] });
+    const { repository } = createRepository(client);
+
+    await expect(repository.createSession(sessionInput())).resolves.toMatchObject({
+      sessionId: expect.any(String),
+      version: 1,
+    });
+
+    expect(client.transactionCount).toBe(2);
+    expect(client.sessions).toHaveLength(1);
+  });
+
+  it("does not retry an unrelated P2002", async () => {
+    const client = createClient({
+      uniqueConflicts: [
+        {
+          modelName: "MobileDeviceSession",
+          target: ["refreshTokenHash"],
+        },
+      ],
+    });
+    const { repository } = createRepository(client);
+
+    await expect(repository.createSession(sessionInput())).rejects.toMatchObject({
+      code: "P2002",
+    });
+    expect(client.transactionCount).toBe(1);
+    expect(client.sessions).toHaveLength(0);
   });
 
   it("rotates a valid credential and advances its rotation state", async () => {

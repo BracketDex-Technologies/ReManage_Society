@@ -356,7 +356,9 @@ export class MobileDeviceSessionRepository {
           isolationLevel: "Serializable",
         });
       } catch (error) {
-        if (!isSerializationConflict(error) || attempt === maxAttempts) throw error;
+        if (!isRetryableCreateSessionConflict(error) || attempt === maxAttempts) {
+          throw error;
+        }
       }
     }
     throw new Error("Serializable transaction retry limit reached");
@@ -412,11 +414,27 @@ export class MobileDeviceSessionRepository {
   }
 }
 
-function isSerializationConflict(error: unknown): boolean {
+function isRetryableCreateSessionConflict(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
+
+  const prismaError = error as {
+    code?: unknown;
+    meta?: { modelName?: unknown; target?: unknown };
+  };
+  if (prismaError.code === "P2034") return true;
+  if (prismaError.code !== "P2002") return false;
+
+  const target = prismaError.meta?.target;
+  if (target === "MobileDeviceSession_one_active_installation_idx") return true;
+
   return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "P2034"
+    prismaError.meta?.modelName === "MobileDeviceSession" &&
+    Array.isArray(target) &&
+    target.length === 3 &&
+    target[0] === "userId" &&
+    target[1] === "societyId" &&
+    target[2] === "installationId"
   );
 }
