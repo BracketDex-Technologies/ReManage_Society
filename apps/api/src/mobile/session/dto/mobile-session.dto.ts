@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { IsString, Length } from "class-validator";
 import type { MobileRole } from "../../common/mobile-role.ts";
 
 export class MobileSessionIssueDto {
@@ -19,4 +20,18 @@ export class MobileSessionIssueDto {
 
   @ApiProperty({ enum: ["resident", "guard"] })
   activeRole!: MobileRole;
+}
+
+export class RefreshMobileSessionDto {
+  @ApiProperty()
+  @IsString()
+  @Length(40, 512)
+  renewableCredential!: string;
+}
+
+export class LogoutMobileSessionDto {
+  @ApiProperty()
+  @IsString()
+  @Length(40, 512)
+  renewableCredential!: string;
 }

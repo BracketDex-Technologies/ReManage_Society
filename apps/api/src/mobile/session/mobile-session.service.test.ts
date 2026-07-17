@@ -1,3 +1,4 @@
+import { UnauthorizedException } from "@nestjs/common";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MobileIdentity } from "../auth/mobile-identity.repository.ts";
 import { MobileConfigService } from "../common/mobile-config.service.ts";
@@ -30,8 +31,24 @@ function identity(roles: MobileIdentity["roles"]): MobileIdentity {
   };
 }
 
-function createService() {
+function createService(options: {
+  refreshedSession?: {
+    sessionId: string;
+    credential: string;
+    expiresAt: Date;
+    version: number;
+    userId: string;
+    membershipId: string;
+    societyId: string;
+    activeRole: "resident" | "guard";
+    activePermissionRole: string;
+  };
+  refreshError?: Error;
+  logoutError?: Error;
+} = {}) {
   const sessionInputs: unknown[] = [];
+  const refreshCredentials: string[] = [];
+  const logoutCredentials: string[] = [];
   const accessClaims: MobileAccessClaims[] = [];
   const sessionRepository = {
     createSession: async (input: unknown) => {
@@ -43,6 +60,27 @@ function createService() {
         version: 7,
       };
     },
+    refresh: async (credential: string) => {
+      refreshCredentials.push(credential);
+      if (options.refreshError) throw options.refreshError;
+      return (
+        options.refreshedSession ?? {
+          sessionId: "device_session_1",
+          credential: "device_session_1.refreshed-renewable-secret",
+          expiresAt: new Date("2026-08-14T08:00:00.000Z"),
+          version: 8,
+          userId: "user_1",
+          membershipId: "membership_1",
+          societyId: "society_beta",
+          activeRole: "resident" as const,
+          activePermissionRole: "member",
+        }
+      );
+    },
+    logout: async (credential: string) => {
+      logoutCredentials.push(credential);
+      if (options.logoutError) throw options.logoutError;
+    },
   };
   const accessTokens = {
     issue: async (claims: MobileAccessClaims) => {
@@ -52,6 +90,8 @@ function createService() {
   };
   return {
     accessClaims,
+    refreshCredentials,
+    logoutCredentials,
     sessionInputs,
     service: new MobileSessionService(sessionRepository, accessTokens, createConfig()),
   };
@@ -144,5 +184,82 @@ describe("MobileSessionService", () => {
       activePermissionRole: "guard",
       version: 7,
     });
+  });
+
+  it("issues a refreshed access token for the currently approved replacement role", async () => {
+    const { accessClaims, refreshCredentials, service } = createService({
+      refreshedSession: {
+        sessionId: "device_session_1",
+        credential: "device_session_1.refreshed-renewable-secret",
+        expiresAt: new Date("2026-08-14T09:15:00.000Z"),
+        version: 8,
+        userId: "user_1",
+        membershipId: "membership_1",
+        societyId: "society_beta",
+        activeRole: "guard",
+        activePermissionRole: "guard",
+      },
+    });
+
+    const issued = await service.refresh("device_session_1.current-renewable-secret");
+
+    expect(refreshCredentials).toEqual(["device_session_1.current-renewable-secret"]);
+    expect(accessClaims).toEqual([
+      {
+        sub: "user_1",
+        sid: "device_session_1",
+        societyId: "society_beta",
+        membershipId: "membership_1",
+        activeRole: "guard",
+        activePermissionRole: "guard",
+        version: 8,
+        type: "mobile_access",
+      },
+    ]);
+    expect(issued).toEqual({
+      accessToken: "mobile-access-token",
+      accessExpiresAt: "2026-07-15T08:10:00.000Z",
+      renewableCredential: "device_session_1.refreshed-renewable-secret",
+      renewableExpiresAt: "2026-08-14T09:15:00.000Z",
+      deviceSessionId: "device_session_1",
+      activeRole: "guard",
+    });
+  });
+
+  it("does not issue a token when no approved role remains at refresh time", async () => {
+    const { accessClaims, refreshCredentials, service } = createService({
+      refreshError: new Error("no_approved_role"),
+    });
+
+    await expect(
+      service.refresh("device_session_1.current-renewable-secret"),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(refreshCredentials).toEqual(["device_session_1.current-renewable-secret"]);
+    expect(accessClaims).toEqual([]);
+  });
+
+  it("does not retry a failed refresh", async () => {
+    const { refreshCredentials, service } = createService({
+      refreshError: new Error("refresh_reuse_detected"),
+    });
+
+    await expect(
+      service.refresh("device_session_1.reused-renewable-secret"),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(refreshCredentials).toHaveLength(1);
+  });
+
+  it("logs out idempotently without exposing credential state", async () => {
+    const { logoutCredentials, service } = createService({
+      logoutError: new Error("invalid_credential"),
+    });
+
+    await expect(
+      service.logout("device_session_1.unknown-renewable-secret"),
+    ).resolves.toEqual({ loggedOut: true });
+
+    expect(logoutCredentials).toEqual(["device_session_1.unknown-renewable-secret"]);
   });
 });

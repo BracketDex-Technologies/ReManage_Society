@@ -37,6 +37,7 @@ interface RepositoryTestClient extends MobileDeviceSessionPersistenceClient {
   sessions: SessionRecord[];
   operations: RepositoryOperation[];
   transactionCount: number;
+  approvedRoles: Array<{ role: string; permissionRole: string; revokedAt: Date | null }>;
 }
 
 const NOW = new Date("2026-07-14T12:00:00.000Z");
@@ -79,6 +80,7 @@ function createClient(
   options: {
     serializationFailures?: number;
     uniqueConflicts?: Array<Record<string, unknown>>;
+    approvedRoles?: Array<{ role: string; permissionRole: string; revokedAt?: Date | null }>;
   } = {},
 ): RepositoryTestClient {
   const sessions: SessionRecord[] = [];
@@ -86,6 +88,9 @@ function createClient(
   let serializableTail = Promise.resolve();
   let serializationFailures = options.serializationFailures ?? 0;
   const uniqueConflicts = [...(options.uniqueConflicts ?? [])];
+  const approvedRoles = (options.approvedRoles ?? [
+    { role: "resident", permissionRole: "member" },
+  ]).map((assignment) => ({ ...assignment, revokedAt: assignment.revokedAt ?? null }));
   const model = {
     findFirst: async (input: unknown) => {
       const where = (input as { where: Record<string, unknown> }).where;
@@ -134,13 +139,29 @@ function createClient(
     sessions,
     operations,
     transactionCount: 0,
+    approvedRoles,
     mobileDeviceSession: model,
+    user: {
+      findFirst: async () => ({
+        id: "user_1",
+        memberships: [
+          {
+            id: "membership_1",
+            societyId: "society_a",
+            roleAssignments: approvedRoles.map((assignment) => ({ ...assignment })),
+          },
+        ],
+      }),
+    },
     $transaction: <T>(
-      callback: (transaction: { mobileDeviceSession: typeof model }) => Promise<T>,
+      callback: (transaction: {
+        mobileDeviceSession: typeof model;
+        user: { findFirst: () => Promise<unknown> };
+      }) => Promise<T>,
       options?: { isolationLevel: "Serializable" },
     ) => {
       client.transactionCount += 1;
-      const run = () => callback({ mobileDeviceSession: model });
+      const run = () => callback({ mobileDeviceSession: model, user: client.user });
       if (options?.isolationLevel !== "Serializable") return run();
       if (serializationFailures > 0) {
         serializationFailures -= 1;
@@ -323,6 +344,82 @@ describe("MobileDeviceSessionRepository", () => {
     expect(client.transactionCount).toBe(2);
   });
 
+  it("refreshes a valid credential to exactly thirty days from refresh time", async () => {
+    const { client, repository } = createRepository();
+    const issued = await repository.createSession(sessionInput());
+    const originalHash = client.sessions[0].refreshTokenHash;
+    const refreshedAt = new Date("2026-07-14T12:05:00.000Z");
+    vi.setSystemTime(refreshedAt);
+
+    const refreshed = await repository.refresh(issued.credential);
+
+    const expectedExpiry = new Date("2026-08-13T12:05:00.000Z");
+    expect(refreshed).toMatchObject({
+      sessionId: issued.sessionId,
+      activeRole: "resident",
+      activePermissionRole: "member",
+      expiresAt: expectedExpiry,
+      version: 1,
+    });
+    expect(refreshed.credential).not.toBe(issued.credential);
+    expect(client.sessions[0]).toMatchObject({
+      expiresAt: expectedExpiry,
+      refreshRotation: 1,
+      lastSeenAt: refreshedAt,
+    });
+    expect(client.sessions[0].refreshTokenHash).not.toBe(originalHash);
+  });
+
+  it("revokes the session when a credential replaced by refresh is reused", async () => {
+    const { client, repository } = createRepository();
+    const issued = await repository.createSession(sessionInput());
+    await repository.refresh(issued.credential);
+
+    await expect(repository.refresh(issued.credential)).rejects.toThrow(
+      /refresh_reuse_detected/,
+    );
+
+    expect(client.sessions[0]).toMatchObject({
+      revokedAt: NOW,
+      revokeReason: "refresh_reuse_detected",
+    });
+  });
+
+  it("selects a remaining approved role and increments version during refresh", async () => {
+    const client = createClient({
+      approvedRoles: [{ role: "guard", permissionRole: "guard" }],
+    });
+    const { repository } = createRepository(client);
+    const issued = await repository.createSession(sessionInput());
+
+    const refreshed = await repository.refresh(issued.credential);
+
+    expect(refreshed).toMatchObject({
+      activeRole: "guard",
+      activePermissionRole: "guard",
+      version: 2,
+    });
+    expect(client.sessions[0]).toMatchObject({
+      activeRole: "guard",
+      activePermissionRole: "guard",
+      version: 2,
+      refreshRotation: 1,
+    });
+  });
+
+  it("revokes a session when no approved role remains during refresh", async () => {
+    const client = createClient({ approvedRoles: [] });
+    const { repository } = createRepository(client);
+    const issued = await repository.createSession(sessionInput());
+
+    await expect(repository.refresh(issued.credential)).rejects.toThrow(/unauthorized/);
+
+    expect(client.sessions[0]).toMatchObject({
+      revokedAt: NOW,
+      revokeReason: "authorization_lost",
+    });
+  });
+
   it("revokes the session when a credential replaced by rotation is reused", async () => {
     const { client, repository } = createRepository();
     const issued = await repository.createSession(sessionInput());
@@ -425,12 +522,12 @@ describe("MobileDeviceSessionRepository", () => {
 
     expect(client.sessions[0]).toMatchObject({
       revokedAt: NOW,
-      revokeReason: "logged_out",
+      revokeReason: "user_logout",
     });
     const logoutUpdates = client.operations.filter((operation) => {
       if (operation.action === "create") return false;
       const data = (operation.input as { data: Record<string, unknown> }).data;
-      return data.revokeReason === "logged_out";
+      return data.revokeReason === "user_logout";
     });
     expect(logoutUpdates).toHaveLength(1);
   });

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import type { MobileInstallationDto } from "../auth/dto/mobile-auth.dto.ts";
 import type { MobileIdentity } from "../auth/mobile-identity.repository.ts";
 import { MobileConfigService } from "../common/mobile-config.service.ts";
@@ -11,7 +11,10 @@ import type { MobileSessionIssueDto } from "./dto/mobile-session.dto.ts";
 export class MobileSessionService {
   constructor(
     @Inject(MobileDeviceSessionRepository)
-    private readonly sessions: Pick<MobileDeviceSessionRepository, "createSession">,
+    private readonly sessions: Pick<
+      MobileDeviceSessionRepository,
+      "createSession" | "refresh" | "logout"
+    >,
     @Inject(MobileAccessTokenService)
     private readonly accessTokens: Pick<MobileAccessTokenService, "issue">,
     @Inject(MobileConfigService)
@@ -62,5 +65,42 @@ export class MobileSessionService {
       deviceSessionId: renewable.sessionId,
       activeRole,
     };
+  }
+
+  async refresh(renewableCredential: string): Promise<MobileSessionIssueDto> {
+    try {
+      const refreshed = await this.sessions.refresh(renewableCredential);
+      const accessToken = await this.accessTokens.issue({
+        sub: refreshed.userId,
+        sid: refreshed.sessionId,
+        societyId: refreshed.societyId,
+        membershipId: refreshed.membershipId,
+        activeRole: refreshed.activeRole,
+        activePermissionRole: refreshed.activePermissionRole,
+        version: refreshed.version,
+        type: "mobile_access",
+      });
+      return {
+        accessToken,
+        accessExpiresAt: new Date(
+          Date.now() + this.config.value.accessTokenTtlSeconds * 1_000,
+        ).toISOString(),
+        renewableCredential: refreshed.credential,
+        renewableExpiresAt: refreshed.expiresAt.toISOString(),
+        deviceSessionId: refreshed.sessionId,
+        activeRole: refreshed.activeRole,
+      };
+    } catch {
+      throw new UnauthorizedException({ error: "invalid_refresh" });
+    }
+  }
+
+  async logout(renewableCredential: string): Promise<{ loggedOut: true }> {
+    try {
+      await this.sessions.logout(renewableCredential);
+    } catch {
+      // Logout is intentionally non-enumerating and idempotent.
+    }
+    return { loggedOut: true };
   }
 }

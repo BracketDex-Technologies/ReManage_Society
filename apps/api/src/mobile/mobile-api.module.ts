@@ -30,6 +30,7 @@ import { SmtpMobileOtpDeliveryService } from "./auth/smtp-mobile-otp-delivery.se
 import { MobileConfigService } from "./common/mobile-config.service.ts";
 import { MobileAccessTokenService } from "./session/mobile-access-token.service.ts";
 import { MobileDeviceSessionRepository } from "./session/mobile-device-session.repository.ts";
+import { MobileSessionController } from "./session/mobile-session.controller.ts";
 import { MobileSessionService } from "./session/mobile-session.service.ts";
 
 export const MOBILE_API_PROVIDERS: Provider[] = [
@@ -87,7 +88,7 @@ export const MOBILE_API_PROVIDERS: Provider[] = [
 
 @Module({
   imports: [SecurityModule],
-  controllers: [MobileAuthController],
+  controllers: [MobileAuthController, MobileSessionController],
   providers: MOBILE_API_PROVIDERS,
 })
 export class MobileApiModule {}

@@ -2,7 +2,13 @@ import { Injectable } from "@nestjs/common";
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { prisma } from "../../../../../packages/db/src/index.ts";
 import { MobileConfigService } from "../common/mobile-config.service.ts";
-import type { MobileRole } from "../common/mobile-role.ts";
+import {
+  defaultMobileRole,
+  isPermissionRoleValidForMobileRole,
+  normalizeMobileRole,
+  type MobilePermissionRole,
+  type MobileRole,
+} from "../common/mobile-role.ts";
 
 export interface CreateMobileSessionInput {
   userId: string;
@@ -21,6 +27,14 @@ export interface IssuedRenewableCredential {
   credential: string;
   expiresAt: Date;
   version: number;
+}
+
+export interface RefreshedMobileSession extends IssuedRenewableCredential {
+  userId: string;
+  membershipId: string;
+  societyId: string;
+  activeRole: MobileRole;
+  activePermissionRole: MobilePermissionRole;
 }
 
 interface MobileDeviceSessionRecord {
@@ -46,6 +60,19 @@ interface MobileDeviceSessionRecord {
   updatedAt: Date;
 }
 
+interface MobileRefreshIdentityRecord {
+  id: string;
+  memberships: {
+    id: string;
+    societyId: string;
+    roleAssignments: {
+      role: string;
+      permissionRole: string;
+      revokedAt: Date | null;
+    }[];
+  }[];
+}
+
 export interface MobileDeviceSessionTransactionClient {
   mobileDeviceSession: {
     findFirst(input: unknown): Promise<MobileDeviceSessionRecord | null>;
@@ -53,6 +80,9 @@ export interface MobileDeviceSessionTransactionClient {
     create(input: unknown): Promise<MobileDeviceSessionRecord>;
     update(input: unknown): Promise<MobileDeviceSessionRecord>;
     updateMany(input: unknown): Promise<{ count: number }>;
+  };
+  user: {
+    findFirst(input: unknown): Promise<MobileRefreshIdentityRecord | null>;
   };
 }
 
@@ -68,7 +98,8 @@ export type MobileSessionCredentialErrorCode =
   | "invalid_credential"
   | "session_expired"
   | "session_revoked"
-  | "refresh_reuse_detected";
+  | "refresh_reuse_detected"
+  | "unauthorized";
 
 export class MobileSessionCredentialError extends Error {
   constructor(readonly code: MobileSessionCredentialErrorCode) {
@@ -197,6 +228,81 @@ export class MobileDeviceSessionRepository {
     return this.unwrap(result);
   }
 
+  async refresh(credential: string): Promise<RefreshedMobileSession> {
+    const parsed = this.parse(credential);
+    const now = new Date();
+    const expiresAt = new Date(
+      now.getTime() + this.config.value.renewableTtlDays * 24 * 60 * 60 * 1_000,
+    );
+
+    const result = await this.client.$transaction(async (transaction) => {
+      const session = await transaction.mobileDeviceSession.findUnique({
+        where: { id: parsed.sessionId },
+      });
+      if (!session) return this.failure("invalid_credential");
+      const unavailable = this.unavailableSession(session, now);
+      if (unavailable) return unavailable;
+
+      if (!this.matches(session.refreshTokenHash, parsed)) {
+        await this.markRefreshReuse(transaction, session.id, now);
+        return this.failure("refresh_reuse_detected");
+      }
+
+      const authorization = await this.currentAuthorization(transaction, session);
+      if (!authorization) {
+        await transaction.mobileDeviceSession.updateMany({
+          where: {
+            id: session.id,
+            refreshTokenHash: session.refreshTokenHash,
+            revokedAt: null,
+          },
+          data: {
+            revokedAt: now,
+            revokeReason: "authorization_lost",
+          },
+        });
+        return this.failure("unauthorized");
+      }
+
+      const roleChanged = authorization.activeRole !== session.activeRole;
+      const nextSecret = this.newSecret();
+      const refreshed = await transaction.mobileDeviceSession.updateMany({
+        where: {
+          id: session.id,
+          refreshTokenHash: session.refreshTokenHash,
+          revokedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: {
+          refreshTokenHash: this.hash(session.id, nextSecret),
+          refreshRotation: { increment: 1 },
+          expiresAt,
+          lastSeenAt: now,
+          activeRole: authorization.activeRole,
+          activePermissionRole: authorization.activePermissionRole,
+          ...(roleChanged ? { version: { increment: 1 } } : {}),
+        },
+      });
+      if (refreshed.count !== 1) {
+        return this.resolveFailedRotation(transaction, parsed, now);
+      }
+
+      return this.success({
+        sessionId: session.id,
+        credential: `${session.id}.${nextSecret}`,
+        expiresAt,
+        version: session.version + (roleChanged ? 1 : 0),
+        userId: session.userId,
+        membershipId: session.membershipId,
+        societyId: session.societyId,
+        activeRole: authorization.activeRole,
+        activePermissionRole: authorization.activePermissionRole,
+      });
+    });
+
+    return this.unwrap(result);
+  }
+
   async updateRole(
     sessionId: string,
     activeRole: MobileRole,
@@ -282,7 +388,7 @@ export class MobileDeviceSessionRepository {
         },
         data: {
           revokedAt: now,
-          revokeReason: "logged_out",
+          revokeReason: "user_logout",
         },
       });
       if (loggedOut.count === 1) return this.success(undefined);
@@ -344,6 +450,79 @@ export class MobileDeviceSessionRepository {
         revokeReason: "refresh_reuse_detected",
       },
     });
+  }
+
+  private async currentAuthorization(
+    transaction: MobileDeviceSessionTransactionClient,
+    session: MobileDeviceSessionRecord,
+  ): Promise<{
+    activeRole: MobileRole;
+    activePermissionRole: MobilePermissionRole;
+  } | null> {
+    const user = await transaction.user.findFirst({
+      where: {
+        id: session.userId,
+        isActive: true,
+        memberships: {
+          some: {
+            id: session.membershipId,
+            societyId: this.config.value.betaSocietyId,
+            status: "active",
+          },
+        },
+      },
+      select: {
+        id: true,
+        memberships: {
+          where: {
+            id: session.membershipId,
+            societyId: this.config.value.betaSocietyId,
+            status: "active",
+          },
+          take: 1,
+          select: {
+            id: true,
+            societyId: true,
+            roleAssignments: {
+              where: { revokedAt: null },
+              select: {
+                role: true,
+                permissionRole: true,
+                revokedAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    const membership = user?.memberships[0];
+    if (!user || !membership || membership.societyId !== session.societyId) return null;
+
+    const roles = new Map<
+      MobileRole,
+      { role: MobileRole; permissionRole: MobilePermissionRole }
+    >();
+    for (const assignment of membership.roleAssignments) {
+      if (assignment.revokedAt) continue;
+      const role = normalizeMobileRole(assignment.role);
+      if (!role || !isPermissionRoleValidForMobileRole(role, assignment.permissionRole)) {
+        continue;
+      }
+      if (!roles.has(role)) {
+        roles.set(role, { role, permissionRole: assignment.permissionRole });
+      }
+    }
+    if (roles.size === 0) return null;
+
+    const activeRole = roles.has(session.activeRole as MobileRole)
+      ? (session.activeRole as MobileRole)
+      : defaultMobileRole([...roles.keys()]);
+    const activeAssignment = roles.get(activeRole);
+    if (!activeAssignment) return null;
+    return {
+      activeRole,
+      activePermissionRole: activeAssignment.permissionRole,
+    };
   }
 
   private async serializableTransaction<T>(
