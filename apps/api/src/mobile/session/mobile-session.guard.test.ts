@@ -29,10 +29,19 @@ function context(value: ReturnType<typeof request>): ExecutionContext {
   return { switchToHttp: () => ({ getRequest: () => value }) } as never;
 }
 
-function guard(options: { tokenError?: Error; current?: ReturnType<typeof live> | null } = {}) {
+function guard(options: {
+  tokenError?: Error;
+  current?: ReturnType<typeof live> | null;
+  onSessionLookup?: (sessionId: string) => void;
+} = {}) {
   return new MobileSessionGuard(
     { verify: async () => { if (options.tokenError) throw options.tokenError; return claims(); } },
-    { findLiveSession: async () => options.current === undefined ? live() : options.current },
+    {
+      findLiveSession: async (sessionId: string) => {
+        options.onSessionLookup?.(sessionId);
+        return options.current === undefined ? live() : options.current;
+      },
+    },
   );
 }
 
@@ -51,6 +60,20 @@ describe("MobileSessionGuard", () => {
 
   it("rejects a token whose session version has been superseded", async () => {
     await expect(guard({ current: live({ version: 2 }) }).canActivate(context(request({ authorization: "Bearer token" })))).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it("rejects an otherwise matching live session returned for a different session id", async () => {
+    const lookedUp: string[] = [];
+    const value = request({ authorization: "Bearer token" });
+
+    await expect(guard({
+      current: live({ id: "session_substituted" }),
+      onSessionLookup: (sessionId) => lookedUp.push(sessionId),
+    }).canActivate(context(value))).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(lookedUp).toEqual(["session_1"]);
+    expect(value.mobileSession).toBeUndefined();
+    expect(value.principal).toBeUndefined();
   });
 
   it("rejects active role or permission-role substitution", async () => {

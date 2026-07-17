@@ -28,6 +28,7 @@ export class MobileSessionGuard implements CanActivate {
 
     const live = await this.sessions.findLiveSession(claims.sid);
     if (!live ||
+      live.session.id !== claims.sid ||
       live.session.userId !== claims.sub ||
       live.session.societyId !== claims.societyId ||
       live.session.membershipId !== claims.membershipId ||
