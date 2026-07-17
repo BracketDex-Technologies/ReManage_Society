@@ -324,7 +324,6 @@ export class MobileDeviceSessionRepository {
   async updateRole(
     sessionId: string,
     activeRole: MobileRole,
-    activePermissionRole: string,
   ): Promise<{ version: number }> {
     const now = new Date();
     const result = await this.client.$transaction(async (transaction) => {
@@ -334,6 +333,12 @@ export class MobileDeviceSessionRepository {
       if (!session) return this.failure("invalid_credential");
       const unavailable = this.unavailableSession(session, now);
       if (unavailable) return unavailable;
+      const authorizedAssignment = await this.liveRoleAssignment(
+        transaction,
+        session,
+        activeRole,
+      );
+      if (!authorizedAssignment) return this.failure("unauthorized");
 
       const updated = await transaction.mobileDeviceSession.updateMany({
         where: {
@@ -344,7 +349,7 @@ export class MobileDeviceSessionRepository {
         },
         data: {
           activeRole,
-          activePermissionRole,
+          activePermissionRole: authorizedAssignment.permissionRole,
           version: { increment: 1 },
           lastSeenAt: now,
         },
@@ -516,6 +521,32 @@ export class MobileDeviceSessionRepository {
     activeRole: MobileRole;
     activePermissionRole: MobilePermissionRole;
   } | null> {
+    const roles = await this.liveRoleAssignments(transaction, session);
+    if (!roles) return null;
+
+    const activeRole = roles.has(session.activeRole as MobileRole)
+      ? (session.activeRole as MobileRole)
+      : defaultMobileRole([...roles.keys()]);
+    const activeAssignment = roles.get(activeRole);
+    if (!activeAssignment) return null;
+    return {
+      activeRole,
+      activePermissionRole: activeAssignment.permissionRole,
+    };
+  }
+
+  private async liveRoleAssignment(
+    transaction: MobileDeviceSessionTransactionClient,
+    session: MobileDeviceSessionRecord,
+    role: MobileRole,
+  ): Promise<{ role: MobileRole; permissionRole: MobilePermissionRole } | null> {
+    return (await this.liveRoleAssignments(transaction, session))?.get(role) ?? null;
+  }
+
+  private async liveRoleAssignments(
+    transaction: MobileDeviceSessionTransactionClient,
+    session: MobileDeviceSessionRecord,
+  ): Promise<Map<MobileRole, { role: MobileRole; permissionRole: MobilePermissionRole }> | null> {
     const user = await transaction.user.findFirst({
       where: {
         id: session.userId,
@@ -557,16 +588,7 @@ export class MobileDeviceSessionRepository {
 
     const roles = new Map(this.approvedRoles(membership.roleAssignments).map((assignment) => [assignment.role, assignment]));
     if (roles.size === 0) return null;
-
-    const activeRole = roles.has(session.activeRole as MobileRole)
-      ? (session.activeRole as MobileRole)
-      : defaultMobileRole([...roles.keys()]);
-    const activeAssignment = roles.get(activeRole);
-    if (!activeAssignment) return null;
-    return {
-      activeRole,
-      activePermissionRole: activeAssignment.permissionRole,
-    };
+    return roles;
   }
 
   private approvedRoles(

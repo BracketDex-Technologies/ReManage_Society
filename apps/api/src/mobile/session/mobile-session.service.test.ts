@@ -42,12 +42,13 @@ function createService(options: {
   logoutError?: Error;
   accessTokenError?: Error;
   liveSession?: ReturnType<typeof liveSession> | null;
+  afterRoleUpdateRoles?: ReturnType<typeof liveSession>["approvedRoles"];
 } = {}) {
   const sessionInputs: unknown[] = [];
   const refreshCredentials: string[] = [];
   const logoutCredentials: string[] = [];
   const accessClaims: MobileAccessClaims[] = [];
-  const roleUpdates: Array<{ sessionId: string; role: string; permissionRole: string }> = [];
+  const roleUpdates: Array<{ sessionId: string; role: string }> = [];
   const auditEvents: unknown[] = [];
   let live = options.liveSession === undefined ? liveSession() : options.liveSession;
   const sessionRepository = {
@@ -83,10 +84,16 @@ function createService(options: {
       if (options.logoutError) throw options.logoutError;
     },
     findLiveSession: async () => live,
-    updateRole: async (sessionId: string, role: "resident" | "guard", permissionRole: string) => {
-      roleUpdates.push({ sessionId, role, permissionRole });
+    updateRole: async (sessionId: string, role: "resident" | "guard") => {
+      roleUpdates.push({ sessionId, role });
       if (!live) throw new MobileSessionCredentialError("unauthorized");
-      live = { ...live, session: { ...live.session, activeRole: role, activePermissionRole: permissionRole as "member" | "guard", version: live.session.version + 1 } };
+      const assignment = live.approvedRoles.find((candidate) => candidate.role === role);
+      if (!assignment) throw new MobileSessionCredentialError("unauthorized");
+      live = {
+        ...live,
+        session: { ...live.session, activeRole: role, activePermissionRole: assignment.permissionRole, version: live.session.version + 1 },
+        ...(options.afterRoleUpdateRoles ? { approvedRoles: options.afterRoleUpdateRoles } : {}),
+      };
       return { version: live.session.version };
     },
   };
@@ -397,9 +404,19 @@ describe("MobileSessionService", () => {
     const { accessClaims, auditEvents, roleUpdates, service } = createService();
     const switched = await service.switchRole(activeContext(), "guard", "req_99");
 
-    expect(roleUpdates).toEqual([{ sessionId: "device_session_1", role: "guard", permissionRole: "guard" }]);
+    expect(roleUpdates).toEqual([{ sessionId: "device_session_1", role: "guard" }]);
     expect(accessClaims.at(-1)).toMatchObject({ activeRole: "guard", activePermissionRole: "guard", version: 8 });
     expect(switched).toMatchObject({ accessToken: "mobile-access-token", accessExpiresAt: "2026-07-15T08:10:00.000Z", bootstrap: { activeRole: "guard", approvedRoles: ["resident", "guard"], permissions: ["operations:gate.manage", "operations:read", "operations:sos.raise", "community:read"] } });
     expect(auditEvents).toEqual([expect.objectContaining({ actorId: "user_1", societyId: "society_beta", requestId: "req_99", metadata: { event: "mobile_role_switch", oldRole: "resident", newRole: "guard", sessionId: "device_session_1" } })]);
+  });
+
+  it("does not issue a replacement after the updated live authorization loses the requested assignment", async () => {
+    const { accessClaims, auditEvents, service } = createService({
+      afterRoleUpdateRoles: [{ role: "resident", permissionRole: "member" }],
+    });
+
+    await expect(service.switchRole(activeContext(), "guard", "req_lost_role")).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(accessClaims).toEqual([]);
+    expect(auditEvents).toEqual([]);
   });
 });

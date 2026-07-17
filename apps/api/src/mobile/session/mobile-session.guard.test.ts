@@ -1,7 +1,9 @@
 import { UnauthorizedException, type ExecutionContext } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 import type { MobileAccessClaims } from "./mobile-access-token.service.ts";
+import { MobileConfigService } from "../common/mobile-config.service.ts";
 import { MobileSessionGuard } from "./mobile-session.guard.ts";
+import { MobileSessionService } from "./mobile-session.service.ts";
 
 function claims(overrides: Partial<MobileAccessClaims> = {}): MobileAccessClaims {
   return {
@@ -64,5 +66,44 @@ describe("MobileSessionGuard", () => {
     await expect(guard().canActivate(context(value))).resolves.toBe(true);
     expect(value.mobileSession).toEqual({ sessionId: "session_1", userId: "user_1", membershipId: "membership_1", societyId: "society_beta", activeRole: "resident", activePermissionRole: "member", version: 1 });
     expect(value.principal).toEqual({ subject: "user_1", memberships: [{ societyId: "society_beta", roles: ["member"], mfaVerified: false }], platformRoles: [] });
+  });
+
+  it("rejects pre-switch access claims after a real role switch increments shared session state", async () => {
+    let current = {
+      session: { id: "session_1", userId: "user_1", membershipId: "membership_1", societyId: "society_beta", activeRole: "resident" as const, activePermissionRole: "member" as const, version: 1 },
+      user: { id: "user_1", name: "Resident One", email: "resident@example.com" },
+      society: { id: "society_beta", name: "Beta Society" },
+      approvedRoles: [{ role: "resident" as const, permissionRole: "member" as const }, { role: "guard" as const, permissionRole: "guard" as const }],
+    };
+    const preSwitchClaims = claims();
+    const sessions = {
+      findLiveSession: async () => current,
+      updateRole: async (_sessionId: string, role: "resident" | "guard") => {
+        const assignment = current.approvedRoles.find((candidate) => candidate.role === role);
+        if (!assignment) throw new Error("unauthorized");
+        current = { ...current, session: { ...current.session, activeRole: role, activePermissionRole: assignment.permissionRole, version: current.session.version + 1 } } as typeof current;
+        return { version: current.session.version };
+      },
+    };
+    const config = new MobileConfigService({
+      MOBILE_API_ENABLED: "true", MOBILE_BETA_SOCIETY_ID: "society_beta",
+      MOBILE_ACCESS_TOKEN_SECRET: "mobile-access-secret-with-at-least-32-characters",
+      MOBILE_REFRESH_TOKEN_PEPPER: "refresh-pepper-with-at-least-32-characters",
+      MOBILE_OTP_PEPPER: "mobile-otp-pepper-with-at-least-32-characters",
+    });
+    const service = new MobileSessionService(
+      sessions as never,
+      { issue: async () => "replacement-token" },
+      config,
+      { record: async () => undefined },
+    );
+
+    await service.switchRole({ sessionId: "session_1", userId: "user_1", membershipId: "membership_1", societyId: "society_beta", activeRole: "resident", activePermissionRole: "member", version: 1 }, "guard", "req_1");
+    const staleGuard = new MobileSessionGuard(
+      { verify: async () => preSwitchClaims },
+      { findLiveSession: async () => current },
+    );
+
+    await expect(staleGuard.canActivate(context(request({ authorization: "Bearer old-token" })))).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

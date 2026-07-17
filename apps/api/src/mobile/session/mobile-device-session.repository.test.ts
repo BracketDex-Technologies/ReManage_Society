@@ -81,6 +81,7 @@ function createClient(
     serializationFailures?: number;
     uniqueConflicts?: Array<Record<string, unknown>>;
     approvedRoles?: Array<{ role: string; permissionRole: string; revokedAt?: Date | null }>;
+    membershipActive?: boolean;
     beforeRefreshCompareAndSet?: () => Promise<void>;
   } = {},
 ): RepositoryTestClient {
@@ -146,7 +147,7 @@ function createClient(
     approvedRoles,
     mobileDeviceSession: model,
     user: {
-      findFirst: async () => ({
+      findFirst: async () => options.membershipActive === false ? null : ({
         id: "user_1",
         memberships: [
           {
@@ -535,10 +536,15 @@ describe("MobileDeviceSessionRepository", () => {
   });
 
   it("updates the active role and increments the session version atomically", async () => {
-    const { client, repository } = createRepository();
+    const { client, repository } = createRepository(createClient({
+      approvedRoles: [
+        { role: "resident", permissionRole: "member" },
+        { role: "guard", permissionRole: "guard" },
+      ],
+    }));
     const issued = await repository.createSession(sessionInput());
 
-    const result = await repository.updateRole(issued.sessionId, "guard", "guard");
+    const result = await repository.updateRole(issued.sessionId, "guard");
 
     expect(result).toEqual({ version: 2 });
     expect(client.sessions[0]).toMatchObject({
@@ -549,13 +555,31 @@ describe("MobileDeviceSessionRepository", () => {
     expect(client.transactionCount).toBe(2);
   });
 
+  it.each([
+    ["a deactivated membership", { membershipActive: false }],
+    ["a missing requested assignment", { approvedRoles: [{ role: "resident", permissionRole: "member" }] }],
+    ["an incompatible requested permission role", { approvedRoles: [{ role: "resident", permissionRole: "guard" }] }],
+  ])("does not persist a role switch when authorization has changed to %s", async (_label, options) => {
+    const client = createClient(options);
+    const { repository } = createRepository(client);
+    const issued = await repository.createSession(sessionInput());
+    const requested = _label === "an incompatible requested permission role" ? "resident" : "guard";
+
+    await expect(repository.updateRole(issued.sessionId, requested)).rejects.toThrow(/unauthorized/);
+    expect(client.sessions[0]).toMatchObject({
+      activeRole: "resident",
+      activePermissionRole: "member",
+      version: 1,
+    });
+  });
+
   it("does not report a role update after a concurrent revocation wins", async () => {
     const { client, repository } = createRepository();
     const issued = await repository.createSession(sessionInput());
 
     const [, roleUpdate] = await Promise.allSettled([
       repository.revoke(issued.sessionId, "admin_revoked"),
-      repository.updateRole(issued.sessionId, "guard", "guard"),
+      repository.updateRole(issued.sessionId, "guard"),
     ]);
 
     expect(roleUpdate).toMatchObject({ status: "rejected" });

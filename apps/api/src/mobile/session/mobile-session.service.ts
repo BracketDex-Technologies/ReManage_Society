@@ -145,18 +145,20 @@ export class MobileSessionService {
   ): Promise<MobileRoleSwitchDto> {
     const current = await this.sessions.findLiveSession(context.sessionId);
     if (!current || !this.matchesContext(current, context)) throw invalidSession();
-    const requested = current.approvedRoles.find((assignment) => assignment.role === role);
-    if (!requested) throw invalidSession();
 
     let updated;
     try {
-      updated = await this.sessions.updateRole(current.session.id, requested.role, requested.permissionRole);
+      updated = await this.sessions.updateRole(current.session.id, role);
     } catch (error) {
       if (error instanceof MobileSessionCredentialError) throw invalidSession();
       throw error;
     }
     const live = await this.sessions.findLiveSession(current.session.id);
-    if (!live || live.session.version !== updated.version || live.session.activeRole !== requested.role || live.session.activePermissionRole !== requested.permissionRole) {
+    if (!live || live.session.version !== updated.version || live.session.activeRole !== role ||
+      !live.approvedRoles.some((assignment) =>
+        assignment.role === role &&
+        assignment.permissionRole === live.session.activePermissionRole,
+      )) {
       throw invalidSession();
     }
     const accessToken = await this.accessTokens.issue({
