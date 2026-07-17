@@ -4,7 +4,10 @@ import type { MobileIdentity } from "../auth/mobile-identity.repository.ts";
 import { MobileConfigService } from "../common/mobile-config.service.ts";
 import { defaultMobileRole } from "../common/mobile-role.ts";
 import { MobileAccessTokenService } from "./mobile-access-token.service.ts";
-import { MobileDeviceSessionRepository } from "./mobile-device-session.repository.ts";
+import {
+  MobileDeviceSessionRepository,
+  MobileSessionCredentialError,
+} from "./mobile-device-session.repository.ts";
 import type { MobileSessionIssueDto } from "./dto/mobile-session.dto.ts";
 
 @Injectable()
@@ -68,38 +71,44 @@ export class MobileSessionService {
   }
 
   async refresh(renewableCredential: string): Promise<MobileSessionIssueDto> {
+    let refreshed: Awaited<ReturnType<MobileDeviceSessionRepository["refresh"]>>;
     try {
-      const refreshed = await this.sessions.refresh(renewableCredential);
-      const accessToken = await this.accessTokens.issue({
-        sub: refreshed.userId,
-        sid: refreshed.sessionId,
-        societyId: refreshed.societyId,
-        membershipId: refreshed.membershipId,
-        activeRole: refreshed.activeRole,
-        activePermissionRole: refreshed.activePermissionRole,
-        version: refreshed.version,
-        type: "mobile_access",
-      });
-      return {
-        accessToken,
-        accessExpiresAt: new Date(
-          Date.now() + this.config.value.accessTokenTtlSeconds * 1_000,
-        ).toISOString(),
-        renewableCredential: refreshed.credential,
-        renewableExpiresAt: refreshed.expiresAt.toISOString(),
-        deviceSessionId: refreshed.sessionId,
-        activeRole: refreshed.activeRole,
-      };
-    } catch {
-      throw new UnauthorizedException({ error: "invalid_refresh" });
+      refreshed = await this.sessions.refresh(renewableCredential);
+    } catch (error) {
+      if (error instanceof MobileSessionCredentialError) {
+        throw new UnauthorizedException({ error: "invalid_refresh" });
+      }
+      throw error;
     }
+    const accessToken = await this.accessTokens.issue({
+      sub: refreshed.userId,
+      sid: refreshed.sessionId,
+      societyId: refreshed.societyId,
+      membershipId: refreshed.membershipId,
+      activeRole: refreshed.activeRole,
+      activePermissionRole: refreshed.activePermissionRole,
+      version: refreshed.version,
+      type: "mobile_access",
+    });
+    return {
+      accessToken,
+      accessExpiresAt: new Date(
+        Date.now() + this.config.value.accessTokenTtlSeconds * 1_000,
+      ).toISOString(),
+      renewableCredential: refreshed.credential,
+      renewableExpiresAt: refreshed.expiresAt.toISOString(),
+      deviceSessionId: refreshed.sessionId,
+      activeRole: refreshed.activeRole,
+    };
   }
 
   async logout(renewableCredential: string): Promise<{ loggedOut: true }> {
     try {
       await this.sessions.logout(renewableCredential);
-    } catch {
-      // Logout is intentionally non-enumerating and idempotent.
+    } catch (error) {
+      if (!(error instanceof MobileSessionCredentialError)) {
+        throw error;
+      }
     }
     return { loggedOut: true };
   }

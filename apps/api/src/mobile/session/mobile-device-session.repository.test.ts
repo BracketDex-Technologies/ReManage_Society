@@ -81,6 +81,7 @@ function createClient(
     serializationFailures?: number;
     uniqueConflicts?: Array<Record<string, unknown>>;
     approvedRoles?: Array<{ role: string; permissionRole: string; revokedAt?: Date | null }>;
+    beforeRefreshCompareAndSet?: () => Promise<void>;
   } = {},
 ): RepositoryTestClient {
   const sessions: SessionRecord[] = [];
@@ -129,6 +130,9 @@ function createClient(
         where: Record<string, unknown>;
         data: Record<string, unknown>;
       };
+      if ("refreshRotation" in data) {
+        await options.beforeRefreshCompareAndSet?.();
+      }
       const matching = sessions.filter((session) => matches(session, where));
       matching.forEach((session) => applyData(session, data));
       return { count: matching.length };
@@ -207,6 +211,24 @@ function createRepository(client = createClient()) {
   return {
     client,
     repository: new MobileDeviceSessionRepository(client, createConfig()),
+  };
+}
+
+function createBarrier(parties: number) {
+  let arrivals = 0;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return {
+    get arrivals() {
+      return arrivals;
+    },
+    async wait() {
+      arrivals += 1;
+      if (arrivals === parties) release();
+      await gate;
+    },
   };
 }
 
@@ -383,6 +405,38 @@ describe("MobileDeviceSessionRepository", () => {
       revokedAt: NOW,
       revokeReason: "refresh_reuse_detected",
     });
+  });
+
+  it("allows one concurrent refresh CAS winner and revokes the reused credential", async () => {
+    const barrier = createBarrier(2);
+    const client = createClient({
+      beforeRefreshCompareAndSet: () => barrier.wait(),
+    });
+    const { repository } = createRepository(client);
+    const issued = await repository.createSession(sessionInput());
+
+    const refreshes = await Promise.allSettled([
+      repository.refresh(issued.credential),
+      repository.refresh(issued.credential),
+    ]);
+
+    expect(barrier.arrivals).toBe(2);
+    expect(refreshes.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(refreshes.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(refreshes.find((result) => result.status === "rejected")).toMatchObject({
+      reason: expect.objectContaining({ code: "refresh_reuse_detected" }),
+    });
+    expect(client.sessions[0]).toMatchObject({
+      refreshRotation: 1,
+      revokedAt: NOW,
+      revokeReason: "refresh_reuse_detected",
+    });
+    const refreshCasAttempts = client.operations.filter((operation) => {
+      if (operation.action !== "updateMany") return false;
+      const data = (operation.input as { data: Record<string, unknown> }).data;
+      return "refreshRotation" in data;
+    });
+    expect(refreshCasAttempts).toHaveLength(2);
   });
 
   it("selects a remaining approved role and increments version during refresh", async () => {

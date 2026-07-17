@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MobileIdentity } from "../auth/mobile-identity.repository.ts";
 import { MobileConfigService } from "../common/mobile-config.service.ts";
 import type { MobileAccessClaims } from "./mobile-access-token.service.ts";
+import {
+  MobileSessionCredentialError,
+  type RefreshedMobileSession,
+} from "./mobile-device-session.repository.ts";
 import { MobileSessionService } from "./mobile-session.service.ts";
 
 const NOW = new Date("2026-07-15T08:00:00.000Z");
@@ -32,19 +36,11 @@ function identity(roles: MobileIdentity["roles"]): MobileIdentity {
 }
 
 function createService(options: {
-  refreshedSession?: {
-    sessionId: string;
-    credential: string;
-    expiresAt: Date;
-    version: number;
-    userId: string;
-    membershipId: string;
-    societyId: string;
-    activeRole: "resident" | "guard";
-    activePermissionRole: string;
-  };
+  refreshedSession?: RefreshedMobileSession;
+  refreshImplementation?: (credential: string) => Promise<RefreshedMobileSession>;
   refreshError?: Error;
   logoutError?: Error;
+  accessTokenError?: Error;
 } = {}) {
   const sessionInputs: unknown[] = [];
   const refreshCredentials: string[] = [];
@@ -62,6 +58,7 @@ function createService(options: {
     },
     refresh: async (credential: string) => {
       refreshCredentials.push(credential);
+      if (options.refreshImplementation) return options.refreshImplementation(credential);
       if (options.refreshError) throw options.refreshError;
       return (
         options.refreshedSession ?? {
@@ -85,6 +82,7 @@ function createService(options: {
   const accessTokens = {
     issue: async (claims: MobileAccessClaims) => {
       accessClaims.push(claims);
+      if (options.accessTokenError) throw options.accessTokenError;
       return "mobile-access-token";
     },
   };
@@ -94,6 +92,38 @@ function createService(options: {
     logoutCredentials,
     sessionInputs,
     service: new MobileSessionService(sessionRepository, accessTokens, createConfig()),
+  };
+}
+
+function refreshedSession(): RefreshedMobileSession {
+  return {
+    sessionId: "device_session_1",
+    credential: "device_session_1.refreshed-renewable-secret",
+    expiresAt: new Date("2026-08-14T08:00:00.000Z"),
+    version: 8,
+    userId: "user_1",
+    membershipId: "membership_1",
+    societyId: "society_beta",
+    activeRole: "resident",
+    activePermissionRole: "member",
+  };
+}
+
+function createBarrier(parties: number) {
+  let arrivals = 0;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return {
+    get arrivals() {
+      return arrivals;
+    },
+    async wait() {
+      arrivals += 1;
+      if (arrivals === parties) release();
+      await gate;
+    },
   };
 }
 
@@ -228,7 +258,7 @@ describe("MobileSessionService", () => {
 
   it("does not issue a token when no approved role remains at refresh time", async () => {
     const { accessClaims, refreshCredentials, service } = createService({
-      refreshError: new Error("no_approved_role"),
+      refreshError: new MobileSessionCredentialError("unauthorized"),
     });
 
     await expect(
@@ -241,7 +271,7 @@ describe("MobileSessionService", () => {
 
   it("does not retry a failed refresh", async () => {
     const { refreshCredentials, service } = createService({
-      refreshError: new Error("refresh_reuse_detected"),
+      refreshError: new MobileSessionCredentialError("refresh_reuse_detected"),
     });
 
     await expect(
@@ -253,7 +283,7 @@ describe("MobileSessionService", () => {
 
   it("logs out idempotently without exposing credential state", async () => {
     const { logoutCredentials, service } = createService({
-      logoutError: new Error("invalid_credential"),
+      logoutError: new MobileSessionCredentialError("invalid_credential"),
     });
 
     await expect(
@@ -261,5 +291,57 @@ describe("MobileSessionService", () => {
     ).resolves.toEqual({ loggedOut: true });
 
     expect(logoutCredentials).toEqual(["device_session_1.unknown-renewable-secret"]);
+  });
+
+  it("propagates a logout persistence failure instead of claiming success", async () => {
+    const failure = new Error("database unavailable");
+    const { service } = createService({ logoutError: failure });
+
+    await expect(
+      service.logout("device_session_1.current-renewable-secret"),
+    ).rejects.toBe(failure);
+  });
+
+  it("propagates a signing failure after refresh instead of relabeling it as unauthorized", async () => {
+    const failure = new Error("access token signer unavailable");
+    const { accessClaims, refreshCredentials, service } = createService({
+      accessTokenError: failure,
+    });
+
+    await expect(
+      service.refresh("device_session_1.current-renewable-secret"),
+    ).rejects.toBe(failure);
+
+    expect(refreshCredentials).toEqual(["device_session_1.current-renewable-secret"]);
+    expect(accessClaims).toHaveLength(1);
+  });
+
+  it("issues one access token when two callers race at a one-winner refresh boundary", async () => {
+    const barrier = createBarrier(2);
+    let credentialAccepted = false;
+    const { accessClaims, refreshCredentials, service } = createService({
+      refreshImplementation: async () => {
+        await barrier.wait();
+        if (credentialAccepted) {
+          throw new MobileSessionCredentialError("refresh_reuse_detected");
+        }
+        credentialAccepted = true;
+        return refreshedSession();
+      },
+    });
+
+    const results = await Promise.allSettled([
+      service.refresh("device_session_1.current-renewable-secret"),
+      service.refresh("device_session_1.current-renewable-secret"),
+    ]);
+
+    expect(barrier.arrivals).toBe(2);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(
+      results.find((result) => result.status === "rejected"),
+    ).toMatchObject({ reason: expect.any(UnauthorizedException) });
+    expect(refreshCredentials).toHaveLength(2);
+    expect(accessClaims).toHaveLength(1);
   });
 });
