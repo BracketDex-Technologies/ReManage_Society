@@ -14,6 +14,7 @@ import type { MobileAuthService } from "./mobile-auth.service.ts";
 import type { MobileIdentity } from "./mobile-identity.repository.ts";
 import type { MobileOtpDelivery } from "./mobile-otp-delivery.ts";
 import {
+  MobileOtpChallengeRepository,
   MobileOtpRateLimitService,
   MobileOtpService,
   type MobileOtpChallengeCreateInput,
@@ -78,8 +79,13 @@ class FakeChallengeStore implements MobileOtpChallengeStore {
   readonly created: MobileOtpChallengeCreateInput[] = [];
   readonly records = new Map<string, MobileOtpChallengeRecord>();
   readonly userEmails = new Map<string, string>([["user_1", EMAIL]]);
+  beforeConsume?: () => Promise<void>;
+  createFailure?: Error;
+  onCreate?: () => void;
 
   async create(input: MobileOtpChallengeCreateInput): Promise<void> {
+    if (this.createFailure) throw this.createFailure;
+    this.onCreate?.();
     this.created.push(input);
     this.records.set(input.id, {
       ...input,
@@ -116,6 +122,7 @@ class FakeChallengeStore implements MobileOtpChallengeStore {
     now: Date,
     maxAttempts: number,
   ): Promise<boolean> {
+    await this.beforeConsume?.();
     const record = this.records.get(challengeId);
     if (
       !record ||
@@ -132,12 +139,16 @@ class FakeChallengeStore implements MobileOtpChallengeStore {
 
 class FakeDelivery implements MobileOtpDelivery {
   readonly messages: Parameters<MobileOtpDelivery["sendLoginCode"]>[0][] = [];
+  deferred?: Promise<void>;
   failure?: Error;
+  onSend?: () => void;
 
   async sendLoginCode(
     input: Parameters<MobileOtpDelivery["sendLoginCode"]>[0],
   ): Promise<void> {
+    this.onSend?.();
     this.messages.push(input);
+    if (this.deferred) await this.deferred;
     if (this.failure) throw this.failure;
   }
 }
@@ -155,7 +166,16 @@ class FakeRateLimiter implements MobileOtpRateLimiter {
   }
 }
 
-function createHarness(identity: MobileIdentity | null = approvedIdentity()) {
+interface HarnessOptions {
+  clock?: () => Date;
+  responseDelay?: (milliseconds: number) => Promise<void>;
+  responseJitter?: () => number;
+}
+
+function createHarness(
+  identity: MobileIdentity | null = approvedIdentity(),
+  options: HarnessOptions = {},
+) {
   const store = new FakeChallengeStore();
   const delivery = new FakeDelivery();
   const limiter = new FakeRateLimiter();
@@ -181,8 +201,10 @@ function createHarness(identity: MobileIdentity | null = approvedIdentity()) {
     },
     delivery,
     limiter,
-    () => new Date(NOW),
+    options.clock ?? (() => new Date(NOW)),
     () => 123,
+    options.responseDelay ?? (async () => undefined),
+    options.responseJitter ?? (() => 0),
   );
   return {
     delivery,
@@ -207,6 +229,22 @@ async function expectOtpDenied(promise: Promise<unknown>) {
     response: { error: "invalid_or_expired_otp" },
     status: 401,
   });
+}
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
+}
+
+async function flushMicrotasks(): Promise<void> {
+  for (let index = 0; index < 20; index += 1) {
+    await Promise.resolve();
+  }
 }
 
 describe("MobileOtpService request", () => {
@@ -237,6 +275,76 @@ describe("MobileOtpService request", () => {
         MobileAuthController.prototype.requestOtp,
       ),
     ).toBe(202);
+  });
+
+  it("holds known and unknown outcomes at the same response floor boundary", async () => {
+    const gate = deferred<void>();
+    const delays: number[] = [];
+    const options: HarnessOptions = {
+      responseDelay: async (milliseconds) => {
+        delays.push(milliseconds);
+        await gate.promise;
+      },
+    };
+    const known = createHarness(approvedIdentity(), options);
+    const unknown = createHarness(null, options);
+    let knownSettled = false;
+    let unknownSettled = false;
+    const knownRequest = known.service
+      .requestOtp(requestBody(), {
+        networkAddress: "203.0.113.9",
+        requestId: "request_known_floor",
+      })
+      .finally(() => {
+        knownSettled = true;
+      });
+    const unknownRequest = unknown.service
+      .requestOtp(requestBody("unknown@example.com"), {
+        networkAddress: "203.0.113.10",
+        requestId: "request_unknown_floor",
+      })
+      .finally(() => {
+        unknownSettled = true;
+      });
+
+    await flushMicrotasks();
+    const settledBeforeRelease = { knownSettled, unknownSettled };
+    gate.resolve(undefined);
+    const [knownResponse, unknownResponse] = await Promise.all([
+      knownRequest,
+      unknownRequest,
+    ]);
+
+    expect(delays).toEqual([300, 300]);
+    expect(settledBeforeRelease).toEqual({
+      knownSettled: false,
+      unknownSettled: false,
+    });
+    expect(Object.keys(knownResponse).sort()).toEqual(
+      Object.keys(unknownResponse).sort(),
+    );
+  });
+
+  it("subtracts elapsed work from a deterministic floor plus jitter", async () => {
+    const times = [
+      new Date("2026-07-17T08:00:00.000Z"),
+      new Date("2026-07-17T08:00:00.100Z"),
+    ];
+    const delays: number[] = [];
+    const { service } = createHarness(null, {
+      clock: () => times.shift() ?? new Date("2026-07-17T08:00:00.100Z"),
+      responseDelay: async (milliseconds) => {
+        delays.push(milliseconds);
+      },
+      responseJitter: () => 25,
+    });
+
+    await service.requestOtp(requestBody("unknown@example.com"), {
+      networkAddress: "203.0.113.10",
+      requestId: "request_floor_math",
+    });
+
+    expect(delays).toEqual([225]);
   });
 
   it("creates no challenge and sends no message for an unknown email", async () => {
@@ -295,6 +403,69 @@ describe("MobileOtpService request", () => {
     ]);
   });
 
+  it("persists the challenge before starting best-effort delivery", async () => {
+    const harness = createHarness();
+    const events: string[] = [];
+    harness.store.onCreate = () => events.push("challenge-created");
+    harness.delivery.onSend = () => events.push("delivery-started");
+
+    await harness.service.requestOtp(requestBody(), {
+      networkAddress: "203.0.113.9",
+      requestId: "request_ordering",
+    });
+    await flushMicrotasks();
+
+    expect(events).toEqual(["challenge-created", "delivery-started"]);
+  });
+
+  it("redacts persistence failure, skips delivery, and returns the accepted response", async () => {
+    const warning = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const known = createHarness();
+    const unknown = createHarness(null);
+    known.store.createFailure = new Error(
+      `database failed for ${EMAIL} ${CODE} ${PASSWORD} ${ACCESS_TOKEN} ${RENEWABLE_CREDENTIAL} ${SMTP_URL} ${MESSAGE_PAYLOAD}`,
+    );
+
+    try {
+      const [knownResponse, unknownResponse] = await Promise.all([
+        known.service.requestOtp(requestBody(), {
+          networkAddress: "203.0.113.9",
+          requestId: "request_persistence_failure",
+        }),
+        unknown.service.requestOtp(requestBody("unknown@example.com"), {
+          networkAddress: "203.0.113.10",
+          requestId: "request_unknown",
+        }),
+      ]);
+
+      expect(knownResponse.accepted).toBe(true);
+      expect(Object.keys(knownResponse).sort()).toEqual(
+        Object.keys(unknownResponse).sort(),
+      );
+      expect(known.delivery.messages).toHaveLength(0);
+      expect(warning.mock.calls).toEqual([
+        [
+          "Mobile OTP challenge persistence failed",
+          { requestId: "request_persistence_failure" },
+        ],
+      ]);
+      const capturedLogs = JSON.stringify(warning.mock.calls);
+      for (const secret of [
+        EMAIL,
+        CODE,
+        PASSWORD,
+        ACCESS_TOKEN,
+        RENEWABLE_CREDENTIAL,
+        SMTP_URL,
+        MESSAGE_PAYLOAD,
+      ]) {
+        expect(capturedLogs).not.toContain(secret);
+      }
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
   it("keeps SMTP failure publicly indistinguishable and records only a fixed redacted warning", async () => {
     const warning = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
     const logging = [
@@ -327,7 +498,12 @@ describe("MobileOtpService request", () => {
       expect(Object.keys(knownResponse).sort()).toEqual(
         Object.keys(unknownResponse).sort(),
       );
-      expect(warning.mock.calls).toEqual([["Mobile OTP delivery failed"]]);
+      expect(warning.mock.calls).toEqual([
+        [
+          "Mobile OTP delivery failed",
+          { requestId: "request_delivery_failure" },
+        ],
+      ]);
       const capturedLogs = JSON.stringify(logging.flatMap((spy) => spy.mock.calls));
       for (const secret of [
         EMAIL,
@@ -343,6 +519,47 @@ describe("MobileOtpService request", () => {
       }
     } finally {
       for (const spy of logging) spy.mockRestore();
+    }
+  });
+
+  it("returns before deferred SMTP settles and catches its detached rejection", async () => {
+    const warning = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const delivery = deferred<void>();
+    const harness = createHarness();
+    harness.delivery.deferred = delivery.promise;
+    let responseSettled = false;
+    const responsePromise = harness.service
+      .requestOtp(requestBody(), {
+        networkAddress: "203.0.113.9",
+        requestId: "request_deferred_delivery",
+      })
+      .finally(() => {
+        responseSettled = true;
+      });
+
+    await flushMicrotasks();
+    const settledBeforeDelivery = responseSettled;
+    delivery.reject(
+      new Error(
+        `SMTP failed at ${SMTP_URL} for ${EMAIL} ${CODE} ${PASSWORD} ${ACCESS_TOKEN} ${RENEWABLE_CREDENTIAL} ${MESSAGE_PAYLOAD}`,
+      ),
+    );
+
+    try {
+      await expect(responsePromise).resolves.toMatchObject({ accepted: true });
+      await flushMicrotasks();
+      expect(settledBeforeDelivery).toBe(true);
+      expect(warning.mock.calls).toEqual([
+        [
+          "Mobile OTP delivery failed",
+          { requestId: "request_deferred_delivery" },
+        ],
+      ]);
+      expect(JSON.stringify(warning.mock.calls)).not.toMatch(
+        /resident@example\.com|000123|password-must|access-token-must|renewable-credential-must|smtp:\/\/|raw-message-payload/,
+      );
+    } finally {
+      warning.mockRestore();
     }
   });
 });
@@ -422,6 +639,100 @@ describe("MobileOtpService verification", () => {
     expect(harness.limiter.verifyCalls).toEqual([
       { installationId: INSTALLATION.id },
       { installationId: INSTALLATION.id },
+    ]);
+  });
+
+  it("allows exactly one of two concurrent valid verifications to issue a session", async () => {
+    const harness = await requestKnownChallenge();
+    const consumeBarrier = deferred<void>();
+    let arrivals = 0;
+    harness.store.beforeConsume = async () => {
+      arrivals += 1;
+      if (arrivals === 2) consumeBarrier.resolve(undefined);
+      await consumeBarrier.promise;
+    };
+    const body: OtpVerifyDto = {
+      challengeId: harness.response.challengeId,
+      code: CODE,
+      installation: INSTALLATION,
+    };
+
+    const results = await Promise.allSettled([
+      harness.service.verifyOtp(body),
+      harness.service.verifyOtp(body),
+    ]);
+    const fulfilled = results.filter((result) => result.status === "fulfilled");
+    const rejected = results.filter((result) => result.status === "rejected");
+
+    expect(arrivals).toBe(2);
+    expect(fulfilled).toEqual([{ status: "fulfilled", value: ISSUE }]);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]).toMatchObject({
+      reason: {
+        response: { error: "invalid_or_expired_otp" },
+        status: 401,
+      },
+    });
+    expect(harness.sessionCalls).toEqual([
+      { identity: approvedIdentity(), installation: INSTALLATION },
+    ]);
+  });
+});
+
+describe("MobileOtpChallengeRepository CAS predicates", () => {
+  it("increments attempts only for the matching active below-limit challenge", async () => {
+    const updates: unknown[] = [];
+    const repository = new MobileOtpChallengeRepository({
+      mobileOtpChallenge: {
+        create: async () => undefined,
+        findUnique: async () => null,
+        updateMany: async (input) => {
+          updates.push(input);
+          return { count: 1 };
+        },
+      },
+    });
+
+    await expect(
+      repository.incrementAttempts("challenge_1", NOW, 5),
+    ).resolves.toBe(true);
+    expect(updates).toEqual([
+      {
+        where: {
+          id: "challenge_1",
+          consumedAt: null,
+          expiresAt: { gt: NOW },
+          attempts: { lt: 5 },
+        },
+        data: { attempts: { increment: 1 } },
+      },
+    ]);
+  });
+
+  it("consumes only the matching active below-limit challenge", async () => {
+    const updates: unknown[] = [];
+    const repository = new MobileOtpChallengeRepository({
+      mobileOtpChallenge: {
+        create: async () => undefined,
+        findUnique: async () => null,
+        updateMany: async (input) => {
+          updates.push(input);
+          return { count: 1 };
+        },
+      },
+    });
+
+    await expect(repository.consume("challenge_1", NOW, 5)).resolves.toBe(true);
+    expect(updates).toEqual([
+      {
+        where: {
+          id: "challenge_1",
+          consumedAt: null,
+          expiresAt: { gt: NOW },
+          attempts: { lt: 5 },
+        },
+        data: { consumedAt: NOW },
+      },
     ]);
   });
 });

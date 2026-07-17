@@ -14,10 +14,14 @@ import {
 } from "./auth/mobile-identity.repository.ts";
 import { MOBILE_OTP_DELIVERY } from "./auth/mobile-otp-delivery.ts";
 import {
+  delayMobileOtpResponse,
   generateMobileOtpCode,
+  generateMobileOtpResponseJitter,
   MOBILE_OTP_CHALLENGE_CLIENT,
   MOBILE_OTP_CLOCK,
   MOBILE_OTP_CODE_GENERATOR,
+  MOBILE_OTP_RESPONSE_DELAY,
+  MOBILE_OTP_RESPONSE_JITTER,
   MobileOtpChallengeRepository,
   MobileOtpRateLimitService,
   MobileOtpService,
@@ -65,6 +69,14 @@ export const MOBILE_API_PROVIDERS: Provider[] = [
   {
     provide: MOBILE_OTP_CODE_GENERATOR,
     useValue: generateMobileOtpCode,
+  },
+  {
+    provide: MOBILE_OTP_RESPONSE_DELAY,
+    useValue: delayMobileOtpResponse,
+  },
+  {
+    provide: MOBILE_OTP_RESPONSE_JITTER,
+    useValue: generateMobileOtpResponseJitter,
   },
   MobileOtpService,
   {

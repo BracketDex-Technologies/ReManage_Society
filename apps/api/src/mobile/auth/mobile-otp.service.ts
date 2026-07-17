@@ -38,6 +38,8 @@ import {
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1_000;
 const HASH_BYTES = 32;
+const RESPONSE_FLOOR_MS = 300;
+const RESPONSE_JITTER_MAX_MS = 100;
 
 export const MOBILE_OTP_CHALLENGE_CLIENT = Symbol(
   "MOBILE_OTP_CHALLENGE_CLIENT",
@@ -47,9 +49,13 @@ export const MOBILE_OTP_RATE_LIMIT_STORE = Symbol(
 );
 export const MOBILE_OTP_CLOCK = Symbol("MOBILE_OTP_CLOCK");
 export const MOBILE_OTP_CODE_GENERATOR = Symbol("MOBILE_OTP_CODE_GENERATOR");
+export const MOBILE_OTP_RESPONSE_DELAY = Symbol("MOBILE_OTP_RESPONSE_DELAY");
+export const MOBILE_OTP_RESPONSE_JITTER = Symbol("MOBILE_OTP_RESPONSE_JITTER");
 
 export type MobileOtpClock = () => Date;
 export type MobileOtpCodeGenerator = () => number;
+export type MobileOtpResponseDelay = (milliseconds: number) => Promise<void>;
+export type MobileOtpResponseJitter = () => number;
 
 export interface MobileOtpChallengeCreateInput {
   id: string;
@@ -281,6 +287,10 @@ export class MobileOtpService {
     private readonly clock: MobileOtpClock,
     @Inject(MOBILE_OTP_CODE_GENERATOR)
     private readonly codeGenerator: MobileOtpCodeGenerator,
+    @Inject(MOBILE_OTP_RESPONSE_DELAY)
+    private readonly responseDelay: MobileOtpResponseDelay,
+    @Inject(MOBILE_OTP_RESPONSE_JITTER)
+    private readonly responseJitter: MobileOtpResponseJitter,
   ) {}
 
   async requestOtp(
@@ -288,6 +298,7 @@ export class MobileOtpService {
     context: MobileOtpRequestContext,
   ): Promise<OtpRequestAcceptedDto> {
     this.assertEnabled();
+    const startedAt = this.clock();
     const identifierHash = this.hmac(body.identifier.trim().toLowerCase());
     await this.rateLimiter.checkRequestOrThrow({
       identifierHash,
@@ -298,32 +309,35 @@ export class MobileOtpService {
     const challengeId = randomUUID();
     const accepted: OtpRequestAcceptedDto = { accepted: true, challengeId };
     const identity = await this.identities.findApprovedByEmail(body.identifier);
-    if (!identity) return accepted;
+    if (identity) {
+      const code = String(this.codeGenerator()).padStart(6, "0");
+      const now = this.clock();
+      let challengePersisted = false;
+      try {
+        await this.challenges.create({
+          id: challengeId,
+          userId: identity.userId,
+          societyId: identity.societyId,
+          installationId: body.installation.id,
+          identifierHash,
+          codeHash: this.hmac(`${challengeId}:${code}`),
+          expiresAt: new Date(
+            now.getTime() + this.config.value.otpTtlSeconds * 1_000,
+          ),
+        });
+        challengePersisted = true;
+      } catch {
+        this.logger.warn("Mobile OTP challenge persistence failed", {
+          requestId: context.requestId,
+        });
+      }
 
-    const code = String(this.codeGenerator()).padStart(6, "0");
-    const now = this.clock();
-    await this.challenges.create({
-      id: challengeId,
-      userId: identity.userId,
-      societyId: identity.societyId,
-      installationId: body.installation.id,
-      identifierHash,
-      codeHash: this.hmac(`${challengeId}:${code}`),
-      expiresAt: new Date(
-        now.getTime() + this.config.value.otpTtlSeconds * 1_000,
-      ),
-    });
-
-    try {
-      await this.delivery.sendLoginCode({
-        recipientEmail: identity.email,
-        recipientName: identity.name,
-        code,
-        expiresInMinutes: 5,
-      });
-    } catch {
-      this.logger.warn("Mobile OTP delivery failed");
+      if (challengePersisted) {
+        this.startDelivery(identity, code, context.requestId);
+      }
     }
+
+    await this.waitForResponseFloor(startedAt);
     return accepted;
   }
 
@@ -381,6 +395,38 @@ export class MobileOtpService {
       .digest("hex");
   }
 
+  private startDelivery(
+    identity: MobileIdentity,
+    code: string,
+    requestId: string,
+  ): void {
+    try {
+      void this.delivery
+        .sendLoginCode({
+          recipientEmail: identity.email,
+          recipientName: identity.name,
+          code,
+          expiresInMinutes: 5,
+        })
+        .catch(() => {
+          this.logger.warn("Mobile OTP delivery failed", { requestId });
+        });
+    } catch {
+      this.logger.warn("Mobile OTP delivery failed", { requestId });
+    }
+  }
+
+  private async waitForResponseFloor(startedAt: Date): Promise<void> {
+    const elapsedMs = Math.max(this.clock().getTime() - startedAt.getTime(), 0);
+    const jitterMs = Math.max(
+      0,
+      Math.min(RESPONSE_JITTER_MAX_MS, Math.trunc(this.responseJitter())),
+    );
+    await this.responseDelay(
+      Math.max(RESPONSE_FLOOR_MS + jitterMs - elapsedMs, 0),
+    );
+  }
+
   private assertEnabled(): void {
     if (!this.config.value.enabled) {
       throw new ServiceUnavailableException({ error: "mobile_api_disabled" });
@@ -390,6 +436,16 @@ export class MobileOtpService {
 
 export function generateMobileOtpCode(): number {
   return randomInt(0, 1_000_000);
+}
+
+export function generateMobileOtpResponseJitter(): number {
+  return randomInt(0, RESPONSE_JITTER_MAX_MS + 1);
+}
+
+export async function delayMobileOtpResponse(
+  milliseconds: number,
+): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function hashesMatch(storedHash: string, candidateHash: string): boolean {
