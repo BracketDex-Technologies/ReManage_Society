@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../../../../packages/db/src/index.ts";
 import { AuditLogService } from "../security/audit-log.service.ts";
 import { MobileAuthController } from "./auth/mobile-auth.controller.ts";
+import { MobileSessionController } from "./session/mobile-session.controller.ts";
 import {
   MOBILE_IDENTITY_CLIENT,
   MobileIdentityRepository,
@@ -20,7 +21,7 @@ const ENV_KEYS = [
 ] as const;
 
 @Module({
-  controllers: [MobileAuthController],
+  controllers: [MobileAuthController, MobileSessionController],
   providers: [
     ...MOBILE_API_PROVIDERS,
     {
@@ -71,6 +72,9 @@ describe("MobileApiModule", () => {
       );
       expect(application.get(MobileAuthController)).toBeInstanceOf(
         MobileAuthController,
+      );
+      expect(application.get(MobileSessionController)).toBeInstanceOf(
+        MobileSessionController,
       );
       expect(application.get(MOBILE_IDENTITY_CLIENT)).toBe(prisma);
     } finally {

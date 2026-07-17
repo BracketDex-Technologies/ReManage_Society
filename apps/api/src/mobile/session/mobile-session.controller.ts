@@ -1,11 +1,16 @@
-import { Body, Controller, HttpCode, HttpStatus, Inject, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import {
   LogoutMobileSessionDto,
+  MobileBootstrapDto,
+  MobileRoleSwitchDto,
   MobileSessionIssueDto,
   RefreshMobileSessionDto,
+  UpdateMobileActiveRoleDto,
 } from "./dto/mobile-session.dto.ts";
 import { MobileSessionService } from "./mobile-session.service.ts";
+import type { MobileAuthenticatedRequest } from "../common/mobile-request.ts";
+import { MobileSessionGuard } from "./mobile-session.guard.ts";
 
 @ApiTags("mobile-session")
 @Controller("api/mobile/v1/session")
@@ -28,4 +33,28 @@ export class MobileSessionController {
   logout(@Body() body: LogoutMobileSessionDto): Promise<{ loggedOut: true }> {
     return this.sessions.logout(body.renewableCredential);
   }
+
+  @Get("bootstrap")
+  @UseGuards(MobileSessionGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: MobileBootstrapDto })
+  bootstrap(@Req() request: MobileAuthenticatedRequest): Promise<MobileBootstrapDto> {
+    return this.sessions.bootstrap(requireMobileSession(request));
+  }
+
+  @Put("active-role")
+  @UseGuards(MobileSessionGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: MobileRoleSwitchDto })
+  activeRole(
+    @Req() request: MobileAuthenticatedRequest,
+    @Body() body: UpdateMobileActiveRoleDto,
+  ): Promise<MobileRoleSwitchDto> {
+    return this.sessions.switchRole(requireMobileSession(request), body.role, request.id);
+  }
+}
+
+function requireMobileSession(request: MobileAuthenticatedRequest): NonNullable<MobileAuthenticatedRequest["mobileSession"]> {
+  if (!request.mobileSession) throw new Error("MobileSessionGuard did not attach a session");
+  return request.mobileSession;
 }

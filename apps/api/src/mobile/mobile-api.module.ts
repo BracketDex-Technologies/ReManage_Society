@@ -31,7 +31,8 @@ import { MobileConfigService } from "./common/mobile-config.service.ts";
 import { MobileAccessTokenService } from "./session/mobile-access-token.service.ts";
 import { MobileDeviceSessionRepository } from "./session/mobile-device-session.repository.ts";
 import { MobileSessionController } from "./session/mobile-session.controller.ts";
-import { MobileSessionService } from "./session/mobile-session.service.ts";
+import { MobileSessionGuard } from "./session/mobile-session.guard.ts";
+import { MOBILE_SESSION_AUDIT, MobileSessionService } from "./session/mobile-session.service.ts";
 
 export const MOBILE_API_PROVIDERS: Provider[] = [
   {
@@ -50,6 +51,7 @@ export const MOBILE_API_PROVIDERS: Provider[] = [
       new MobileDeviceSessionRepository(undefined, config),
   },
   MobileAccessTokenService,
+  MobileSessionGuard,
   MobileSessionService,
   MobilePasswordRateLimitService,
   MobileAuthService,
@@ -82,6 +84,10 @@ export const MOBILE_API_PROVIDERS: Provider[] = [
   MobileOtpService,
   {
     provide: MOBILE_AUTH_AUDIT,
+    useExisting: AuditLogService,
+  },
+  {
+    provide: MOBILE_SESSION_AUDIT,
     useExisting: AuditLogService,
   },
 ];

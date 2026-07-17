@@ -41,11 +41,15 @@ function createService(options: {
   refreshError?: Error;
   logoutError?: Error;
   accessTokenError?: Error;
+  liveSession?: ReturnType<typeof liveSession> | null;
 } = {}) {
   const sessionInputs: unknown[] = [];
   const refreshCredentials: string[] = [];
   const logoutCredentials: string[] = [];
   const accessClaims: MobileAccessClaims[] = [];
+  const roleUpdates: Array<{ sessionId: string; role: string; permissionRole: string }> = [];
+  const auditEvents: unknown[] = [];
+  let live = options.liveSession === undefined ? liveSession() : options.liveSession;
   const sessionRepository = {
     createSession: async (input: unknown) => {
       sessionInputs.push(input);
@@ -78,6 +82,13 @@ function createService(options: {
       logoutCredentials.push(credential);
       if (options.logoutError) throw options.logoutError;
     },
+    findLiveSession: async () => live,
+    updateRole: async (sessionId: string, role: "resident" | "guard", permissionRole: string) => {
+      roleUpdates.push({ sessionId, role, permissionRole });
+      if (!live) throw new MobileSessionCredentialError("unauthorized");
+      live = { ...live, session: { ...live.session, activeRole: role, activePermissionRole: permissionRole as "member" | "guard", version: live.session.version + 1 } };
+      return { version: live.session.version };
+    },
   };
   const accessTokens = {
     issue: async (claims: MobileAccessClaims) => {
@@ -90,9 +101,28 @@ function createService(options: {
     accessClaims,
     refreshCredentials,
     logoutCredentials,
+    roleUpdates,
+    auditEvents,
     sessionInputs,
-    service: new MobileSessionService(sessionRepository, accessTokens, createConfig()),
+    service: new MobileSessionService(sessionRepository, accessTokens, createConfig(), { record: async (event) => { auditEvents.push(event); } }),
   };
+}
+
+function liveSession() {
+  return {
+    session: { id: "device_session_1", userId: "user_1", membershipId: "membership_1", societyId: "society_beta", activeRole: "resident" as const, activePermissionRole: "member" as const, version: 7 },
+    user: { id: "user_1", name: "Resident One", email: "resident@example.com" },
+    society: { id: "society_beta", name: "Beta Society" },
+    approvedRoles: [
+      { role: "resident" as const, permissionRole: "member" as const },
+      { role: "guard" as const, permissionRole: "guard" as const },
+    ],
+  };
+}
+
+function activeContext(overrides: Partial<ReturnType<typeof liveSession>["session"]> = {}) {
+  const session = { ...liveSession().session, ...overrides };
+  return { sessionId: session.id, userId: session.userId, membershipId: session.membershipId, societyId: session.societyId, activeRole: session.activeRole, activePermissionRole: session.activePermissionRole, version: session.version };
 }
 
 function refreshedSession(): RefreshedMobileSession {
@@ -343,5 +373,33 @@ describe("MobileSessionService", () => {
     ).toMatchObject({ reason: expect.any(UnauthorizedException) });
     expect(refreshCredentials).toHaveLength(2);
     expect(accessClaims).toHaveLength(1);
+  });
+
+  it("builds bootstrap only from the validated device session and its active permission role", async () => {
+    const { service } = createService();
+
+    await expect(service.bootstrap(activeContext())).resolves.toEqual({
+      user: { id: "user_1", name: "Resident One", email: "resident@example.com" },
+      society: { id: "society_beta", name: "Beta Society" },
+      approvedRoles: ["resident", "guard"], activeRole: "resident",
+      permissions: ["society:directory.read", "society:finance.read", "operations:visitor.respond", "operations:read", "operations:booking.manage", "operations:sos.raise", "community:read", "community:helpdesk.respond", "community:vote.cast", "community:rsvp.manage", "community:post"],
+      featureFlags: { residentShell: true, guardShell: true, nativePush: false, guardOffline: false },
+      notificationPolicy: { critical: { enabled: true, configurable: false }, transactional: { enabled: true, configurable: true }, community: { enabled: false, configurable: true } },
+    });
+  });
+
+  it("rejects a role that has no current approved assignment", async () => {
+    const { service } = createService({ liveSession: { ...liveSession(), approvedRoles: [{ role: "resident", permissionRole: "member" }] } });
+    await expect(service.switchRole(activeContext(), "guard", "req_1")).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it("switches the canonical role once, issues a replacement token and records a redacted audit event", async () => {
+    const { accessClaims, auditEvents, roleUpdates, service } = createService();
+    const switched = await service.switchRole(activeContext(), "guard", "req_99");
+
+    expect(roleUpdates).toEqual([{ sessionId: "device_session_1", role: "guard", permissionRole: "guard" }]);
+    expect(accessClaims.at(-1)).toMatchObject({ activeRole: "guard", activePermissionRole: "guard", version: 8 });
+    expect(switched).toMatchObject({ accessToken: "mobile-access-token", accessExpiresAt: "2026-07-15T08:10:00.000Z", bootstrap: { activeRole: "guard", approvedRoles: ["resident", "guard"], permissions: ["operations:gate.manage", "operations:read", "operations:sos.raise", "community:read"] } });
+    expect(auditEvents).toEqual([expect.objectContaining({ actorId: "user_1", societyId: "society_beta", requestId: "req_99", metadata: { event: "mobile_role_switch", oldRole: "resident", newRole: "guard", sessionId: "device_session_1" } })]);
   });
 });

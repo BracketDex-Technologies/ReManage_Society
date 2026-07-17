@@ -37,6 +37,21 @@ export interface RefreshedMobileSession extends IssuedRenewableCredential {
   activePermissionRole: MobilePermissionRole;
 }
 
+export interface MobileLiveSession {
+  session: {
+    id: string;
+    userId: string;
+    membershipId: string;
+    societyId: string;
+    activeRole: MobileRole;
+    activePermissionRole: MobilePermissionRole;
+    version: number;
+  };
+  user: { id: string; name: string; email: string };
+  society: { id: string; name: string };
+  approvedRoles: Array<{ role: MobileRole; permissionRole: MobilePermissionRole }>;
+}
+
 interface MobileDeviceSessionRecord {
   id: string;
   userId: string;
@@ -62,9 +77,12 @@ interface MobileDeviceSessionRecord {
 
 interface MobileRefreshIdentityRecord {
   id: string;
+  name?: string;
+  email?: string;
   memberships: {
     id: string;
     societyId: string;
+    society?: { id: string; name: string };
     roleAssignments: {
       role: string;
       permissionRole: string;
@@ -347,6 +365,45 @@ export class MobileDeviceSessionRepository {
     return this.unwrap(result);
   }
 
+  async findLiveSession(sessionId: string): Promise<MobileLiveSession | null> {
+    const session = await this.client.mobileDeviceSession.findUnique({ where: { id: sessionId } });
+    if (!session || this.unavailableSession(session, new Date())) return null;
+    const user = await this.client.user.findFirst({
+      where: {
+        id: session.userId,
+        isActive: true,
+        memberships: { some: { id: session.membershipId, societyId: this.config.value.betaSocietyId, status: "active" } },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        memberships: {
+          where: { id: session.membershipId, societyId: this.config.value.betaSocietyId, status: "active" },
+          take: 1,
+          select: {
+            id: true,
+            societyId: true,
+            society: { select: { id: true, name: true } },
+            roleAssignments: { where: { revokedAt: null }, select: { role: true, permissionRole: true, revokedAt: true } },
+          },
+        },
+      },
+    });
+    const membership = user?.memberships[0];
+    if (!user || !membership || membership.societyId !== session.societyId || !user.name || !user.email) return null;
+    const approvedRoles = this.approvedRoles(membership.roleAssignments);
+    if (approvedRoles.length === 0 || !membership.society) return null;
+    const activeRole = normalizeMobileRole(session.activeRole);
+    if (!activeRole || !isPermissionRoleValidForMobileRole(activeRole, session.activePermissionRole)) return null;
+    return {
+      session: { id: session.id, userId: session.userId, membershipId: session.membershipId, societyId: session.societyId, activeRole, activePermissionRole: session.activePermissionRole, version: session.version },
+      user: { id: user.id, name: user.name, email: user.email },
+      society: membership.society,
+      approvedRoles,
+    };
+  }
+
   async revoke(sessionId: string, reason: string): Promise<void> {
     const now = new Date();
     await this.client.$transaction(async (transaction) => {
@@ -498,20 +555,7 @@ export class MobileDeviceSessionRepository {
     const membership = user?.memberships[0];
     if (!user || !membership || membership.societyId !== session.societyId) return null;
 
-    const roles = new Map<
-      MobileRole,
-      { role: MobileRole; permissionRole: MobilePermissionRole }
-    >();
-    for (const assignment of membership.roleAssignments) {
-      if (assignment.revokedAt) continue;
-      const role = normalizeMobileRole(assignment.role);
-      if (!role || !isPermissionRoleValidForMobileRole(role, assignment.permissionRole)) {
-        continue;
-      }
-      if (!roles.has(role)) {
-        roles.set(role, { role, permissionRole: assignment.permissionRole });
-      }
-    }
+    const roles = new Map(this.approvedRoles(membership.roleAssignments).map((assignment) => [assignment.role, assignment]));
     if (roles.size === 0) return null;
 
     const activeRole = roles.has(session.activeRole as MobileRole)
@@ -523,6 +567,19 @@ export class MobileDeviceSessionRepository {
       activeRole,
       activePermissionRole: activeAssignment.permissionRole,
     };
+  }
+
+  private approvedRoles(
+    assignments: Array<{ role: string; permissionRole: string; revokedAt: Date | null }>,
+  ): Array<{ role: MobileRole; permissionRole: MobilePermissionRole }> {
+    const roles = new Map<MobileRole, { role: MobileRole; permissionRole: MobilePermissionRole }>();
+    for (const assignment of assignments) {
+      if (assignment.revokedAt) continue;
+      const role = normalizeMobileRole(assignment.role);
+      if (!role || !isPermissionRoleValidForMobileRole(role, assignment.permissionRole) || roles.has(role)) continue;
+      roles.set(role, { role, permissionRole: assignment.permissionRole });
+    }
+    return [...roles.values()];
   }
 
   private async serializableTransaction<T>(
