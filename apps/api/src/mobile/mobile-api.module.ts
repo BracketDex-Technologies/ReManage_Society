@@ -12,6 +12,17 @@ import {
   MOBILE_IDENTITY_CLIENT,
   MobileIdentityRepository,
 } from "./auth/mobile-identity.repository.ts";
+import { MOBILE_OTP_DELIVERY } from "./auth/mobile-otp-delivery.ts";
+import {
+  generateMobileOtpCode,
+  MOBILE_OTP_CHALLENGE_CLIENT,
+  MOBILE_OTP_CLOCK,
+  MOBILE_OTP_CODE_GENERATOR,
+  MobileOtpChallengeRepository,
+  MobileOtpRateLimitService,
+  MobileOtpService,
+} from "./auth/mobile-otp.service.ts";
+import { SmtpMobileOtpDeliveryService } from "./auth/smtp-mobile-otp-delivery.service.ts";
 import { MobileConfigService } from "./common/mobile-config.service.ts";
 import { MobileAccessTokenService } from "./session/mobile-access-token.service.ts";
 import { MobileDeviceSessionRepository } from "./session/mobile-device-session.repository.ts";
@@ -37,6 +48,25 @@ export const MOBILE_API_PROVIDERS: Provider[] = [
   MobileSessionService,
   MobilePasswordRateLimitService,
   MobileAuthService,
+  {
+    provide: MOBILE_OTP_CHALLENGE_CLIENT,
+    useValue: prisma,
+  },
+  MobileOtpChallengeRepository,
+  MobileOtpRateLimitService,
+  {
+    provide: MOBILE_OTP_DELIVERY,
+    useFactory: () => new SmtpMobileOtpDeliveryService(),
+  },
+  {
+    provide: MOBILE_OTP_CLOCK,
+    useValue: () => new Date(),
+  },
+  {
+    provide: MOBILE_OTP_CODE_GENERATOR,
+    useValue: generateMobileOtpCode,
+  },
+  MobileOtpService,
   {
     provide: MOBILE_AUTH_AUDIT,
     useExisting: AuditLogService,

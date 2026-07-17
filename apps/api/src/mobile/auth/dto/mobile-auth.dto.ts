@@ -6,6 +6,7 @@ import {
   IsString,
   IsUUID,
   Length,
+  Matches,
   ValidateNested,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
@@ -42,6 +43,34 @@ export class PasswordLoginRequestDto {
   password!: string;
 
   @ApiProperty({ type: MobileInstallationDto })
+  @ValidateNested()
+  @Type(() => MobileInstallationDto)
+  installation!: MobileInstallationDto;
+}
+
+export class OtpRequestDto {
+  @ApiProperty({ format: "email" })
+  @IsEmail()
+  identifier!: string;
+
+  @ApiProperty({ type: MobileInstallationDto })
+  @ValidateNested()
+  @Type(() => MobileInstallationDto)
+  installation!: MobileInstallationDto;
+}
+
+export class OtpRequestAcceptedDto {
+  accepted!: true;
+  challengeId!: string;
+}
+
+export class OtpVerifyDto {
+  @IsUUID()
+  challengeId!: string;
+
+  @Matches(/^\d{6}$/)
+  code!: string;
+
   @ValidateNested()
   @Type(() => MobileInstallationDto)
   installation!: MobileInstallationDto;
