@@ -37,6 +37,8 @@ interface RepositoryTestClient extends MobileDeviceSessionPersistenceClient {
   sessions: SessionRecord[];
   operations: RepositoryOperation[];
   transactionCount: number;
+  transactionOptions: Array<{ isolationLevel: "Serializable" } | undefined>;
+  nextSerializableConflictRevokesAssignments: boolean;
   approvedRoles: Array<{ role: string; permissionRole: string; revokedAt: Date | null }>;
 }
 
@@ -144,6 +146,8 @@ function createClient(
     sessions,
     operations,
     transactionCount: 0,
+    transactionOptions: [] as Array<{ isolationLevel: "Serializable" } | undefined>,
+    nextSerializableConflictRevokesAssignments: false,
     approvedRoles,
     mobileDeviceSession: model,
     user: {
@@ -166,10 +170,16 @@ function createClient(
       options?: { isolationLevel: "Serializable" },
     ) => {
       client.transactionCount += 1;
+      client.transactionOptions.push(options);
       const run = () => callback({ mobileDeviceSession: model, user: client.user });
       if (options?.isolationLevel !== "Serializable") return run();
       if (serializationFailures > 0) {
         serializationFailures -= 1;
+        return Promise.reject(Object.assign(new Error("write conflict"), { code: "P2034" }));
+      }
+      if (options?.isolationLevel === "Serializable" && client.nextSerializableConflictRevokesAssignments) {
+        client.nextSerializableConflictRevokesAssignments = false;
+        approvedRoles.splice(0, approvedRoles.length);
         return Promise.reject(Object.assign(new Error("write conflict"), { code: "P2034" }));
       }
       const uniqueConflict = uniqueConflicts.shift();
@@ -553,6 +563,41 @@ describe("MobileDeviceSessionRepository", () => {
       version: 2,
     });
     expect(client.transactionCount).toBe(2);
+  });
+
+  it("uses a serializable transaction for a live authorized role switch", async () => {
+    const { client, repository } = createRepository(createClient({
+      approvedRoles: [
+        { role: "resident", permissionRole: "member" },
+        { role: "guard", permissionRole: "guard" },
+      ],
+    }));
+    const issued = await repository.createSession(sessionInput());
+
+    await expect(repository.updateRole(issued.sessionId, "guard")).resolves.toEqual({ version: 2 });
+    expect(client.transactionOptions.at(-1)).toEqual({ isolationLevel: "Serializable" });
+  });
+
+  it("retries a serializable assignment-revocation conflict and rejects instead of persisting the stale switch", async () => {
+    const { client, repository } = createRepository(createClient({
+      approvedRoles: [
+        { role: "resident", permissionRole: "member" },
+        { role: "guard", permissionRole: "guard" },
+      ],
+    }));
+    const issued = await repository.createSession(sessionInput());
+    client.nextSerializableConflictRevokesAssignments = true;
+
+    await expect(repository.updateRole(issued.sessionId, "guard")).rejects.toThrow(/unauthorized/);
+    expect(client.sessions[0]).toMatchObject({
+      activeRole: "resident",
+      activePermissionRole: "member",
+      version: 1,
+    });
+    expect(client.transactionOptions.slice(-2)).toEqual([
+      { isolationLevel: "Serializable" },
+      { isolationLevel: "Serializable" },
+    ]);
   });
 
   it.each([

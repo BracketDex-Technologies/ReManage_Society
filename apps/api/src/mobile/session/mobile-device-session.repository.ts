@@ -326,7 +326,7 @@ export class MobileDeviceSessionRepository {
     activeRole: MobileRole,
   ): Promise<{ version: number }> {
     const now = new Date();
-    const result = await this.client.$transaction(async (transaction) => {
+    const result = await this.serializableTransaction(async (transaction) => {
       const session = await transaction.mobileDeviceSession.findUnique({
         where: { id: sessionId },
       });
