@@ -4,19 +4,19 @@ import type { MobileRole } from "../../common/mobile-role.ts";
 import type { PermissionAction } from "../../../../../../packages/security/src/index.ts";
 
 export class MobileSessionIssueDto {
-  @ApiProperty()
+  @ApiProperty({ type: String })
   accessToken!: string;
 
-  @ApiProperty({ format: "date-time" })
+  @ApiProperty({ type: String, format: "date-time" })
   accessExpiresAt!: string;
 
-  @ApiProperty()
+  @ApiProperty({ type: String })
   renewableCredential!: string;
 
-  @ApiProperty({ format: "date-time" })
+  @ApiProperty({ type: String, format: "date-time" })
   renewableExpiresAt!: string;
 
-  @ApiProperty()
+  @ApiProperty({ type: String })
   deviceSessionId!: string;
 
   @ApiProperty({ enum: ["resident", "guard"] })
@@ -24,26 +24,39 @@ export class MobileSessionIssueDto {
 }
 
 export class RefreshMobileSessionDto {
-  @ApiProperty()
+  @ApiProperty({ type: String })
   @IsString()
   @Length(40, 512)
   renewableCredential!: string;
 }
 
 export class LogoutMobileSessionDto {
-  @ApiProperty()
+  @ApiProperty({ type: String })
   @IsString()
   @Length(40, 512)
   renewableCredential!: string;
 }
 
 export class MobileBootstrapDto {
+  @ApiProperty({ type: Object })
   user!: { id: string; name: string; email: string };
+
+  @ApiProperty({ type: Object })
   society!: { id: string; name: string };
+
+  @ApiProperty({ enum: ["resident", "guard"], isArray: true })
   approvedRoles!: MobileRole[];
+
+  @ApiProperty({ enum: ["resident", "guard"] })
   activeRole!: MobileRole;
+
+  @ApiProperty({ type: String, isArray: true })
   permissions!: PermissionAction[];
+
+  @ApiProperty({ type: Object })
   featureFlags!: { residentShell: boolean; guardShell: boolean; nativePush: false; guardOffline: false };
+
+  @ApiProperty({ type: Object })
   notificationPolicy!: {
     critical: { enabled: true; configurable: false };
     transactional: { enabled: true; configurable: true };
@@ -59,7 +72,12 @@ export class UpdateMobileActiveRoleDto {
 }
 
 export class MobileRoleSwitchDto {
+  @ApiProperty({ type: String })
   accessToken!: string;
+
+  @ApiProperty({ type: String, format: "date-time" })
   accessExpiresAt!: string;
+
+  @ApiProperty({ type: MobileBootstrapDto })
   bootstrap!: MobileBootstrapDto;
 }

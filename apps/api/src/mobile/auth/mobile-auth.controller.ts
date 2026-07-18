@@ -6,8 +6,9 @@ import {
   Inject,
   Post,
   Req,
+  UseFilters,
 } from "@nestjs/common";
-import { ApiAcceptedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ApiAcceptedResponse, ApiBody, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import type { FastifyRequest } from "fastify";
 import { randomUUID } from "node:crypto";
 import { MobileSessionIssueDto } from "../session/dto/mobile-session.dto.ts";
@@ -19,8 +20,10 @@ import {
 } from "./dto/mobile-auth.dto.ts";
 import { MobileAuthService } from "./mobile-auth.service.ts";
 import { MobileOtpService } from "./mobile-otp.service.ts";
+import { MobileProblemFilter } from "../common/mobile-problem.filter.ts";
 
 @ApiTags("mobile-auth")
+@UseFilters(MobileProblemFilter)
 @Controller("api/mobile/v1/auth")
 export class MobileAuthController {
   @Inject(MobileOtpService)
@@ -33,6 +36,7 @@ export class MobileAuthController {
 
   @Post("password")
   @HttpCode(HttpStatus.OK)
+  @ApiBody({ type: PasswordLoginRequestDto })
   @ApiOkResponse({ type: MobileSessionIssueDto })
   password(
     @Req() request: FastifyRequest,
@@ -46,6 +50,7 @@ export class MobileAuthController {
 
   @Post("otp/request")
   @HttpCode(HttpStatus.ACCEPTED)
+  @ApiBody({ type: OtpRequestDto })
   @ApiAcceptedResponse({ type: OtpRequestAcceptedDto })
   requestOtp(
     @Req() request: FastifyRequest,
@@ -59,6 +64,7 @@ export class MobileAuthController {
 
   @Post("otp/verify")
   @HttpCode(HttpStatus.OK)
+  @ApiBody({ type: OtpVerifyDto })
   @ApiOkResponse({ type: MobileSessionIssueDto })
   verifyOtp(@Body() body: OtpVerifyDto): Promise<MobileSessionIssueDto> {
     return this.otp.verifyOtp(body);
