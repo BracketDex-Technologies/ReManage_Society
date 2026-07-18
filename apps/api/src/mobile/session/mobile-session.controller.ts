@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post, Put, Req, Us
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import {
   LogoutMobileSessionDto,
+  LogoutMobileSessionResponseDto,
   MobileBootstrapDto,
   MobileRoleSwitchDto,
   MobileSessionIssueDto,
@@ -33,8 +34,8 @@ export class MobileSessionController {
   @Post("logout")
   @HttpCode(HttpStatus.OK)
   @ApiBody({ type: LogoutMobileSessionDto })
-  @ApiOkResponse({ schema: { example: { loggedOut: true } } })
-  logout(@Body() body: LogoutMobileSessionDto): Promise<{ loggedOut: true }> {
+  @ApiOkResponse({ type: LogoutMobileSessionResponseDto })
+  logout(@Body() body: LogoutMobileSessionDto): Promise<LogoutMobileSessionResponseDto> {
     return this.sessions.logout(body.renewableCredential);
   }
 

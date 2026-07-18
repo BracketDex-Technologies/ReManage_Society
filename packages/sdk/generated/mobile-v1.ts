@@ -118,15 +118,51 @@ export interface components {
         LogoutMobileSessionDto: {
             renewableCredential: string;
         };
+        LogoutMobileSessionResponseDto: {
+            /** @enum {boolean} */
+            loggedOut: true;
+        };
         MobileBootstrapDto: {
-            user: Record<string, never>;
-            society: Record<string, never>;
+            user: components["schemas"]["MobileBootstrapUserDto"];
+            society: components["schemas"]["MobileBootstrapSocietyDto"];
             approvedRoles: ("resident" | "guard")[];
             /** @enum {string} */
             activeRole: "resident" | "guard";
             permissions: string[];
-            featureFlags: Record<string, never>;
-            notificationPolicy: Record<string, never>;
+            featureFlags: components["schemas"]["MobileFeatureFlagsDto"];
+            notificationPolicy: components["schemas"]["MobileNotificationPolicyDto"];
+        };
+        MobileBootstrapSocietyDto: {
+            id: string;
+            name: string;
+        };
+        MobileBootstrapUserDto: {
+            id: string;
+            name: string;
+            /** Format: email */
+            email: string;
+        };
+        MobileCommunityNotificationPolicyDto: {
+            /** @enum {boolean} */
+            enabled: false;
+            /** @enum {boolean} */
+            configurable: true;
+        };
+        MobileCriticalNotificationPolicyDto: {
+            /** @enum {boolean} */
+            enabled: true;
+            /** @enum {boolean} */
+            configurable: false;
+        };
+        MobileFeatureFlagsDto: {
+            /** @enum {boolean} */
+            residentShell: true;
+            /** @enum {boolean} */
+            guardShell: true;
+            /** @enum {boolean} */
+            nativePush: false;
+            /** @enum {boolean} */
+            guardOffline: false;
         };
         MobileInstallationDto: {
             /** Format: uuid */
@@ -137,6 +173,11 @@ export interface components {
             appVersion: string;
             /** @example Pixel 9 */
             deviceName?: string;
+        };
+        MobileNotificationPolicyDto: {
+            critical: components["schemas"]["MobileCriticalNotificationPolicyDto"];
+            transactional: components["schemas"]["MobileTransactionalNotificationPolicyDto"];
+            community: components["schemas"]["MobileCommunityNotificationPolicyDto"];
         };
         MobileRoleSwitchDto: {
             accessToken: string;
@@ -154,6 +195,12 @@ export interface components {
             deviceSessionId: string;
             /** @enum {string} */
             activeRole: "resident" | "guard";
+        };
+        MobileTransactionalNotificationPolicyDto: {
+            /** @enum {boolean} */
+            enabled: true;
+            /** @enum {boolean} */
+            configurable: true;
         };
         OtpRequestAcceptedDto: {
             accepted: boolean;
@@ -322,7 +369,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["LogoutMobileSessionResponseDto"];
                 };
             };
         };

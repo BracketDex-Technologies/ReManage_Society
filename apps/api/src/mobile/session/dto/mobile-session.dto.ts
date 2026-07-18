@@ -37,12 +37,85 @@ export class LogoutMobileSessionDto {
   renewableCredential!: string;
 }
 
-export class MobileBootstrapDto {
-  @ApiProperty({ type: Object })
-  user!: { id: string; name: string; email: string };
+export class LogoutMobileSessionResponseDto {
+  @ApiProperty({ type: Boolean, enum: [true] })
+  loggedOut!: true;
+}
 
-  @ApiProperty({ type: Object })
-  society!: { id: string; name: string };
+export class MobileBootstrapUserDto {
+  @ApiProperty({ type: String })
+  id!: string;
+
+  @ApiProperty({ type: String })
+  name!: string;
+
+  @ApiProperty({ type: String, format: "email" })
+  email!: string;
+}
+
+export class MobileBootstrapSocietyDto {
+  @ApiProperty({ type: String })
+  id!: string;
+
+  @ApiProperty({ type: String })
+  name!: string;
+}
+
+export class MobileFeatureFlagsDto {
+  @ApiProperty({ type: Boolean, enum: [true] })
+  residentShell!: true;
+
+  @ApiProperty({ type: Boolean, enum: [true] })
+  guardShell!: true;
+
+  @ApiProperty({ type: Boolean, enum: [false] })
+  nativePush!: false;
+
+  @ApiProperty({ type: Boolean, enum: [false] })
+  guardOffline!: false;
+}
+
+export class MobileCriticalNotificationPolicyDto {
+  @ApiProperty({ type: Boolean, enum: [true] })
+  enabled!: true;
+
+  @ApiProperty({ type: Boolean, enum: [false] })
+  configurable!: false;
+}
+
+export class MobileTransactionalNotificationPolicyDto {
+  @ApiProperty({ type: Boolean, enum: [true] })
+  enabled!: true;
+
+  @ApiProperty({ type: Boolean, enum: [true] })
+  configurable!: true;
+}
+
+export class MobileCommunityNotificationPolicyDto {
+  @ApiProperty({ type: Boolean, enum: [false] })
+  enabled!: false;
+
+  @ApiProperty({ type: Boolean, enum: [true] })
+  configurable!: true;
+}
+
+export class MobileNotificationPolicyDto {
+  @ApiProperty({ type: MobileCriticalNotificationPolicyDto })
+  critical!: MobileCriticalNotificationPolicyDto;
+
+  @ApiProperty({ type: MobileTransactionalNotificationPolicyDto })
+  transactional!: MobileTransactionalNotificationPolicyDto;
+
+  @ApiProperty({ type: MobileCommunityNotificationPolicyDto })
+  community!: MobileCommunityNotificationPolicyDto;
+}
+
+export class MobileBootstrapDto {
+  @ApiProperty({ type: MobileBootstrapUserDto })
+  user!: MobileBootstrapUserDto;
+
+  @ApiProperty({ type: MobileBootstrapSocietyDto })
+  society!: MobileBootstrapSocietyDto;
 
   @ApiProperty({ enum: ["resident", "guard"], isArray: true })
   approvedRoles!: MobileRole[];
@@ -53,15 +126,11 @@ export class MobileBootstrapDto {
   @ApiProperty({ type: String, isArray: true })
   permissions!: PermissionAction[];
 
-  @ApiProperty({ type: Object })
-  featureFlags!: { residentShell: boolean; guardShell: boolean; nativePush: false; guardOffline: false };
+  @ApiProperty({ type: MobileFeatureFlagsDto })
+  featureFlags!: MobileFeatureFlagsDto;
 
-  @ApiProperty({ type: Object })
-  notificationPolicy!: {
-    critical: { enabled: true; configurable: false };
-    transactional: { enabled: true; configurable: true };
-    community: { enabled: false; configurable: true };
-  };
+  @ApiProperty({ type: MobileNotificationPolicyDto })
+  notificationPolicy!: MobileNotificationPolicyDto;
 }
 
 export class UpdateMobileActiveRoleDto {

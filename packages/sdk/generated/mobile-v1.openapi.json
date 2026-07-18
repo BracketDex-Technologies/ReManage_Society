@@ -182,9 +182,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "example": {
-                    "loggedOut": true
-                  }
+                  "$ref": "#/components/schemas/LogoutMobileSessionResponseDto"
                 }
               }
             }
@@ -240,14 +238,28 @@
           "renewableCredential"
         ]
       },
+      "LogoutMobileSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "loggedOut": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "loggedOut"
+        ]
+      },
       "MobileBootstrapDto": {
         "type": "object",
         "properties": {
           "user": {
-            "type": "object"
+            "$ref": "#/components/schemas/MobileBootstrapUserDto"
           },
           "society": {
-            "type": "object"
+            "$ref": "#/components/schemas/MobileBootstrapSocietyDto"
           },
           "approvedRoles": {
             "type": "array",
@@ -273,10 +285,10 @@
             }
           },
           "featureFlags": {
-            "type": "object"
+            "$ref": "#/components/schemas/MobileFeatureFlagsDto"
           },
           "notificationPolicy": {
-            "type": "object"
+            "$ref": "#/components/schemas/MobileNotificationPolicyDto"
           }
         },
         "required": [
@@ -287,6 +299,118 @@
           "permissions",
           "featureFlags",
           "notificationPolicy"
+        ]
+      },
+      "MobileBootstrapSocietyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "MobileBootstrapUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email"
+        ]
+      },
+      "MobileCommunityNotificationPolicyDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "configurable": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "enabled",
+          "configurable"
+        ]
+      },
+      "MobileCriticalNotificationPolicyDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "configurable": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          }
+        },
+        "required": [
+          "enabled",
+          "configurable"
+        ]
+      },
+      "MobileFeatureFlagsDto": {
+        "type": "object",
+        "properties": {
+          "residentShell": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "guardShell": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "nativePush": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "guardOffline": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          }
+        },
+        "required": [
+          "residentShell",
+          "guardShell",
+          "nativePush",
+          "guardOffline"
         ]
       },
       "MobileInstallationDto": {
@@ -316,6 +440,25 @@
           "id",
           "platform",
           "appVersion"
+        ]
+      },
+      "MobileNotificationPolicyDto": {
+        "type": "object",
+        "properties": {
+          "critical": {
+            "$ref": "#/components/schemas/MobileCriticalNotificationPolicyDto"
+          },
+          "transactional": {
+            "$ref": "#/components/schemas/MobileTransactionalNotificationPolicyDto"
+          },
+          "community": {
+            "$ref": "#/components/schemas/MobileCommunityNotificationPolicyDto"
+          }
+        },
+        "required": [
+          "critical",
+          "transactional",
+          "community"
         ]
       },
       "MobileRoleSwitchDto": {
@@ -373,6 +516,27 @@
           "renewableExpiresAt",
           "deviceSessionId",
           "activeRole"
+        ]
+      },
+      "MobileTransactionalNotificationPolicyDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "configurable": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "enabled",
+          "configurable"
         ]
       },
       "OtpRequestAcceptedDto": {
