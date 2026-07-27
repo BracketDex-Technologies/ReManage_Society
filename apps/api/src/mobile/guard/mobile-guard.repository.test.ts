@@ -35,7 +35,6 @@ function createRepository(options: {
         where.id === current.id && where.societyId === current.societyId ? current : null,
       ),
       findMany: vi.fn(),
-      update: vi.fn(),
       updateMany: vi.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         if (options.updatedCount === 0) return { count: 0 };
         const matches = where.id === current.id && where.societyId === current.societyId &&
@@ -65,7 +64,7 @@ describe("MobileGuardRepository transitions", () => {
   it("rejects a stale check-in write when expected approval is no longer present", async () => {
     const { client, repository } = createRepository({ updatedCount: 0 });
 
-    await expect(repository.markEntered("society_1", "visitor_1", "user_guard_1")).rejects.toMatchObject({
+    await expect(repository.markEntered("society_1", "visitor_1")).rejects.toMatchObject({
       code: "visitor_not_approved",
     });
     expect(client.visitor.updateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -76,7 +75,6 @@ describe("MobileGuardRepository transitions", () => {
         residentResponse: "approved",
       }),
     }));
-    expect(client.visitor.update).not.toHaveBeenCalled();
   });
 
   it("rejects a stale check-out write when the visitor is no longer inside", async () => {
@@ -85,7 +83,7 @@ describe("MobileGuardRepository transitions", () => {
       updatedCount: 0,
     });
 
-    await expect(repository.markExited("society_1", "visitor_1", "user_guard_1")).rejects.toMatchObject({
+    await expect(repository.markExited("society_1", "visitor_1")).rejects.toMatchObject({
       code: "visitor_not_inside",
     });
     expect(client.visitor.updateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -93,9 +91,44 @@ describe("MobileGuardRepository transitions", () => {
     }));
   });
 
+  it("persists an expected approved visitor as inside with a tenant-scoped state predicate", async () => {
+    const { client, repository } = createRepository();
+
+    await expect(repository.markEntered("society_1", "visitor_1")).resolves.toMatchObject({
+      id: "visitor_1",
+      status: "inside",
+      entryTime: expect.any(String),
+    });
+    expect(client.visitor.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "visitor_1",
+        societyId: "society_1",
+        status: "expected",
+        residentResponse: "approved",
+      },
+      data: { status: "inside", entryTime: expect.any(Date) },
+    });
+  });
+
+  it("persists an inside visitor as exited with a tenant-scoped state predicate", async () => {
+    const { client, repository } = createRepository({
+      current: visitor({ status: "inside" }),
+    });
+
+    await expect(repository.markExited("society_1", "visitor_1")).resolves.toMatchObject({
+      id: "visitor_1",
+      status: "exited",
+      exitTime: expect.any(String),
+    });
+    expect(client.visitor.updateMany).toHaveBeenCalledWith({
+      where: { id: "visitor_1", societyId: "society_1", status: "inside" },
+      data: { status: "exited", exitTime: expect.any(Date) },
+    });
+  });
+
   it("rechecks blacklist and passcode state before a check-in transition", async () => {
     const blacklisted = createRepository({ blacklist: true });
-    await expect(blacklisted.repository.markEntered("society_1", "visitor_1", "user_guard_1")).rejects.toMatchObject({
+    await expect(blacklisted.repository.markEntered("society_1", "visitor_1")).rejects.toMatchObject({
       code: "visitor_blacklisted",
     });
     expect(blacklisted.client.visitor.updateMany).not.toHaveBeenCalled();
@@ -103,7 +136,7 @@ describe("MobileGuardRepository transitions", () => {
     const passcodeRequired = createRepository({
       current: visitor({ passcode: "4829", verificationMethod: null }),
     });
-    await expect(passcodeRequired.repository.markEntered("society_1", "visitor_1", "user_guard_1")).rejects.toMatchObject({
+    await expect(passcodeRequired.repository.markEntered("society_1", "visitor_1")).rejects.toMatchObject({
       code: "passcode_verification_required",
     });
     expect(passcodeRequired.client.visitor.updateMany).not.toHaveBeenCalled();
