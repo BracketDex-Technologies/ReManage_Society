@@ -96,6 +96,34 @@ describe("MobileProblemFilter", () => {
     expect(Object.keys(result.body).sort()).toEqual(["code", "message", "requestId"]);
   });
 
+  it.each([
+    ["flat_not_found", HttpStatus.NOT_FOUND],
+    ["visitor_not_found", HttpStatus.NOT_FOUND],
+    ["visitor_not_approved", HttpStatus.CONFLICT],
+    ["visitor_not_inside", HttpStatus.CONFLICT],
+    ["visitor_blacklisted", HttpStatus.FORBIDDEN],
+    ["invalid_visitor_passcode", HttpStatus.BAD_REQUEST],
+    ["passcode_verification_required", HttpStatus.CONFLICT],
+  ])("returns the public Guard mobile problem for %s", async (code, status) => {
+    const module = await loadFilter();
+    expect(module).not.toBeNull();
+    if (!module) return;
+
+    const result = captureProblem(
+      module.MobileProblemFilter,
+      new HttpException({ error: code }, status),
+    );
+
+    expect(result).toEqual({
+      status,
+      body: {
+        code,
+        message: expect.any(String),
+        requestId: "request-mobile-123",
+      },
+    });
+  });
+
   it("redacts unknown internal errors", async () => {
     const module = await loadFilter();
     expect(module).not.toBeNull();

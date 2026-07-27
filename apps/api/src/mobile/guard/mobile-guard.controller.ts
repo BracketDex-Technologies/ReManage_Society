@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post, Query, Req, UseFilters, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import type { MobileAuthenticatedRequest } from "../common/mobile-request.ts";
 import { MobileProblemFilter } from "../common/mobile-problem.filter.ts";
 import { MobileSessionGuard } from "../session/mobile-session.guard.ts";
@@ -40,7 +40,7 @@ export class MobileGuardController {
 
   @Post("visitors")
   @ApiBody({ type: RequestVisitorDto })
-  @ApiOkResponse({ type: MobileGuardVisitorDto })
+  @ApiCreatedResponse({ type: MobileGuardVisitorDto })
   requestVisitor(
     @Req() request: MobileAuthenticatedRequest,
     @Body() body: RequestVisitorDto,

@@ -44,7 +44,6 @@ export class MobileGuardService {
     this.requireGuard(session);
     const visitor = await this.repository.requestVisitor({
       societyId: session.societyId,
-      actorId: session.userId,
       flatQuery: body.flatQuery,
       visitorName: body.visitorName,
       purpose: body.purpose,
@@ -85,7 +84,6 @@ export class MobileGuardService {
       session.societyId,
       visitorId,
       body.passcode,
-      session.userId,
     );
     await this.record(session, "visitor_passcode_verified", visitorId);
     return verified;
@@ -97,14 +95,14 @@ export class MobileGuardService {
     if (!visitor || visitor.status !== "expected" || visitor.residentResponse !== "approved") {
       throw mobileGuardProblem("visitor_not_approved", "Visitor approval is required before check-in.", 409);
     }
-    const entered = await this.repository.markEntered(session.societyId, visitorId, session.userId);
+    const entered = await this.repository.markEntered(session.societyId, visitorId);
     await this.record(session, "visitor_checked_in", visitorId);
     return entered;
   }
 
   async checkOut(session: MobileSession, visitorId: string): Promise<MobileGuardVisitorDto> {
     this.requireGuard(session);
-    const exited = await this.repository.markExited(session.societyId, visitorId, session.userId);
+    const exited = await this.repository.markExited(session.societyId, visitorId);
     await this.record(session, "visitor_checked_out", visitorId);
     return exited;
   }

@@ -36,6 +36,13 @@ const KNOWN_CODES = new Set([
   "invalid_or_expired_otp",
   "mobile_api_disabled",
   "rate_limit_exceeded",
+  "flat_not_found",
+  "visitor_not_found",
+  "visitor_not_approved",
+  "visitor_not_inside",
+  "visitor_blacklisted",
+  "invalid_visitor_passcode",
+  "passcode_verification_required",
 ]);
 
 @Catch()
@@ -151,6 +158,20 @@ function publicMessage(code: string): string {
       return "Mobile access is not available for this society.";
     case "rate_limit_exceeded":
       return "Too many attempts. Please try again later.";
+    case "flat_not_found":
+      return "The requested flat was not found.";
+    case "visitor_not_found":
+      return "The visitor was not found.";
+    case "visitor_not_approved":
+      return "Visitor approval is required before check-in.";
+    case "visitor_not_inside":
+      return "The visitor has not checked in.";
+    case "visitor_blacklisted":
+      return "This visitor cannot be admitted.";
+    case "invalid_visitor_passcode":
+      return "The visitor passcode is not valid.";
+    case "passcode_verification_required":
+      return "Verify the visitor passcode before check-in.";
     default:
       return "The request could not be completed.";
   }

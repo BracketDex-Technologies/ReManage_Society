@@ -108,17 +108,26 @@ describe("MobileGuardService", () => {
     await expect(service.checkIn(guardSession, "visitor_1")).resolves.toMatchObject({
       status: "inside",
     });
-    expect(repository.markEntered).toHaveBeenCalledWith(
-      guardSession.societyId,
-      "visitor_1",
-      guardSession.userId,
-    );
+    expect(repository.markEntered).toHaveBeenCalledWith(guardSession.societyId, "visitor_1");
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         actorId: guardSession.userId,
         societyId: guardSession.societyId,
         action: "operations:gate.manage",
+        targetType: "mobile_guard_visitor",
+        targetId: "visitor_1",
+        metadata: { event: "visitor_checked_in", activeRole: "guard" },
       }),
     );
+  });
+
+  it("does not record a second audit event when the atomic check-in write is rejected", async () => {
+    const { audit, repository, service } = createService();
+    repository.markEntered.mockRejectedValue({ code: "visitor_not_approved", status: 409 });
+
+    await expect(service.checkIn(guardSession, "visitor_1")).rejects.toMatchObject({
+      code: "visitor_not_approved",
+    });
+    expect(audit.record).not.toHaveBeenCalled();
   });
 });

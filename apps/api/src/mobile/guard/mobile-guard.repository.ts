@@ -31,7 +31,7 @@ interface MobileGuardPersistenceClient {
     create(input: { data: Record<string, unknown> }): Promise<GuardVisitorRecord>;
     findFirst(input: Record<string, unknown>): Promise<GuardVisitorRecord | null>;
     findMany(input: Record<string, unknown>): Promise<GuardVisitorRecord[]>;
-    update(input: { where: { id: string }; data: Record<string, unknown> }): Promise<GuardVisitorRecord>;
+    updateMany(input: { where: Record<string, unknown>; data: Record<string, unknown> }): Promise<{ count: number }>;
   };
   blacklist: {
     findFirst(input: Record<string, unknown>): Promise<{ id: string } | null>;
@@ -42,7 +42,6 @@ export const MOBILE_GUARD_CLIENT = Symbol("MOBILE_GUARD_CLIENT");
 
 export interface RequestMobileVisitorCommand extends RequestVisitorDto {
   societyId: string;
-  actorId: string;
 }
 
 @Injectable()
@@ -114,45 +113,51 @@ export class MobileGuardRepository {
     societyId: string,
     visitorId: string,
     passcode: string,
-    actorId: string,
   ): Promise<MobileGuardPasscodeResultDto> {
-    const visitor = await this.client.visitor.findFirst({
+    const verified = await this.client.visitor.updateMany({
       where: { id: visitorId, societyId, passcode },
-    });
-    if (!visitor) throw mobileGuardProblem("invalid_visitor_passcode", "The visitor passcode is not valid.", 400);
-    await this.client.visitor.update({
-      where: { id: visitor.id },
       data: { verificationMethod: "passcode" },
     });
-    void actorId;
-    return { id: visitor.id, passcodeVerified: true };
+    if (verified.count !== 1) {
+      throw mobileGuardProblem("invalid_visitor_passcode", "The visitor passcode is not valid.", 400);
+    }
+    return { id: visitorId, passcodeVerified: true };
   }
 
-  async markEntered(societyId: string, visitorId: string, actorId: string): Promise<MobileGuardVisitorDto> {
+  async markEntered(societyId: string, visitorId: string): Promise<MobileGuardVisitorDto> {
     const visitor = await this.requireVisitor(societyId, visitorId);
     await this.assertNotBlacklisted(visitor);
     if (visitor.passcode && visitor.verificationMethod !== "passcode") {
       throw mobileGuardProblem("passcode_verification_required", "Verify the visitor passcode before check-in.", 409);
     }
-    const updated = await this.client.visitor.update({
-      where: { id: visitor.id },
-      data: { status: "inside", entryTime: new Date() },
+    const entryTime = new Date();
+    const updated = await this.client.visitor.updateMany({
+      where: {
+        id: visitor.id,
+        societyId,
+        status: "expected",
+        residentResponse: "approved",
+        ...(visitor.passcode ? { verificationMethod: "passcode" } : {}),
+      },
+      data: { status: "inside", entryTime },
     });
-    void actorId;
-    return toMobileVisitor(updated);
+    if (updated.count !== 1) {
+      throw mobileGuardProblem("visitor_not_approved", "Visitor approval is required before check-in.", 409);
+    }
+    return toMobileVisitor({ ...visitor, status: "inside", entryTime });
   }
 
-  async markExited(societyId: string, visitorId: string, actorId: string): Promise<MobileGuardVisitorDto> {
+  async markExited(societyId: string, visitorId: string): Promise<MobileGuardVisitorDto> {
     const visitor = await this.requireVisitor(societyId, visitorId);
-    if (visitor.status !== "inside") {
+    const exitTime = new Date();
+    const updated = await this.client.visitor.updateMany({
+      where: { id: visitor.id, societyId, status: "inside" },
+      data: { status: "exited", exitTime },
+    });
+    if (updated.count !== 1) {
       throw mobileGuardProblem("visitor_not_inside", "The visitor has not checked in.", 409);
     }
-    const updated = await this.client.visitor.update({
-      where: { id: visitor.id },
-      data: { status: "exited", exitTime: new Date() },
-    });
-    void actorId;
-    return toMobileVisitor(updated);
+    return toMobileVisitor({ ...visitor, status: "exited", exitTime });
   }
 
   private async requireVisitor(societyId: string, visitorId: string): Promise<GuardVisitorRecord> {
