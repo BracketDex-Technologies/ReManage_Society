@@ -41,6 +41,21 @@ const WEAK_SECRET_KEYS = [
 
 const MIN_SECRET_LENGTH = 32;
 
+const MOBILE_OPERATIONAL_KEYS = [
+  "MOBILE_BETA_SOCIETY_ID",
+  "MOBILE_ACCESS_TOKEN_SECRET",
+  "MOBILE_REFRESH_TOKEN_PEPPER",
+  "MOBILE_OTP_PEPPER",
+  "SMTP_URL",
+  "EMAIL_FROM",
+] as const;
+
+const MOBILE_SECRET_KEYS = [
+  "MOBILE_ACCESS_TOKEN_SECRET",
+  "MOBILE_REFRESH_TOKEN_PEPPER",
+  "MOBILE_OTP_PEPPER",
+] as const;
+
 function isProduction(source: EnvSource): boolean {
   return source.NODE_ENV === "production";
 }
@@ -101,6 +116,31 @@ export function validateProductionReadiness(
     }
     if (looksLikePlaceholder(value)) {
       addIssue(issues, key, "must not use placeholder or default values in production", "blocker");
+    }
+  }
+
+  if (isTruthyFlag(source, "MOBILE_API_ENABLED")) {
+    for (const key of MOBILE_OPERATIONAL_KEYS) {
+      if (!String(source[key] ?? "").trim()) {
+        addIssue(
+          issues,
+          key,
+          "is required when MOBILE_API_ENABLED=true",
+          "blocker",
+        );
+      }
+    }
+
+    for (const key of MOBILE_SECRET_KEYS) {
+      const value = String(source[key] ?? "").trim();
+      if (value && value.length < MIN_SECRET_LENGTH) {
+        addIssue(
+          issues,
+          key,
+          `must be at least ${MIN_SECRET_LENGTH} characters in production`,
+          "blocker",
+        );
+      }
     }
   }
 

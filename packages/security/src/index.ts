@@ -8,7 +8,7 @@ export {
   sessionClaimsToPrincipal,
   verifyBffBridgeToken,
 } from "./bff-bridge-token.ts";
-export { evaluatePermission } from "./permission-policy.ts";
+export { evaluatePermission, permissionsForRoles } from "./permission-policy.ts";
 export {
   canAccessLegacyRoute,
   getDefaultRouteForRole,
@@ -25,7 +25,12 @@ export {
 export { mapOidcClaimsToPrincipal } from "./oidc-principal.ts";
 export { resolveTenantContext, TenantAccessError } from "./tenant-context.ts";
 export type { BffBridgeSessionClaims } from "./bff-bridge-token.ts";
-export type { AuditEvent, AuditEventInput, AuditOutcome } from "./audit-event.ts";
+export type {
+  AuditAction,
+  AuditEvent,
+  AuditEventInput,
+  AuditOutcome,
+} from "./audit-event.ts";
 export type { OidcClaims } from "./oidc-principal.ts";
 export type {
   AuthenticatedPrincipal,

@@ -2,10 +2,11 @@ import "reflect-metadata";
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { SwaggerModule } from "@nestjs/swagger";
 import { assertProductionReady } from "../../../packages/config/src/production.ts";
 import { AppModule } from "./app.module.js";
 import { ProblemJsonFilter } from "./common/problem-json.filter.js";
+import { createSocietyOpenApiDocument } from "./openapi.js";
 
 const logger = new Logger("ApiBootstrap");
 
@@ -34,14 +35,7 @@ async function bootstrap() {
     origin: allowedOrigin,
   });
 
-  const openApiConfig = new DocumentBuilder()
-    .setTitle("Society Connect API")
-    .setDescription("Production API scaffold for the society-management platform.")
-    .setVersion("0.1.0")
-    .addBearerAuth()
-    .build();
-
-  const document = SwaggerModule.createDocument(app, openApiConfig);
+  const document = createSocietyOpenApiDocument(app);
   SwaggerModule.setup("docs", app, document);
 
   const port = Number(process.env.API_PORT || 4000);

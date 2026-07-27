@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { HealthModule } from "./health/health.module.js";
+import { MobileApiModule } from "./mobile/mobile-api.module.ts";
 import { RequestIdMiddleware } from "./common/request-id.middleware.js";
 import { SecurityHeadersMiddleware } from "./common/security-headers.middleware.js";
 import { CommunityModule } from "./community/community.module.js";
@@ -16,6 +17,7 @@ import { SocietyCoreModule } from "./society-core/society-core.module.js";
     FinanceCoreModule,
     OperationsModule,
     CommunityModule,
+    MobileApiModule,
   ],
 })
 export class AppModule implements NestModule {

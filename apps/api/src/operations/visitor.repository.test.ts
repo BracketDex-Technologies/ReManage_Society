@@ -109,6 +109,29 @@ describe("VisitorRepository", () => {
     });
 
     expect(result).toEqual({ visitorId: "visitor_1", status: "approved", action: "approve" });
+    const update = client.operations.find((operation) => operation.action === "update");
+    expect((update?.input as { data: Record<string, unknown> }).data).toMatchObject({
+      residentResponse: "approved",
+    });
+  });
+
+  it("approves a legacy expected gate request without reclassifying it as pre-approved", async () => {
+    const client = createClient({ visitorStatus: "expected" });
+    const repository = new VisitorRepository(client);
+
+    const result = await repository.respondToVisitor({
+      societyId: "society_a",
+      visitorId: "visitor_1",
+      decision: "approve",
+      respondedAt: new Date("2026-06-07T10:05:00.000Z"),
+    });
+
+    expect(result).toEqual({ visitorId: "visitor_1", status: "expected", action: "approve" });
+    const update = client.operations.find((operation) => operation.action === "update");
+    expect((update?.input as { data: Record<string, unknown> }).data).toMatchObject({
+      status: "expected",
+      residentResponse: "approved",
+    });
   });
 
   it("rejects responding to a visitor in another society", async () => {

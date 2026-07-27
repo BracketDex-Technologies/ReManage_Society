@@ -135,16 +135,20 @@ export class VisitorRepository {
 
   async respondToVisitor(command: VisitorRespondCommand): Promise<VisitorMutationResult> {
     const visitor = await this.requireVisitor(command.societyId, command.visitorId);
-    const { status } = applyVisitorTransition({
-      current: visitor.status as VisitorStatus,
-      action: command.decision,
-    });
+    const status = visitor.status === "expected"
+      ? command.decision === "approve" ? "expected" : "rejected"
+      : applyVisitorTransition({
+        current: visitor.status as VisitorStatus,
+        action: command.decision,
+      }).status;
+    const residentResponse = command.residentResponse ??
+      (command.decision === "approve" ? "approved" : "rejected");
 
     const updated = await this.client.visitor.update({
       where: { id: command.visitorId },
       data: {
         status,
-        residentResponse: command.residentResponse ?? command.decision,
+        residentResponse,
         respondedAt: command.respondedAt,
       },
     });

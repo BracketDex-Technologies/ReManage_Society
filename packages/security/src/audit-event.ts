@@ -1,11 +1,12 @@
 import type { PermissionAction } from "./types.ts";
 
+export type AuditAction = PermissionAction | "auth:login";
 export type AuditOutcome = "allowed" | "denied" | "failed";
 
 export interface AuditEventInput {
   actorId: string;
   societyId: string;
-  action: PermissionAction;
+  action: AuditAction;
   targetType: string;
   targetId: string;
   outcome: AuditOutcome;
@@ -17,7 +18,7 @@ export interface AuditEventInput {
 export interface AuditEvent {
   actorId: string;
   societyId: string;
-  action: PermissionAction;
+  action: AuditAction;
   targetType: string;
   targetId: string;
   outcome: AuditOutcome;

@@ -30,6 +30,11 @@ function productionEnv(): Record<string, string> {
     KEYCLOAK_CLIENT_SECRET: "keycloak-client-secret-32-characters-minimum",
     API_SECURITY_HEADERS_ENABLED: "true",
     API_AUDIT_LOGGING_ENABLED: "true",
+    MOBILE_API_ENABLED: "true",
+    MOBILE_BETA_SOCIETY_ID: "society_beta",
+    MOBILE_ACCESS_TOKEN_SECRET: "mobile-access-token-secret-32-characters-minimum",
+    MOBILE_REFRESH_TOKEN_PEPPER: "mobile-refresh-token-pepper-32-characters-minimum",
+    MOBILE_OTP_PEPPER: "mobile-otp-pepper-with-32-characters-minimum",
     VALKEY_PORT: "6379",
     VALKEY_URL: "redis://valkey.internal:6379",
     MINIO_API_PORT: "9000",
@@ -87,6 +92,61 @@ describe("production readiness", () => {
     const result = validateProductionReadiness(source);
     expect(result.ready).toBe(false);
     expect(result.blockers.some((issue) => issue.key === "SESSION_SECRET")).toBe(true);
+  });
+
+  it.each([
+    "MOBILE_BETA_SOCIETY_ID",
+    "MOBILE_ACCESS_TOKEN_SECRET",
+    "MOBILE_REFRESH_TOKEN_PEPPER",
+    "MOBILE_OTP_PEPPER",
+    "SMTP_URL",
+    "EMAIL_FROM",
+  ])("requires %s when the mobile API is enabled", (key) => {
+    const source = productionEnv();
+    source[key] = "";
+
+    const result = validateProductionReadiness(source);
+
+    expect(result.blockers.some((issue) => issue.key === key)).toBe(true);
+  });
+
+  it.each([
+    "MOBILE_ACCESS_TOKEN_SECRET",
+    "MOBILE_REFRESH_TOKEN_PEPPER",
+    "MOBILE_OTP_PEPPER",
+  ])("requires %s to contain at least 32 characters", (key) => {
+    const source = productionEnv();
+    source[key] = "too-short";
+
+    const result = validateProductionReadiness(source);
+
+    expect(result.blockers).toContainEqual(
+      expect.objectContaining({
+        key,
+        message: "must be at least 32 characters in production",
+      }),
+    );
+  });
+
+  it("does not require mobile operational values when the mobile API is disabled", () => {
+    const source = productionEnv();
+    source.MOBILE_API_ENABLED = "false";
+    for (const key of [
+      "MOBILE_BETA_SOCIETY_ID",
+      "MOBILE_ACCESS_TOKEN_SECRET",
+      "MOBILE_REFRESH_TOKEN_PEPPER",
+      "MOBILE_OTP_PEPPER",
+      "SMTP_URL",
+      "EMAIL_FROM",
+    ]) {
+      source[key] = "";
+    }
+
+    const result = validateProductionReadiness(source);
+
+    expect(
+      result.blockers.filter((issue) => issue.key.startsWith("MOBILE_") || issue.key === "SMTP_URL" || issue.key === "EMAIL_FROM"),
+    ).toEqual([]);
   });
 
   it("skips assertProductionReady outside production", () => {
