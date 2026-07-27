@@ -13,11 +13,6 @@ interface MobileOtpMailTransport {
   sendMail(message: MobileOtpMailMessage): Promise<unknown>;
 }
 
-interface MobileOtpMailEnvironment {
-  SMTP_URL?: string;
-  EMAIL_FROM?: string;
-}
-
 export type MobileOtpMailTransportFactory = (
   smtpUrl: string,
 ) => MobileOtpMailTransport;
@@ -25,7 +20,7 @@ export type MobileOtpMailTransportFactory = (
 @Injectable()
 export class SmtpMobileOtpDeliveryService implements MobileOtpDelivery {
   constructor(
-    private readonly source: MobileOtpMailEnvironment = process.env,
+    private readonly source: NodeJS.ProcessEnv = process.env,
     private readonly createTransport: MobileOtpMailTransportFactory = (smtpUrl) =>
       nodemailer.createTransport(smtpUrl),
   ) {}
