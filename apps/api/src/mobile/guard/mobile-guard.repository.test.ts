@@ -31,6 +31,7 @@ function createRepository(options: {
     flat: { findFirst: vi.fn() },
     visitor: {
       create: vi.fn(),
+      count: vi.fn(),
       findFirst: vi.fn(async ({ where }: { where: { id?: string; societyId?: string } }) =>
         where.id === current.id && where.societyId === current.societyId ? current : null,
       ),
@@ -46,12 +47,44 @@ function createRepository(options: {
         return { count: 1 };
       }),
     },
+    package: { count: vi.fn() },
     blacklist: { findFirst: vi.fn().mockResolvedValue(options.blacklist ? { id: "blacklist_1" } : null) },
   };
   return { client, repository: new MobileGuardRepository(client as never) };
 }
 
 describe("MobileGuardRepository transitions", () => {
+  it("returns the server-owned, tenant-scoped Gate overview with non-overlapping counts", async () => {
+    const { client, repository } = createRepository();
+    client.visitor.count
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(1);
+    client.package.count.mockResolvedValueOnce(4);
+
+    await expect(repository.overview("society_1")).resolves.toEqual({
+      gateLabel: "Main Gate",
+      counts: { inside: 3, expected: 2, pendingApproval: 1, pendingParcels: 4 },
+    });
+
+    expect(client.visitor.count).toHaveBeenNthCalledWith(1, {
+      where: { societyId: "society_1", status: "in" },
+    });
+    expect(client.visitor.count).toHaveBeenNthCalledWith(2, {
+      where: { societyId: "society_1", status: "expected", residentResponse: "approved" },
+    });
+    expect(client.visitor.count).toHaveBeenNthCalledWith(3, {
+      where: {
+        societyId: "society_1",
+        status: "expected",
+        OR: [{ residentResponse: null }, { residentResponse: "pending" }],
+      },
+    });
+    expect(client.package.count).toHaveBeenCalledWith({
+      where: { societyId: "society_1", status: "received" },
+    });
+  });
+
   it("tenant-scopes the visitor lookup", async () => {
     const { client, repository } = createRepository();
 

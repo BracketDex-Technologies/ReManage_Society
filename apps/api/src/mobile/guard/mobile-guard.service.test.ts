@@ -42,6 +42,20 @@ function createService() {
 }
 
 describe("MobileGuardService", () => {
+  it("returns the repository overview using only the trusted guard society", async () => {
+    const { repository, service } = createService();
+    repository.overview.mockResolvedValue({
+      gateLabel: "Main Gate",
+      counts: { inside: 3, expected: 2, pendingApproval: 1, pendingParcels: 4 },
+    });
+
+    await expect(service.overview(guardSession)).resolves.toEqual({
+      gateLabel: "Main Gate",
+      counts: { inside: 3, expected: 2, pendingApproval: 1, pendingParcels: 4 },
+    });
+    expect(repository.overview).toHaveBeenCalledWith(guardSession.societyId);
+  });
+
   it("does not accept a client supplied society ID", async () => {
     const { repository, service } = createService();
 

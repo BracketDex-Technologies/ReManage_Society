@@ -29,9 +29,13 @@ interface MobileGuardPersistenceClient {
   };
   visitor: {
     create(input: { data: Record<string, unknown> }): Promise<GuardVisitorRecord>;
+    count(input: { where: Record<string, unknown> }): Promise<number>;
     findFirst(input: Record<string, unknown>): Promise<GuardVisitorRecord | null>;
     findMany(input: Record<string, unknown>): Promise<GuardVisitorRecord[]>;
     updateMany(input: { where: Record<string, unknown>; data: Record<string, unknown> }): Promise<{ count: number }>;
+  };
+  package: {
+    count(input: { where: Record<string, unknown> }): Promise<number>;
   };
   blacklist: {
     findFirst(input: Record<string, unknown>): Promise<{ id: string } | null>;
@@ -52,12 +56,22 @@ export class MobileGuardRepository {
   ) {}
 
   async overview(societyId: string): Promise<MobileGuardOverviewDto> {
-    const visitors = await this.client.visitor.findMany({
-      where: { societyId, status: { in: ["expected", "inside"] } },
-    });
+    const [inside, expected, pendingApproval, pendingParcels] = await Promise.all([
+      this.client.visitor.count({ where: { societyId, status: "in" } }),
+      this.client.visitor.count({ where: { societyId, status: "expected", residentResponse: "approved" } }),
+      this.client.visitor.count({
+        where: {
+          societyId,
+          status: "expected",
+          OR: [{ residentResponse: null }, { residentResponse: "pending" }],
+        },
+      }),
+      this.client.package.count({ where: { societyId, status: "received" } }),
+    ]);
+
     return {
-      expectedCount: visitors.filter((visitor) => visitor.status === "expected").length,
-      insideCount: visitors.filter((visitor) => visitor.status === "inside").length,
+      gateLabel: "Main Gate",
+      counts: { inside, expected, pendingApproval, pendingParcels },
     };
   }
 

@@ -23,7 +23,7 @@ export class MobileGuardController {
     private readonly guards: MobileGuardService,
   ) {}
 
-  @Get("overview")
+  @Get("gate/overview")
   @ApiOkResponse({ type: MobileGuardOverviewDto })
   overview(@Req() request: MobileAuthenticatedRequest): Promise<MobileGuardOverviewDto> {
     return this.guards.overview(requireGuardSession(request));

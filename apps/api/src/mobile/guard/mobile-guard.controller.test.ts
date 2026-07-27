@@ -33,6 +33,20 @@ function createController() {
 }
 
 describe("MobileGuardController", () => {
+  it("returns the Gate overview from the trusted mobile session", async () => {
+    const { controller, guards } = createController();
+    guards.overview.mockResolvedValue({
+      gateLabel: "Main Gate",
+      counts: { inside: 3, expected: 2, pendingApproval: 1, pendingParcels: 4 },
+    });
+
+    await expect(controller.overview(guardRequest)).resolves.toEqual({
+      gateLabel: "Main Gate",
+      counts: { inside: 3, expected: 2, pendingApproval: 1, pendingParcels: 4 },
+    });
+    expect(guards.overview).toHaveBeenCalledWith(guardRequest.mobileSession);
+  });
+
   it("forwards only the MobileSessionGuard session context to a visitor request", async () => {
     const { controller, guards } = createController();
     const body = { flatQuery: "A-308", visitorName: "Maya", purpose: "guest" };
