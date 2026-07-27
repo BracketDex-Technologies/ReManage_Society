@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { HttpException } from "@nestjs/common";
+import { HttpException, Logger } from "@nestjs/common";
 import type { MobileAuthenticatedRequest } from "../common/mobile-request.ts";
 import { MobileGuardService } from "./mobile-guard.service.ts";
 import type { MobileGuardRepository } from "./mobile-guard.repository.ts";
@@ -133,6 +133,50 @@ describe("MobileGuardService", () => {
         metadata: { event: "visitor_checked_in", activeRole: "guard" },
       }),
     );
+  });
+
+  it("accepts the canonical approved state returned by the Resident operations workflow", async () => {
+    const { repository, service } = createService();
+    repository.findVisitor.mockResolvedValue({
+      id: "visitor_1",
+      status: "approved",
+      residentResponse: "approve",
+      passcode: null,
+      verificationMethod: null,
+    });
+
+    await expect(service.checkIn(guardSession, "visitor_1")).resolves.toMatchObject({
+      status: "inside",
+    });
+    expect(repository.markEntered).toHaveBeenCalledWith(guardSession.societyId, "visitor_1");
+  });
+
+  it.each([
+    ["visitor request", "requestVisitor"],
+    ["check-in", "markEntered"],
+    ["check-out", "markExited"],
+  ] as const)("preserves a successful %s when audit delivery fails", async (_label, _operation) => {
+    const warning = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const created = createService();
+    created.audit.record.mockRejectedValue(new Error("audit storage unavailable with secret detail"));
+
+    try {
+      const operation = _operation === "requestVisitor"
+        ? created.service.requestVisitor(guardSession, {
+          flatQuery: "A-308",
+          visitorName: "Maya",
+          purpose: "guest",
+        })
+        : _operation === "markEntered"
+          ? created.service.checkIn(guardSession, "visitor_1")
+          : created.service.checkOut(guardSession, "visitor_1");
+
+      await expect(operation).resolves.toBeDefined();
+      expect(warning.mock.calls).toEqual([["Mobile Guard audit delivery failed"]]);
+      expect(JSON.stringify(warning.mock.calls)).not.toContain("secret detail");
+    } finally {
+      warning.mockRestore();
+    }
   });
 
   it("does not record a second audit event when the atomic check-in write is rejected", async () => {

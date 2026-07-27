@@ -30,12 +30,7 @@ interface ResponseLike {
 }
 
 const INTERNAL_ERROR_MESSAGE = "Something went wrong. Please try again.";
-const KNOWN_CODES = new Set([
-  "invalid_credentials",
-  "invalid_mobile_session",
-  "invalid_or_expired_otp",
-  "mobile_api_disabled",
-  "rate_limit_exceeded",
+export const MOBILE_GUARD_PUBLIC_PROBLEM_CODES = [
   "flat_not_found",
   "visitor_not_found",
   "visitor_not_approved",
@@ -43,6 +38,15 @@ const KNOWN_CODES = new Set([
   "visitor_blacklisted",
   "invalid_visitor_passcode",
   "passcode_verification_required",
+] as const;
+
+const KNOWN_CODES = new Set([
+  "invalid_credentials",
+  "invalid_mobile_session",
+  "invalid_or_expired_otp",
+  "mobile_api_disabled",
+  "rate_limit_exceeded",
+  ...MOBILE_GUARD_PUBLIC_PROBLEM_CODES,
 ]);
 
 @Catch()

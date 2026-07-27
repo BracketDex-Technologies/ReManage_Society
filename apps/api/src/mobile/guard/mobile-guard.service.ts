@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, Logger } from "@nestjs/common";
 import { createAuditEvent, type AuditEvent } from "../../../../../packages/security/src/index.ts";
 import type {
   MobileGuardOverviewDto,
@@ -18,8 +18,24 @@ export interface MobileGuardAudit {
   record(event: AuditEvent): Promise<void>;
 }
 
+export class MobileGuardAuditSink implements MobileGuardAudit {
+  private readonly logger = new Logger(MobileGuardAuditSink.name);
+
+  constructor(private readonly delivery: MobileGuardAudit) {}
+
+  async record(event: AuditEvent): Promise<void> {
+    try {
+      await this.delivery.record(event);
+    } catch {
+      this.logger.warn("Mobile Guard audit delivery failed");
+    }
+  }
+}
+
 @Injectable()
 export class MobileGuardService {
+  private readonly audit: MobileGuardAuditSink;
+
   constructor(
     @Inject(MobileGuardRepository)
     private readonly repository: Pick<
@@ -27,8 +43,10 @@ export class MobileGuardService {
       "overview" | "listVisitors" | "requestVisitor" | "findVisitor" | "verifyPasscode" | "markEntered" | "markExited"
     >,
     @Inject(MOBILE_GUARD_AUDIT)
-    private readonly audit: MobileGuardAudit = { record: async () => undefined },
-  ) {}
+    auditDelivery: MobileGuardAudit = { record: async () => undefined },
+  ) {
+    this.audit = new MobileGuardAuditSink(auditDelivery);
+  }
 
   async overview(session: MobileSession): Promise<MobileGuardOverviewDto> {
     this.requireGuard(session);
@@ -64,7 +82,8 @@ export class MobileGuardService {
       flatNumber: visitor.flatNumber,
       visitorName: visitor.visitorName,
       purpose: visitor.purpose,
-      status: visitor.status,
+      status: visitor.status as MobileGuardVisitorDto["status"],
+      passcodeRequired: Boolean(visitor.passcode),
       residentResponse: visitor.residentResponse,
       phone: visitor.phone,
       vehicleNo: visitor.vehicleNo,
@@ -92,7 +111,11 @@ export class MobileGuardService {
   async checkIn(session: MobileSession, visitorId: string): Promise<MobileGuardVisitorDto> {
     this.requireGuard(session);
     const visitor = await this.repository.findVisitor(session.societyId, visitorId);
-    if (!visitor || visitor.status !== "expected" || visitor.residentResponse !== "approved") {
+    const approved = visitor && (
+      (visitor.status === "expected" && visitor.residentResponse === "approved") ||
+      (visitor.status === "approved" && ["approve", "approved"].includes(visitor.residentResponse ?? ""))
+    );
+    if (!approved) {
       throw mobileGuardProblem("visitor_not_approved", "Visitor approval is required before check-in.", 409);
     }
     const entered = await this.repository.markEntered(session.societyId, visitorId);

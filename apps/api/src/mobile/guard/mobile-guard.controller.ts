@@ -1,11 +1,24 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post, Query, Req, UseFilters, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOkResponse, ApiParam, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiExtraModels,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiTags,
+} from "@nestjs/swagger";
 import type { MobileAuthenticatedRequest } from "../common/mobile-request.ts";
 import { MobileProblemFilter } from "../common/mobile-problem.filter.ts";
 import { MobileSessionGuard } from "../session/mobile-session.guard.ts";
 import {
   MobileGuardOverviewDto,
   MobileGuardPasscodeResultDto,
+  MobileGuardProblemDto,
   MobileGuardVisitorDto,
   RequestVisitorDto,
   VerifyVisitorPasscodeDto,
@@ -14,6 +27,7 @@ import { MobileGuardService } from "./mobile-guard.service.ts";
 
 @ApiTags("mobile-guard")
 @ApiBearerAuth()
+@ApiExtraModels(MobileGuardProblemDto)
 @UseFilters(MobileProblemFilter)
 @UseGuards(MobileSessionGuard)
 @Controller("api/mobile/v1/guard")
@@ -41,6 +55,8 @@ export class MobileGuardController {
   @Post("visitors")
   @ApiBody({ type: RequestVisitorDto })
   @ApiCreatedResponse({ type: MobileGuardVisitorDto })
+  @ApiForbiddenResponse({ type: MobileGuardProblemDto })
+  @ApiNotFoundResponse({ type: MobileGuardProblemDto })
   requestVisitor(
     @Req() request: MobileAuthenticatedRequest,
     @Body() body: RequestVisitorDto,
@@ -51,6 +67,7 @@ export class MobileGuardController {
   @Get("visitors/:visitorId")
   @ApiParam({ name: "visitorId", required: true, type: String })
   @ApiOkResponse({ type: MobileGuardVisitorDto })
+  @ApiNotFoundResponse({ type: MobileGuardProblemDto })
   getVisitor(
     @Req() request: MobileAuthenticatedRequest,
     @Param("visitorId") visitorId: string,
@@ -62,6 +79,9 @@ export class MobileGuardController {
   @ApiParam({ name: "visitorId", required: true, type: String })
   @ApiBody({ type: VerifyVisitorPasscodeDto })
   @ApiOkResponse({ type: MobileGuardPasscodeResultDto })
+  @ApiBadRequestResponse({ type: MobileGuardProblemDto })
+  @ApiConflictResponse({ type: MobileGuardProblemDto })
+  @ApiNotFoundResponse({ type: MobileGuardProblemDto })
   verifyPasscode(
     @Req() request: MobileAuthenticatedRequest,
     @Param("visitorId") visitorId: string,
@@ -74,6 +94,9 @@ export class MobileGuardController {
   @ApiParam({ name: "visitorId", required: true, type: String })
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: MobileGuardVisitorDto })
+  @ApiConflictResponse({ type: MobileGuardProblemDto })
+  @ApiForbiddenResponse({ type: MobileGuardProblemDto })
+  @ApiNotFoundResponse({ type: MobileGuardProblemDto })
   checkIn(
     @Req() request: MobileAuthenticatedRequest,
     @Param("visitorId") visitorId: string,
@@ -85,6 +108,8 @@ export class MobileGuardController {
   @ApiParam({ name: "visitorId", required: true, type: String })
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: MobileGuardVisitorDto })
+  @ApiConflictResponse({ type: MobileGuardProblemDto })
+  @ApiNotFoundResponse({ type: MobileGuardProblemDto })
   checkOut(
     @Req() request: MobileAuthenticatedRequest,
     @Param("visitorId") visitorId: string,

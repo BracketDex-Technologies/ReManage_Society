@@ -38,8 +38,17 @@ function createRepository(options: {
       findMany: vi.fn(),
       updateMany: vi.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         if (options.updatedCount === 0) return { count: 0 };
+        const statusMatches = !where.status ||
+          where.status === current.status ||
+          (
+            typeof where.status === "object" &&
+            where.status !== null &&
+            "in" in where.status &&
+            Array.isArray(where.status.in) &&
+            where.status.in.includes(current.status)
+          );
         const matches = where.id === current.id && where.societyId === current.societyId &&
-          (!where.status || where.status === current.status) &&
+          statusMatches &&
           (!where.residentResponse || where.residentResponse === current.residentResponse) &&
           (!where.verificationMethod || where.verificationMethod === current.verificationMethod);
         if (!matches) return { count: 0 };
@@ -68,16 +77,24 @@ describe("MobileGuardRepository transitions", () => {
     });
 
     expect(client.visitor.count).toHaveBeenNthCalledWith(1, {
-      where: { societyId: "society_1", status: "in" },
+      where: { societyId: "society_1", status: { in: ["inside", "in"] } },
     });
     expect(client.visitor.count).toHaveBeenNthCalledWith(2, {
-      where: { societyId: "society_1", status: "expected", residentResponse: "approved" },
+      where: {
+        societyId: "society_1",
+        OR: [
+          { status: "expected", residentResponse: { in: ["approved", "approve"] } },
+          { status: "approved" },
+        ],
+      },
     });
     expect(client.visitor.count).toHaveBeenNthCalledWith(3, {
       where: {
         societyId: "society_1",
-        status: "expected",
-        residentResponse: null,
+        OR: [
+          { status: "expected", residentResponse: null },
+          { status: "pending_approval" },
+        ],
       },
     });
     expect(client.package.count).toHaveBeenCalledWith({
@@ -94,6 +111,112 @@ describe("MobileGuardRepository transitions", () => {
     });
   });
 
+  it("normalizes legacy and current persisted statuses at the mobile list boundary", async () => {
+    const { client, repository } = createRepository();
+    client.visitor.findMany.mockResolvedValue([
+      visitor({ id: "legacy_in", status: "in" }),
+      visitor({ id: "current_inside", status: "inside" }),
+      visitor({ id: "legacy_out", status: "out" }),
+      visitor({ id: "current_exited", status: "exited" }),
+      visitor({ id: "current_approved", status: "approved", residentResponse: "approve", passcode: "4829" }),
+    ]);
+
+    await expect(repository.listVisitors("society_1")).resolves.toMatchObject([
+      { id: "legacy_in", status: "inside", passcodeRequired: false },
+      { id: "current_inside", status: "inside", passcodeRequired: false },
+      { id: "legacy_out", status: "exited", passcodeRequired: false },
+      { id: "current_exited", status: "exited", passcodeRequired: false },
+      {
+        id: "current_approved",
+        status: "expected",
+        residentResponse: "approved",
+        passcodeRequired: true,
+      },
+    ]);
+  });
+
+  it("queries both legacy and current inside states for the mobile inside filter", async () => {
+    const { client, repository } = createRepository();
+    client.visitor.findMany.mockResolvedValue([]);
+
+    await repository.listVisitors("society_1", "inside");
+
+    expect(client.visitor.findMany).toHaveBeenCalledWith({
+      where: { societyId: "society_1", status: { in: ["inside", "in"] } },
+      orderBy: { arrivedAt: "desc" },
+    });
+  });
+
+  it("creates an actionable non-pre-approved request and notifies the linked residents", async () => {
+    const created = visitor({
+      id: "visitor_mobile",
+      status: "expected",
+      residentResponse: null,
+      passcode: "4829",
+    });
+    const client: Record<string, unknown> = {
+      flat: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "flat_1",
+          flatNumber: "A-308",
+          units: [{
+            occupancies: [{
+              person: { users: [{ id: "resident_1" }, { id: "resident_2" }] },
+            }],
+          }],
+        }),
+      },
+      visitor: {
+        create: vi.fn().mockResolvedValue(created),
+      },
+      package: { count: vi.fn() },
+      blacklist: { findFirst: vi.fn().mockResolvedValue(null) },
+      user: { findMany: vi.fn() },
+      notification: { createMany: vi.fn().mockResolvedValue({ count: 2 }) },
+    };
+    client.$transaction = vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) => callback(client));
+    const repository = new MobileGuardRepository(client as never);
+
+    await expect(repository.requestVisitor({
+      societyId: "society_1",
+      flatQuery: " A-308 ",
+      visitorName: " Maya ",
+      purpose: " guest ",
+      passcode: "4829",
+    })).resolves.toMatchObject({
+      id: "visitor_mobile",
+      status: "expected",
+      passcodeRequired: true,
+      residentResponse: null,
+    });
+
+    expect((client.visitor as { create: ReturnType<typeof vi.fn> }).create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        societyId: "society_1",
+        flatId: "flat_1",
+        status: "expected",
+        isPreApproved: false,
+        verificationMethod: "manual",
+      }),
+    });
+    expect((client.notification as { createMany: ReturnType<typeof vi.fn> }).createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          societyId: "society_1",
+          userId: "resident_1",
+          type: "visitor_entry",
+          link: "/my-visitors?approve=visitor_mobile",
+        }),
+        expect.objectContaining({
+          societyId: "society_1",
+          userId: "resident_2",
+          type: "visitor_entry",
+          link: "/my-visitors?approve=visitor_mobile",
+        }),
+      ],
+    });
+  });
+
   it("rejects a stale check-in write when expected approval is no longer present", async () => {
     const { client, repository } = createRepository({ updatedCount: 0 });
 
@@ -104,8 +227,10 @@ describe("MobileGuardRepository transitions", () => {
       where: expect.objectContaining({
         id: "visitor_1",
         societyId: "society_1",
-        status: "expected",
-        residentResponse: "approved",
+        OR: [
+          { status: "expected", residentResponse: { in: ["approved", "approve"] } },
+          { status: "approved" },
+        ],
       }),
     }));
   });
@@ -120,7 +245,11 @@ describe("MobileGuardRepository transitions", () => {
       code: "visitor_not_inside",
     });
     expect(client.visitor.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id: "visitor_1", societyId: "society_1", status: "inside" }),
+      where: expect.objectContaining({
+        id: "visitor_1",
+        societyId: "society_1",
+        status: { in: ["inside", "in"] },
+      }),
     }));
   });
 
@@ -136,16 +265,30 @@ describe("MobileGuardRepository transitions", () => {
       where: {
         id: "visitor_1",
         societyId: "society_1",
-        status: "expected",
-        residentResponse: "approved",
+        OR: [
+          { status: "expected", residentResponse: { in: ["approved", "approve"] } },
+          { status: "approved" },
+        ],
       },
       data: { status: "inside", entryTime: expect.any(Date) },
     });
   });
 
-  it("persists an inside visitor as exited with a tenant-scoped state predicate", async () => {
+  it("admits a canonically approved visitor and emits the documented expected-to-inside shape", async () => {
+    const { repository } = createRepository({
+      current: visitor({ status: "approved", residentResponse: "approve" }),
+    });
+
+    await expect(repository.markEntered("society_1", "visitor_1")).resolves.toMatchObject({
+      id: "visitor_1",
+      status: "inside",
+      residentResponse: "approved",
+    });
+  });
+
+  it.each(["inside", "in"])("persists a %s visitor as canonical exited with a tenant-scoped state predicate", async (status) => {
     const { client, repository } = createRepository({
-      current: visitor({ status: "inside" }),
+      current: visitor({ status }),
     });
 
     await expect(repository.markExited("society_1", "visitor_1")).resolves.toMatchObject({
@@ -154,7 +297,7 @@ describe("MobileGuardRepository transitions", () => {
       exitTime: expect.any(String),
     });
     expect(client.visitor.updateMany).toHaveBeenCalledWith({
-      where: { id: "visitor_1", societyId: "society_1", status: "inside" },
+      where: { id: "visitor_1", societyId: "society_1", status: { in: ["inside", "in"] } },
       data: { status: "exited", exitTime: expect.any(Date) },
     });
   });

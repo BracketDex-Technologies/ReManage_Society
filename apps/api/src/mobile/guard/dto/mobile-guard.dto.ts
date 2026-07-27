@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsIn, IsOptional, IsString, Length, Matches } from "class-validator";
+import { MOBILE_GUARD_PUBLIC_PROBLEM_CODES } from "../../common/mobile-problem.filter.ts";
+
+export const MOBILE_GUARD_VISITOR_STATUSES = [
+  "expected",
+  "inside",
+  "exited",
+  "rejected",
+  "cancelled",
+] as const;
+
+export type MobileGuardVisitorStatus = (typeof MOBILE_GUARD_VISITOR_STATUSES)[number];
 
 export class RequestVisitorDto {
   @ApiProperty({ example: "A-308", type: String })
@@ -56,8 +67,14 @@ export class MobileGuardVisitorDto {
   @ApiProperty({ type: String })
   purpose!: string;
 
-  @ApiProperty({ type: String, enum: ["expected", "inside", "exited", "rejected", "cancelled"] })
-  status!: string;
+  @ApiProperty({ type: String, enum: MOBILE_GUARD_VISITOR_STATUSES })
+  status!: MobileGuardVisitorStatus;
+
+  @ApiProperty({
+    description: "Whether the visitor must verify a stored passcode before check-in.",
+    type: Boolean,
+  })
+  passcodeRequired!: boolean;
 
   @ApiPropertyOptional({ type: String, nullable: true })
   residentResponse?: string | null;
@@ -106,4 +123,15 @@ export class MobileGuardPasscodeResultDto {
 
   @ApiProperty({ type: Boolean })
   passcodeVerified!: true;
+}
+
+export class MobileGuardProblemDto {
+  @ApiProperty({ enum: MOBILE_GUARD_PUBLIC_PROBLEM_CODES, type: String })
+  code!: (typeof MOBILE_GUARD_PUBLIC_PROBLEM_CODES)[number];
+
+  @ApiProperty({ type: String })
+  message!: string;
+
+  @ApiPropertyOptional({ type: String })
+  requestId?: string;
 }

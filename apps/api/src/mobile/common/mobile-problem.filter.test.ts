@@ -8,6 +8,16 @@ type ProblemBody = {
   fieldErrors?: Record<string, string[]>;
 };
 
+const expectedGuardProblemCodes = [
+  "flat_not_found",
+  "visitor_not_found",
+  "visitor_not_approved",
+  "visitor_not_inside",
+  "visitor_blacklisted",
+  "invalid_visitor_passcode",
+  "passcode_verification_required",
+] as const;
+
 async function loadFilter(): Promise<
   | { MobileProblemFilter: new () => { catch: (exception: unknown, host: unknown) => void } }
   | null
@@ -122,6 +132,14 @@ describe("MobileProblemFilter", () => {
         requestId: "request-mobile-123",
       },
     });
+  });
+
+  it("publishes the complete Guard problem-code contract used by mobile clients", async () => {
+    const module = await import(new URL("./mobile-problem.filter.ts", import.meta.url).href) as {
+      MOBILE_GUARD_PUBLIC_PROBLEM_CODES?: readonly string[];
+    };
+
+    expect(module.MOBILE_GUARD_PUBLIC_PROBLEM_CODES).toEqual(expectedGuardProblemCodes);
   });
 
   it("redacts unknown internal errors", async () => {
