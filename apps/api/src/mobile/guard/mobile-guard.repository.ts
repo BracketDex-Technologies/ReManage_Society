@@ -63,7 +63,7 @@ export class MobileGuardRepository {
         where: {
           societyId,
           status: "expected",
-          OR: [{ residentResponse: null }, { residentResponse: "pending" }],
+          residentResponse: null,
         },
       }),
       this.client.package.count({ where: { societyId, status: "received" } }),

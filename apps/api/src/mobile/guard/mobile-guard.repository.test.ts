@@ -77,7 +77,7 @@ describe("MobileGuardRepository transitions", () => {
       where: {
         societyId: "society_1",
         status: "expected",
-        OR: [{ residentResponse: null }, { residentResponse: "pending" }],
+        residentResponse: null,
       },
     });
     expect(client.package.count).toHaveBeenCalledWith({

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post, Query, Req, UseFilters, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOkResponse, ApiParam, ApiTags } from "@nestjs/swagger";
 import type { MobileAuthenticatedRequest } from "../common/mobile-request.ts";
 import { MobileProblemFilter } from "../common/mobile-problem.filter.ts";
 import { MobileSessionGuard } from "../session/mobile-session.guard.ts";
@@ -49,6 +49,7 @@ export class MobileGuardController {
   }
 
   @Get("visitors/:visitorId")
+  @ApiParam({ name: "visitorId", required: true, type: String })
   @ApiOkResponse({ type: MobileGuardVisitorDto })
   getVisitor(
     @Req() request: MobileAuthenticatedRequest,
@@ -58,6 +59,7 @@ export class MobileGuardController {
   }
 
   @Post("visitors/:visitorId/verify-passcode")
+  @ApiParam({ name: "visitorId", required: true, type: String })
   @ApiBody({ type: VerifyVisitorPasscodeDto })
   @ApiOkResponse({ type: MobileGuardPasscodeResultDto })
   verifyPasscode(
@@ -69,6 +71,7 @@ export class MobileGuardController {
   }
 
   @Post("visitors/:visitorId/check-in")
+  @ApiParam({ name: "visitorId", required: true, type: String })
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: MobileGuardVisitorDto })
   checkIn(
@@ -79,6 +82,7 @@ export class MobileGuardController {
   }
 
   @Post("visitors/:visitorId/check-out")
+  @ApiParam({ name: "visitorId", required: true, type: String })
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: MobileGuardVisitorDto })
   checkOut(
