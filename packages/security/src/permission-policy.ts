@@ -148,6 +148,19 @@ const ROLE_PERMISSIONS: Record<SocietyRole | "platform_admin", readonly Permissi
   ],
 };
 
+const MFA_REQUIRED_ACTIONS = new Set<PermissionAction>([
+  "audit:event.read",
+  "society:onboard",
+  "society:core.manage",
+  "society:finance.manage",
+  "society:occupancy.manage",
+  "society:import.manage",
+  "society:settings.manage",
+  "operations:manage",
+  "community:document.manage",
+  "community:governance.manage",
+]);
+
 export function evaluatePermission(request: PermissionRequest): PermissionDecision {
   let tenantContext;
 
@@ -169,6 +182,13 @@ export function evaluatePermission(request: PermissionRequest): PermissionDecisi
     return {
       allowed: false,
       reason: `No active role can perform ${request.action}`,
+    };
+  }
+
+  if (MFA_REQUIRED_ACTIONS.has(request.action) && !tenantContext.mfaVerified) {
+    return {
+      allowed: false,
+      reason: `MFA is required for ${request.action}`,
     };
   }
 

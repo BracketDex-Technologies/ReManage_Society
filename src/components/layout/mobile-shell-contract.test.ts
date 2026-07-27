@@ -6,7 +6,10 @@ const notificationCenter = readFileSync(resolve(process.cwd(), "src/components/u
 const sidebar = readFileSync(resolve(process.cwd(), "src/components/layout/Sidebar.tsx"), "utf8");
 const dashboardLayout = readFileSync(resolve(process.cwd(), "src/app/(dashboard)/layout.tsx"), "utf8");
 const dashboard = readFileSync(resolve(process.cwd(), "src/app/(dashboard)/dashboard/page.tsx"), "utf8");
-const styles = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+const styles = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8").replace(
+  /\r\n/g,
+  "\n",
+);
 
 describe("mobile shell contracts", () => {
   it("uses a compact unread count inside the mobile bell", () => {
