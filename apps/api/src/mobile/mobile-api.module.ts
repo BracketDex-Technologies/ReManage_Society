@@ -28,6 +28,9 @@ import {
 } from "./auth/mobile-otp.service.ts";
 import { SmtpMobileOtpDeliveryService } from "./auth/smtp-mobile-otp-delivery.service.ts";
 import { MobileConfigService } from "./common/mobile-config.service.ts";
+import { MobileGuardController } from "./guard/mobile-guard.controller.ts";
+import { MOBILE_GUARD_AUDIT, MobileGuardService } from "./guard/mobile-guard.service.ts";
+import { MOBILE_GUARD_CLIENT, MobileGuardRepository } from "./guard/mobile-guard.repository.ts";
 import { MobileAccessTokenService } from "./session/mobile-access-token.service.ts";
 import { MobileDeviceSessionRepository } from "./session/mobile-device-session.repository.ts";
 import { MobileSessionController } from "./session/mobile-session.controller.ts";
@@ -53,6 +56,12 @@ export const MOBILE_API_PROVIDERS: Provider[] = [
   MobileAccessTokenService,
   MobileSessionGuard,
   MobileSessionService,
+  {
+    provide: MOBILE_GUARD_CLIENT,
+    useValue: prisma,
+  },
+  MobileGuardRepository,
+  MobileGuardService,
   MobilePasswordRateLimitService,
   MobileAuthService,
   {
@@ -90,11 +99,15 @@ export const MOBILE_API_PROVIDERS: Provider[] = [
     provide: MOBILE_SESSION_AUDIT,
     useExisting: AuditLogService,
   },
+  {
+    provide: MOBILE_GUARD_AUDIT,
+    useExisting: AuditLogService,
+  },
 ];
 
 @Module({
   imports: [SecurityModule],
-  controllers: [MobileAuthController, MobileSessionController],
+  controllers: [MobileAuthController, MobileSessionController, MobileGuardController],
   providers: MOBILE_API_PROVIDERS,
 })
 export class MobileApiModule {}
