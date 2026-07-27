@@ -1,15 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { evaluatePermission } from "./permission-policy.ts";
-import type { AuthenticatedPrincipal } from "./types.ts";
+import type { AuthenticatedPrincipal, PermissionAction } from "./types.ts";
+
+const membershipMfaProtectedActions = [
+  "audit:event.read",
+  "society:core.manage",
+  "society:finance.manage",
+  "society:occupancy.manage",
+  "society:import.manage",
+  "society:settings.manage",
+  "operations:manage",
+  "community:document.manage",
+  "community:governance.manage",
+] satisfies readonly PermissionAction[];
 
 describe("evaluatePermission", () => {
-  it("allows privileged committee actions with a password-authenticated session", () => {
+  it.each(membershipMfaProtectedActions)("requires MFA for %s", (action) => {
     const principal: AuthenticatedPrincipal = {
-      subject: "committee_1",
+      subject: "admin_1",
       memberships: [
         {
           societyId: "society_a",
-          roles: ["committee"],
+          roles: ["society_admin"],
           mfaVerified: false,
         },
       ],
@@ -19,13 +31,59 @@ describe("evaluatePermission", () => {
     expect(
       evaluatePermission({
         principal,
-        action: "audit:event.read",
+        action,
         societyId: "society_a",
       }),
     ).toEqual({
-      allowed: true,
-      reason: "Allowed by role committee",
+      allowed: false,
+      reason: `MFA is required for ${action}`,
     });
+  });
+
+  it("requires MFA for platform onboarding", () => {
+    const principal: AuthenticatedPrincipal = {
+      subject: "platform_admin_1",
+      memberships: [],
+      platformRoles: ["platform_admin"],
+    };
+
+    expect(
+      evaluatePermission({
+        principal,
+        action: "society:onboard",
+        societyId: "society_a",
+      }),
+    ).toEqual({
+      allowed: false,
+      reason: "MFA is required for society:onboard",
+    });
+  });
+
+  it("allows MFA-verified society admins to perform protected membership actions", () => {
+    const principal: AuthenticatedPrincipal = {
+      subject: "admin_1",
+      memberships: [
+        {
+          societyId: "society_a",
+          roles: ["society_admin"],
+          mfaVerified: true,
+        },
+      ],
+      platformRoles: [],
+    };
+
+    for (const action of membershipMfaProtectedActions) {
+      expect(
+        evaluatePermission({
+          principal,
+          action,
+          societyId: "society_a",
+        }),
+      ).toEqual({
+        allowed: true,
+        reason: "Allowed by role society_admin",
+      });
+    }
   });
 
   it("allows treasurers to read audit events only inside their own society", () => {
@@ -124,31 +182,6 @@ describe("evaluatePermission", () => {
     ).toMatchObject({ allowed: false });
   });
 
-  it("allows committee operations management with a password-authenticated session", () => {
-    const committee: AuthenticatedPrincipal = {
-      subject: "committee_1",
-      memberships: [
-        {
-          societyId: "society_a",
-          roles: ["committee"],
-          mfaVerified: false,
-        },
-      ],
-      platformRoles: [],
-    };
-
-    expect(
-      evaluatePermission({
-        principal: committee,
-        action: "operations:manage",
-        societyId: "society_a",
-      }),
-    ).toEqual({
-      allowed: true,
-      reason: "Allowed by role committee",
-    });
-  });
-
   it("lets residents read, post, vote, rsvp, and raise complaints without MFA", () => {
     const resident: AuthenticatedPrincipal = {
       subject: "resident_1",
@@ -196,23 +229,6 @@ describe("evaluatePermission", () => {
         evaluatePermission({ principal: committee, action, societyId: "society_a" }),
       ).toMatchObject({ allowed: true });
     }
-  });
-
-  it("allows governance and document management with a password-authenticated session", () => {
-    const committee: AuthenticatedPrincipal = {
-      subject: "committee_1",
-      memberships: [
-        { societyId: "society_a", roles: ["committee"], mfaVerified: false },
-      ],
-      platformRoles: [],
-    };
-
-    expect(
-      evaluatePermission({ principal: committee, action: "community:governance.manage", societyId: "society_a" }),
-    ).toEqual({ allowed: true, reason: "Allowed by role committee" });
-    expect(
-      evaluatePermission({ principal: committee, action: "community:document.manage", societyId: "society_a" }),
-    ).toEqual({ allowed: true, reason: "Allowed by role committee" });
   });
 
   it("does not grant gate operations to a plain guard for management actions", () => {
