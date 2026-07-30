@@ -155,7 +155,6 @@ const MFA_REQUIRED_ACTIONS = new Set<PermissionAction>([
   "society:finance.manage",
   "society:occupancy.manage",
   "society:import.manage",
-  "society:settings.manage",
   "operations:manage",
   "community:document.manage",
   "community:governance.manage",

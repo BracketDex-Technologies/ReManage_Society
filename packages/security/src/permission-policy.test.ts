@@ -8,7 +8,6 @@ const membershipMfaProtectedActions = [
   "society:finance.manage",
   "society:occupancy.manage",
   "society:import.manage",
-  "society:settings.manage",
   "operations:manage",
   "community:document.manage",
   "community:governance.manage",
@@ -37,6 +36,31 @@ describe("evaluatePermission", () => {
     ).toEqual({
       allowed: false,
       reason: `MFA is required for ${action}`,
+    });
+  });
+
+  it("allows society admins to manage settings with the password-only session", () => {
+    const principal: AuthenticatedPrincipal = {
+      subject: "admin_1",
+      memberships: [
+        {
+          societyId: "society_a",
+          roles: ["society_admin"],
+          mfaVerified: false,
+        },
+      ],
+      platformRoles: [],
+    };
+
+    expect(
+      evaluatePermission({
+        principal,
+        action: "society:settings.manage",
+        societyId: "society_a",
+      }),
+    ).toEqual({
+      allowed: true,
+      reason: "Allowed by role society_admin",
     });
   });
 
