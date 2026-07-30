@@ -67,7 +67,16 @@ function loginErrorResponse(
     server_error: "Login failed. Please try again.",
   };
 
-  return Response.json({ error: messages[code] || code }, { status });
+  return Response.json({ error: messages[code] || code, code }, { status });
+}
+
+async function hasPendingSocietyMembership(userId: string) {
+  const pendingMembership = await prisma.societyMembership.findFirst({
+    where: { userId, status: "pending" },
+    select: { id: true },
+  });
+
+  return Boolean(pendingMembership);
 }
 
 export async function POST(request: NextRequest) {
@@ -93,12 +102,20 @@ export async function POST(request: NextRequest) {
     const cleanEmail = email.trim().toLowerCase();
     const user = await findUserWithRetry(cleanEmail);
 
-    if (!user || !user.isActive) {
+    if (!user) {
       return loginErrorResponse(request, wantsRedirect, "invalid_credentials", 401);
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
+      return loginErrorResponse(request, wantsRedirect, "invalid_credentials", 401);
+    }
+
+    if (!user.isActive) {
+      if (await hasPendingSocietyMembership(user.id)) {
+        return loginErrorResponse(request, wantsRedirect, "membership_pending", 403);
+      }
+
       return loginErrorResponse(request, wantsRedirect, "invalid_credentials", 401);
     }
 
