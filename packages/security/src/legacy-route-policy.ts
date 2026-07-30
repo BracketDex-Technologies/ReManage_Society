@@ -34,6 +34,7 @@ const ROUTE_REQUIRED_ACTIONS: readonly { prefix: string; action: PermissionActio
   { prefix: "/api/salaries", action: "society:finance.manage" },
   { prefix: "/salaries", action: "society:finance.manage" },
   { prefix: "/api/accounting", action: "society:finance.manage" },
+  { prefix: "/api/memberships", action: "society:core.manage" },
   { prefix: "/api/members", action: "society:core.manage" },
   { prefix: "/members", action: "society:core.manage" },
   { prefix: "/api/tenants", action: "society:occupancy.manage" },

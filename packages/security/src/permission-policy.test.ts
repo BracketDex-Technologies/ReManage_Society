@@ -4,10 +4,7 @@ import type { AuthenticatedPrincipal, PermissionAction } from "./types.ts";
 
 const membershipMfaProtectedActions = [
   "audit:event.read",
-  "society:core.manage",
   "society:finance.manage",
-  "society:occupancy.manage",
-  "society:import.manage",
   "operations:manage",
   "community:document.manage",
   "community:governance.manage",
@@ -62,6 +59,37 @@ describe("evaluatePermission", () => {
       allowed: true,
       reason: "Allowed by role society_admin",
     });
+  });
+
+  it("allows society admins to approve residents and create committee logins with the password-only session", () => {
+    const principal: AuthenticatedPrincipal = {
+      subject: "chairman_1",
+      memberships: [
+        {
+          societyId: "society_a",
+          roles: ["society_admin"],
+          mfaVerified: false,
+        },
+      ],
+      platformRoles: [],
+    };
+
+    for (const action of [
+      "society:core.manage",
+      "society:occupancy.manage",
+      "society:import.manage",
+    ] as const) {
+      expect(
+        evaluatePermission({
+          principal,
+          action,
+          societyId: "society_a",
+        }),
+      ).toEqual({
+        allowed: true,
+        reason: "Allowed by role society_admin",
+      });
+    }
   });
 
   it("requires MFA for platform onboarding", () => {
