@@ -9,12 +9,14 @@ import { Eye, EyeOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { setTabSessionToken } from "@/lib/client-session";
 import { getDefaultRoute } from "@/lib/role-access";
+import { CenterMorphModal } from "@/components/ui/CenterMorphModal";
 
 export default function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingApprovalOpen, setPendingApprovalOpen] = useState(false);
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
 
@@ -56,6 +58,11 @@ export default function LoginForm() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "membership_pending") {
+          setPendingApprovalOpen(true);
+          return;
+        }
+
         toast.error(data.error || t("invalidCredentials"));
         return;
       }
@@ -82,6 +89,14 @@ export default function LoginForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface px-4">
+      <CenterMorphModal
+        open={pendingApprovalOpen}
+        onClose={() => setPendingApprovalOpen(false)}
+        title="Your login request has been sent"
+        description="Your resident account is waiting for chairman or committee approval. You will be able to enter the app as soon as your society approves the request."
+        actionLabel="Okay"
+      />
+
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Image

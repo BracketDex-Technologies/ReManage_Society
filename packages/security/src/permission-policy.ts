@@ -151,10 +151,7 @@ const ROLE_PERMISSIONS: Record<SocietyRole | "platform_admin", readonly Permissi
 const MFA_REQUIRED_ACTIONS = new Set<PermissionAction>([
   "audit:event.read",
   "society:onboard",
-  "society:core.manage",
   "society:finance.manage",
-  "society:occupancy.manage",
-  "society:import.manage",
   "operations:manage",
   "community:document.manage",
   "community:governance.manage",

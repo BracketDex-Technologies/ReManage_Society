@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resetRateLimitStoreForTests } from "./valkey-rate-limit.ts";
 import { RateLimiter, InMemoryRateLimitStore } from "./rate-limit-core.ts";
-import { canAccessLegacyRoute } from "./legacy-route-policy.ts";
+import { canAccessLegacyRoute, resolveRequiredAction } from "./legacy-route-policy.ts";
 
 describe("rate limit store", () => {
   it("tracks limits in memory", async () => {
@@ -61,5 +61,29 @@ describe("legacy route policy", () => {
         pathname: "/api/meetings",
       }),
     ).toBe(true);
+  });
+
+  it("maps membership approval APIs to society core management", () => {
+    expect(resolveRequiredAction("/api/memberships")).toBe("society:core.manage");
+    expect(resolveRequiredAction("/api/memberships/membership_1/approve")).toBe("society:core.manage");
+    expect(resolveRequiredAction("/api/memberships/membership_1/reject")).toBe("society:core.manage");
+  });
+
+  it("allows password-only chairmen to approve residents and create committee logins", () => {
+    for (const pathname of [
+      "/api/memberships",
+      "/api/memberships/membership_1/approve",
+      "/api/credentials",
+    ]) {
+      expect(
+        canAccessLegacyRoute({
+          role: "society_admin",
+          societyId: "soc_1",
+          subject: "chairman_1",
+          pathname,
+          mfaVerified: false,
+        }),
+      ).toBe(true);
+    }
   });
 });

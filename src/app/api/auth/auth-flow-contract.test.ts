@@ -56,6 +56,15 @@ describe("approved authentication flow contracts", () => {
     expect(login).toContain('"membership_pending"');
   });
 
+  it("shows a center morph pending-approval modal when a resident tries to log in before approval", () => {
+    const login = readRoute("src/app/(auth)/login/LoginForm.tsx");
+
+    expect(login).toContain("CenterMorphModal");
+    expect(login).toContain("pendingApprovalOpen");
+    expect(login).toContain("Your login request has been sent");
+    expect(login).toContain("data.code === \"membership_pending\"");
+  });
+
   it("scopes resident approval to the committee member's society", () => {
     const approval = readRoute("src/app/api/memberships/[id]/approve/route.ts");
 
